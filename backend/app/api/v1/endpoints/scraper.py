@@ -132,11 +132,21 @@ async def debug_env():
     files_in_cwd = os.listdir(cwd)
     parent = os.path.dirname(cwd)
     files_in_parent = os.listdir(parent) if os.path.exists(parent) else []
+
+    # Try import and capture exact error
+    import_error = None
+    try:
+        from ficbook_parser.client import FicbookClient
+        import_ok = True
+    except Exception as e:
+        import_ok = False
+        import_error = f"{type(e).__name__}: {e}"
+
     return {
         "cwd": cwd,
         "files_in_cwd": sorted(files_in_cwd),
-        "parent_dir": parent,
-        "files_in_parent": sorted(files_in_parent),
         "sys_path": sys.path[:8],
         "PYTHONPATH": os.environ.get("PYTHONPATH", "NOT SET"),
+        "ficbook_parser_import_ok": import_ok,
+        "ficbook_parser_import_error": import_error,
     }
