@@ -4,6 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import logging
 import asyncio
+import sys
+import os
+
+# Ensure backend root is in path so ficbook_parser (bundled alongside app/) is importable
+_backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _backend_root not in sys.path:
+    sys.path.insert(0, _backend_root)
 
 from app.core.config import settings
 from app.api.v1.router import api_router
