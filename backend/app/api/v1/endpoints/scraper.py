@@ -67,6 +67,37 @@ async def scraper_status():
     }
 
 
+@router.get("/test")
+async def test_scraper():
+    """Synchronously scrape 1 page and return raw result for debugging."""
+    try:
+        from ficbook_parser.client import FicbookClient
+    except ImportError:
+        return {"error": "ficbook_parser not installed"}
+
+    import os
+    email = os.environ.get("FICBOOK_EMAIL", "")
+    password = os.environ.get("FICBOOK_PASSWORD", "")
+
+    try:
+        async with FicbookClient() as client:
+            if email and password:
+                auth = await client.auth.login(email, password)
+                auth_status = f"logged in as {auth.user.name}" if auth.success and auth.user else f"auth failed: {auth.error}"
+            else:
+                auth_status = "no credentials (guest mode)"
+
+            fanfics, has_next = await client.fanfics_list.get("fanfiction", page=1)
+            return {
+                "auth": auth_status,
+                "fanfics_count": len(fanfics),
+                "has_next": has_next,
+                "first_fanfic": fanfics[0].title if fanfics else None,
+            }
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__}
+
+
 @router.post("/fanfic", status_code=status.HTTP_202_ACCEPTED)
 async def scrape_fanfic(
     data: ScrapeRequest,
