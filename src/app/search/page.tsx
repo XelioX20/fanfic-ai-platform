@@ -5,6 +5,7 @@ import { Suspense } from 'react'
 import { SearchBar } from '@/components/search/SearchBar'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
 import { searchApi } from '@/lib/api'
+import { searchMockFanfics } from '@/lib/mock-data'
 
 function SearchResults() {
   const searchParams = useSearchParams()
@@ -14,19 +15,24 @@ function SearchResults() {
     queryKey: ['search', query],
     queryFn: () => searchApi.search(query).then((r) => r.data),
     enabled: !!query,
+    retry: false,
   })
+
+  const fanfics = data?.items ?? (query ? searchMockFanfics(query) : [])
+  const total = data?.total ?? fanfics.length
 
   return (
     <div>
       <SearchBar defaultValue={query} className="max-w-2xl mb-6" />
       {query ? (
         <div>
-          {data && (
-            <p className="text-zinc-400 text-sm mb-4">
-              Найдено {data.total} результатов по запросу «{query}»
-            </p>
+          <p className="text-zinc-400 text-sm mb-4">
+            Найдено {total} результатов по запросу «{query}»
+          </p>
+          <FanficGrid fanfics={fanfics} loading={isLoading} />
+          {fanfics.length === 0 && !isLoading && (
+            <p className="text-zinc-500 text-center py-12">Ничего не найдено</p>
           )}
-          <FanficGrid fanfics={data?.items || []} loading={isLoading} />
         </div>
       ) : (
         <p className="text-zinc-500">Введите запрос для поиска</p>
