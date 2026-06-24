@@ -1,6 +1,6 @@
 from __future__ import annotations
+import asyncio
 import httpx
-from typing import Optional
 from ..constants import FICBOOK_BASE_URL, QUERY_PAGE
 from ..models.fanfic import FanficCardModel
 from ..models.sections import Section, SectionWithQuery
@@ -34,9 +34,21 @@ class FanficsListApi:
         else:
             url += f"?{QUERY_PAGE}={page}"
 
-        resp = await self._client.get(url)
-        resp.raise_for_status()
-        return self._parser.parse(resp.text)
+        # Retry up to 3 times with increasing delay on 403/429
+        for attempt in range(3):
+            try:
+                resp = await self._client.get(url)
+                if resp.status_code in (403, 429):
+                    await asyncio.sleep(3 * (attempt + 1))
+                    continue
+                resp.raise_for_status()
+                return self._parser.parse(resp.text)
+            except httpx.HTTPStatusError:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(3 * (attempt + 1))
+
+        return [], False
 
     async def get_by_href(self, href: str, page: int = 1) -> tuple[list[FanficCardModel], bool]:
         return await self.get(href, page)
