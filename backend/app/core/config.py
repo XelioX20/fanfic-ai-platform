@@ -10,7 +10,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
 
     DATABASE_URL: str = "postgresql+asyncpg://fanfic:fanfic@localhost:5432/fanficdb"
-    # Reduced for Neon free tier (max 10 connections)
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 5
 
@@ -29,8 +28,8 @@ class Settings(BaseSettings):
     FICBOOK_EMAIL: str = ""
     FICBOOK_PASSWORD: str = ""
     FICBOOK_RATE_LIMIT_DELAY: float = 2.0
+    SCRAPER_API_KEY: str = ""
 
-    # Accept JSON string or list
     CORS_ORIGINS: Union[list[str], str] = ["*"]
 
     DEFAULT_PAGE_SIZE: int = 20

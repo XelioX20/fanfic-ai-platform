@@ -16,9 +16,8 @@ except ImportError:
     FanficPageModel = None
     PopularSections = None
 
-# Sections to scrape on startup
 STARTUP_SECTIONS = [
-    "fanfiction",        # все фанфики (популярное)
+    "fanfiction",
     "fanfiction/het",
     "fanfiction/slash",
     "fanfiction/gen",
@@ -29,41 +28,48 @@ class ScraperService:
     def __init__(self):
         self._email = os.environ.get("FICBOOK_EMAIL", "")
         self._password = os.environ.get("FICBOOK_PASSWORD", "")
+        self._scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
+
+    def _make_client(self) -> "FicbookClient":
+        return FicbookClient(
+            scraper_api_key=self._scraper_api_key or None,
+            timeout=60.0,
+        )
 
     async def scrape_popular(self, pages_per_section: int = 2) -> list[dict]:
-        """Scrape popular fanfics from multiple sections. Used on startup."""
         if not FicbookClient:
             logger.error("ficbook_parser not available")
             return []
+
         results = []
-        async with FicbookClient() as client:
+        async with self._make_client() as client:
             if self._email and self._password:
                 auth_result = await client.auth.login(self._email, self._password)
                 if auth_result.success:
                     logger.info(f"Authenticated as {auth_result.user.name if auth_result.user else 'unknown'}")
                 else:
                     logger.warning(f"Auth failed: {auth_result.error} — scraping as guest")
+
             for section_path in STARTUP_SECTIONS:
                 for page_num in range(1, pages_per_section + 1):
                     try:
                         fanfics, has_next = await client.fanfics_list.get(section_path, page=page_num)
                         logger.info(f"Scraped {len(fanfics)} fanfics from {section_path} page {page_num}")
                         results.extend(self._card_to_dict(f) for f in fanfics)
-                        # Respectful rate limiting
                         await asyncio.sleep(1.5)
                         if not has_next:
                             break
                     except Exception as e:
                         logger.error(f"Failed scraping {section_path} page {page_num}: {e}")
                         break
+
         logger.info(f"Total scraped: {len(results)} fanfics")
         return results
 
     async def scrape_fanfic(self, fanfic_id: str) -> Optional[dict]:
         if not FicbookClient:
-            logger.error("ficbook_parser not available")
             return None
-        async with FicbookClient() as client:
+        async with self._make_client() as client:
             if self._email and self._password:
                 await client.auth.login(self._email, self._password)
             try:
@@ -77,19 +83,18 @@ class ScraperService:
         if not FicbookClient:
             return []
         results = []
-        async with FicbookClient() as client:
+        async with self._make_client() as client:
             if self._email and self._password:
                 await client.auth.login(self._email, self._password)
             for page_num in range(1, pages + 1):
                 try:
-                    fanfics, has_next = await client.fanfics_list.get_section(
-                        section_path, page=page_num
-                    )
+                    fanfics, has_next = await client.fanfics_list.get(section_path, page=page_num)
                     results.extend(self._card_to_dict(f) for f in fanfics)
+                    await asyncio.sleep(1.5)
                     if not has_next:
                         break
                 except Exception as e:
-                    logger.error(f"Failed to scrape section {section_path} page {page_num}: {e}")
+                    logger.error(f"Failed scraping {section_path} page {page_num}: {e}")
                     break
         return results
 

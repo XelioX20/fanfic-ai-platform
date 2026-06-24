@@ -34,40 +34,56 @@ DEFAULT_HEADERS = {
     "Connection": "keep-alive",
 }
 
+SCRAPERAPI_BASE = "http://api.scraperapi.com"
+
 
 class FicbookClient:
     """
     Main async client for ficbook.net.
     Architecture mirrors B1ays/ficbook-reader ficbookApi module.
 
+    Pass scraper_api_key to route all requests through ScraperAPI,
+    which handles Cloudflare protection automatically.
+
     Usage:
-        async with FicbookClient() as client:
-            await client.login("email", "password")
+        async with FicbookClient(scraper_api_key="KEY") as client:
             fanfics, has_next = await client.fanfics_list.get(PopularSections.ALL)
     """
 
     def __init__(
         self,
         cookies: Optional[dict] = None,
-        timeout: float = 30.0,
+        timeout: float = 60.0,
         rate_limit_delay: float = 1.0,
+        scraper_api_key: Optional[str] = None,
     ):
-        self._http = httpx.AsyncClient(
-            headers=DEFAULT_HEADERS,
-            cookies=cookies or {},
-            timeout=timeout,
-            follow_redirects=True,
-        )
+        self._scraper_api_key = scraper_api_key
         self._rate_limit_delay = rate_limit_delay
 
-        # API modules — same structure as B1ays API directory
-        self.auth = FicbookAuth(self._http)
-        self.fanfics_list = FanficsListApi(self._http)
-        self.fanfic_page = FanficPageApi(self._http)
+        if scraper_api_key:
+            # Route through ScraperAPI — it handles Cloudflare, rotating IPs, JS rendering
+            self._http = httpx.AsyncClient(
+                base_url=SCRAPERAPI_BASE,
+                params={"api_key": scraper_api_key, "render": "false"},
+                headers=DEFAULT_HEADERS,
+                timeout=timeout,
+                follow_redirects=True,
+            )
+        else:
+            self._http = httpx.AsyncClient(
+                headers=DEFAULT_HEADERS,
+                cookies=cookies or {},
+                timeout=timeout,
+                follow_redirects=True,
+            )
+
+        self.auth = FicbookAuth(self._http, scraper_api_key=scraper_api_key)
+        self.fanfics_list = FanficsListApi(self._http, scraper_api_key=scraper_api_key)
+        self.fanfic_page = FanficPageApi(self._http, scraper_api_key=scraper_api_key)
         self.chapters = ChaptersApi(self._http)
         self.collections = CollectionsApi(self._http)
         self.comments = CommentsApi(self._http)
-        self.search = SearchApi(self._http)
+        self.search = SearchApi(self._http, scraper_api_key=scraper_api_key)
         self.author_profile = AuthorProfileApi(self._http)
         self.notifications = NotificationsApi(self._http)
         self.users = UsersApi(self._http)

@@ -19,6 +19,8 @@ services:
         sync: false
       - key: FICBOOK_PASSWORD
         sync: false
+      - key: SCRAPER_API_KEY
+        sync: false
       - key: REDIS_URL
         value: ""
       - key: KAFKA_BOOTSTRAP_SERVERS

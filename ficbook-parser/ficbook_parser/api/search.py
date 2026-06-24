@@ -1,70 +1,27 @@
 from __future__ import annotations
-import json
 import httpx
-from ..constants import FICBOOK_BASE_URL
-from ..models.search import FandomModel, CharacterModel, TagSearchResult
+from typing import Optional
+from ..constants import FICBOOK_BASE_URL, ROUTE_FIND, QUERY_SEARCH, QUERY_PAGE
+from ..models.search import SearchResult
+from ..parsers.fanfic_list import FanficListParser
 
 
 class SearchApi:
-    """
-    Ports B1ays SearchApi.kt.
-    POST endpoints for autocomplete search of fandoms, characters, tags.
-    """
-
-    FANDOMS_SEARCH_URL = f"{FICBOOK_BASE_URL}/fanfiction/fandoms-autocomplete"
-    CHARACTERS_URL = f"{FICBOOK_BASE_URL}/fanfiction/characters-autocomplete"
-    TAGS_SEARCH_URL = f"{FICBOOK_BASE_URL}/tags/autocomplete"
-
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: httpx.AsyncClient, scraper_api_key: Optional[str] = None):
         self._client = client
+        self._parser = FanficListParser()
+        self._scraper_api_key = scraper_api_key
 
-    async def find_fandoms(self, query: str) -> list[FandomModel]:
-        try:
-            resp = await self._client.post(
-                self.FANDOMS_SEARCH_URL,
-                data={"query": query},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return [
-                FandomModel(id=str(f.get("id", "")), name=f.get("title", ""), href=f.get("url", ""))
-                for f in (data if isinstance(data, list) else data.get("fandoms", []))
-            ]
-        except Exception:
-            return []
+    def _build_url(self, query: str, page: int) -> str:
+        target = f"{FICBOOK_BASE_URL}/{ROUTE_FIND}?{QUERY_SEARCH}={query}&{QUERY_PAGE}={page}"
+        if self._scraper_api_key:
+            import urllib.parse
+            encoded = urllib.parse.quote(target)
+            return f"/?api_key={self._scraper_api_key}&url={encoded}"
+        return target
 
-    async def get_characters(self, fandom_ids: list[str]) -> list[CharacterModel]:
-        try:
-            resp = await self._client.post(
-                self.CHARACTERS_URL,
-                data={"fandom_ids[]": fandom_ids},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            items = data if isinstance(data, list) else data.get("characters", [])
-            return [
-                CharacterModel(id=str(c.get("id", "")), name=c.get("name", ""))
-                for c in items
-            ]
-        except Exception:
-            return []
-
-    async def find_tags(self, query: str) -> list[TagSearchResult]:
-        try:
-            resp = await self._client.post(
-                self.TAGS_SEARCH_URL,
-                data={"query": query},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            items = data if isinstance(data, list) else data.get("tags", [])
-            return [
-                TagSearchResult(
-                    id=str(t.get("id", "")),
-                    name=t.get("title", t.get("name", "")),
-                    fanfics_count=int(t.get("count", 0)),
-                )
-                for t in items
-            ]
-        except Exception:
-            return []
+    async def search(self, query: str, page: int = 1):
+        url = self._build_url(query, page)
+        resp = await self._client.get(url)
+        resp.raise_for_status()
+        return self._parser.parse(resp.text)

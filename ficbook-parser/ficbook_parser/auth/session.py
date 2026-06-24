@@ -16,56 +16,49 @@ class AuthResult:
 
 
 class FicbookAuth:
-    """
-    Handles authentication with ficbook.net via session cookies.
-    Ports B1ays AuthorizationApi.kt logic.
-    POST to login endpoint, verify via settings page redirect check.
-    """
-
     LOGIN_ENDPOINT = f"{FICBOOK_BASE_URL}/login_check"
 
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: httpx.AsyncClient, scraper_api_key: Optional[str] = None):
         self._client = client
+        self._scraper_api_key = scraper_api_key
+
+    def _wrap(self, url: str) -> str:
+        if self._scraper_api_key:
+            import urllib.parse
+            encoded = urllib.parse.quote(url)
+            return f"/?api_key={self._scraper_api_key}&url={encoded}"
+        return url
 
     async def login(self, email: str, password: str) -> AuthResult:
         try:
-            # Step 1: GET login page for CSRF token
-            resp = await self._client.get(f"{FICBOOK_BASE_URL}/login")
+            resp = await self._client.get(self._wrap(f"{FICBOOK_BASE_URL}/login"))
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
             csrf = self._extract_csrf(soup)
 
-            # Step 2: POST credentials
             form_data = {
                 "login": email,
                 "password": password,
                 "_csrf_token": csrf,
             }
-            login_resp = await self._client.post(
-                self.LOGIN_ENDPOINT,
-                data=form_data,
-                follow_redirects=True,
-            )
-            # Step 3: Verify authorization by checking settings page
+            login_url = self._wrap(self.LOGIN_ENDPOINT)
+            await self._client.post(login_url, data=form_data, follow_redirects=True)
+
             is_authed = await self.check_authorized()
             if not is_authed:
                 return AuthResult(success=False, error="Login failed: invalid credentials")
 
-            # Step 4: Extract user info
             user = await self._get_current_user()
             return AuthResult(success=True, user=user)
-
         except httpx.HTTPError as e:
             return AuthResult(success=False, error=str(e))
 
     async def check_authorized(self) -> bool:
-        """Verify session is active — ports B1ays isAuthorized() check."""
         try:
             resp = await self._client.get(
-                f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}",
+                self._wrap(f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}"),
                 follow_redirects=False,
             )
-            # If redirected to login — not authorized
             if resp.status_code in (301, 302):
                 location = resp.headers.get("location", "")
                 return "login" not in location
@@ -75,7 +68,7 @@ class FicbookAuth:
 
     async def _get_current_user(self) -> Optional[UserModel]:
         try:
-            resp = await self._client.get(f"{FICBOOK_BASE_URL}/home")
+            resp = await self._client.get(self._wrap(f"{FICBOOK_BASE_URL}/home"))
             soup = BeautifulSoup(resp.text, "html.parser")
             user_link = soup.select_one("a.user-name-avatar, a[href*='/authors/']")
             if user_link:
