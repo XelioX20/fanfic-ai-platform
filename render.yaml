@@ -25,5 +25,5 @@ services:
         value: ""
       - key: KAFKA_BOOTSTRAP_SERVERS
         value: ""
-      - key: CORS_ORIGINS
-        value: '["*"]'
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
