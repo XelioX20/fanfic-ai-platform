@@ -2,7 +2,6 @@ from __future__ import annotations
 import httpx
 from typing import Optional
 from ..constants import FICBOOK_BASE_URL, ROUTE_FIND, QUERY_SEARCH, QUERY_PAGE
-from ..models.search import SearchResult
 from ..parsers.fanfic_list import FanficListParser
 
 
