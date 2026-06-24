@@ -78,9 +78,10 @@ async def test_scraper():
     import os
     email = os.environ.get("FICBOOK_EMAIL", "")
     password = os.environ.get("FICBOOK_PASSWORD", "")
+    scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
 
     try:
-        async with FicbookClient() as client:
+        async with FicbookClient(scraper_api_key=scraper_api_key or None) as client:
             if email and password:
                 auth = await client.auth.login(email, password)
                 auth_status = f"logged in as {auth.user.name}" if auth.success and auth.user else f"auth failed: {auth.error}"
@@ -89,13 +90,14 @@ async def test_scraper():
 
             fanfics, has_next = await client.fanfics_list.get("fanfiction", page=1)
             return {
+                "scraper_api_key_set": bool(scraper_api_key),
                 "auth": auth_status,
                 "fanfics_count": len(fanfics),
                 "has_next": has_next,
                 "first_fanfic": fanfics[0].title if fanfics else None,
             }
     except Exception as e:
-        return {"error": str(e), "type": type(e).__name__}
+        return {"scraper_api_key_set": bool(scraper_api_key), "error": str(e), "type": type(e).__name__}
 
 
 @router.post("/fanfic", status_code=status.HTTP_202_ACCEPTED)
