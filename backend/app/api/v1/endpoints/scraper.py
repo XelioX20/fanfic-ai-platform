@@ -1,4 +1,6 @@
 import logging
+import sys
+import os
 from fastapi import APIRouter, Depends, BackgroundTasks, status
 from pydantic import BaseModel
 from app.core.dependencies import get_current_user
@@ -7,6 +9,7 @@ from app.db.models.fanfic import Fanfic
 from app.db.session import AsyncSessionLocal
 from app.db.repositories.fanfics import FanficRepository
 from app.services.scraper_service import ScraperService
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -120,3 +123,20 @@ async def scrape_list(
     scraper = ScraperService()
     background_tasks.add_task(scraper.scrape_section, data.section_path, data.pages)
     return {"status": "accepted", "section": data.section_path, "pages": data.pages}
+
+
+@router.get("/debug")
+async def debug_env():
+    """Show Python path and filesystem for diagnosing import issues."""
+    cwd = os.getcwd()
+    files_in_cwd = os.listdir(cwd)
+    parent = os.path.dirname(cwd)
+    files_in_parent = os.listdir(parent) if os.path.exists(parent) else []
+    return {
+        "cwd": cwd,
+        "files_in_cwd": sorted(files_in_cwd),
+        "parent_dir": parent,
+        "files_in_parent": sorted(files_in_parent),
+        "sys_path": sys.path[:8],
+        "PYTHONPATH": os.environ.get("PYTHONPATH", "NOT SET"),
+    }
