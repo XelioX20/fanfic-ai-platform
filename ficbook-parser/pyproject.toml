@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "ficbook-parser"
 version = "0.1.0"
 description = "Async Python client for ficbook.net — ported from B1ays/ficbook-reader Kotlin API"
-readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
