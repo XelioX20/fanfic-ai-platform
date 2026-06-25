@@ -214,24 +214,35 @@ export default function FanficPage() {
 
           {/* Chapter list — inline under buttons */}
           {fanfic.chapters.length > 1 && (
-            <div className="mt-4 space-y-1">
-              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Главы ({fanfic.chapters.length})</h3>
-              {fanfic.chapters.map((ch, idx) => (
-                <Link
-                  key={ch.id}
-                  href={`/fanfic/${id}/read/${ch.id}?all=${chapterIds}`}
-                  className="flex items-center justify-between px-3 py-2 bg-zinc-800/50 border border-zinc-800 rounded-lg hover:border-zinc-600 hover:bg-zinc-800 transition-all group"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-zinc-600 text-xs w-5 flex-shrink-0">{idx + 1}</span>
-                    <span className="text-zinc-300 group-hover:text-zinc-100 text-sm truncate transition-colors">{ch.title || `Глава ${idx + 1}`}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-zinc-600 flex-shrink-0 ml-3">
-                    {ch.words_count > 0 && <span>{formatWordCount(ch.words_count)} сл.</span>}
-                    {ch.date && <span>{ch.date}</span>}
-                  </div>
-                </Link>
-              ))}
+            <div className="mt-5">
+              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">
+                Содержание ({fanfic.chapters.length})
+              </h3>
+              <div className="border border-zinc-800 rounded-lg overflow-hidden">
+                {fanfic.chapters.map((ch, idx) => (
+                  <Link
+                    key={ch.id}
+                    href={`/fanfic/${id}/read/${ch.id}?all=${chapterIds}`}
+                    className={`flex items-center justify-between px-4 py-3 hover:bg-zinc-800/60 transition-colors group ${
+                      idx < fanfic.chapters.length - 1 ? 'border-b border-zinc-800' : ''
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-zinc-200 group-hover:text-white text-sm font-medium truncate transition-colors">
+                        {ch.title || `Часть ${idx + 1}`}
+                      </p>
+                      {(ch.date || ch.words_count > 0) && (
+                        <p className="text-zinc-600 text-xs mt-0.5">
+                          {ch.date && <span>{ch.date}</span>}
+                          {ch.date && ch.words_count > 0 && <span className="mx-1.5">·</span>}
+                          {ch.words_count > 0 && <span>{formatWordCount(ch.words_count)} слов</span>}
+                        </p>
+                      )}
+                    </div>
+                    <svg className="text-zinc-600 group-hover:text-zinc-400 flex-shrink-0 ml-3 transition-colors" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>
