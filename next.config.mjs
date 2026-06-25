@@ -4,6 +4,8 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'ficbook.net' },
       { protocol: 'https', hostname: '*.ficbook.net' },
+      { protocol: 'https', hostname: 'assets.teinon.net' },
+      { protocol: 'https', hostname: '*.teinon.net' },
     ],
   },
   env: {
