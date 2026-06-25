@@ -102,7 +102,7 @@ export default function FanficPage() {
     return (
       <main className="max-w-4xl mx-auto px-4 py-8">
         <p className="text-red-400">Ошибка загрузки: {error}</p>
-        <button type="button" onClick={() => router.back()} className="mt-4 text-zinc-400 hover:text-zinc-200 flex items-center gap-2">
+        <button type="button" onClick={() => router.push('/')} className="mt-4 text-zinc-400 hover:text-zinc-200 flex items-center gap-2">
           <ArrowLeft size={16} /> Назад
         </button>
       </main>
@@ -115,7 +115,7 @@ export default function FanficPage() {
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
       {/* Back */}
-      <button type="button" onClick={() => router.back()} className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 mb-6 transition-colors text-sm">
+      <button type="button" onClick={() => router.push('/')} className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 mb-6 transition-colors text-sm">
         <ArrowLeft size={14} /> Назад
       </button>
 
