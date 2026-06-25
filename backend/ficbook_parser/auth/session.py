@@ -109,7 +109,7 @@ class FicbookAuth:
                 )
                 self._collect_cookies(r2, jar)
 
-                # --- Step 3: Verify session via settings page ---
+                # --- Step 3: Verify session — check settings page content ---
                 verify_headers = {**DEFAULT_HEADERS}
                 if jar:
                     verify_headers["Cookie"] = self._cookie_header(jar)
@@ -119,16 +119,23 @@ class FicbookAuth:
                     params={**base_params, "url": f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}"},
                     headers=verify_headers,
                 )
+                html3 = await self._decode(r3)
 
-                if r3.status_code in (301, 302):
-                    location = r3.headers.get("location", "")
-                    if "login" in location:
-                        return AuthResult(success=False, error="Login failed: invalid credentials")
-                elif r3.status_code >= 400:
-                    # Check body for login redirect indicator
-                    html3 = await self._decode(r3)
-                    if "login" in html3[:1000].lower() and "settings" not in html3[:500].lower():
-                        return AuthResult(success=False, error="Login failed: invalid credentials")
+                # Reliable check: authenticated page has settings form, not login form
+                is_authenticated = (
+                    "settings" in html3.lower()
+                    and "login_check" not in html3.lower()
+                    and ("profile" in html3.lower() or "настройки" in html3.lower() or "logout" in html3.lower())
+                )
+                is_login_page = (
+                    "login_check" in html3
+                    or "_csrf_token" in html3
+                    or '"Войти"' in html3
+                    or "Забыли пароль" in html3
+                )
+
+                if is_login_page and not is_authenticated:
+                    return AuthResult(success=False, error="Login failed: invalid credentials")
 
                 # --- Step 4: Get user profile ---
                 r4 = await client.get(

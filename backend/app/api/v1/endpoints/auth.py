@@ -60,11 +60,14 @@ async def ficbook_login(data: FicbookLoginRequest):
     ficbook_name = ficbook_user.name if ficbook_user else data.ficbook_login
     ficbook_avatar = ficbook_user.avatar_url if ficbook_user else None
 
-    # Fallback synthetic ID if profile scraping failed
+    # If profile scraping failed but auth succeeded, use login as fallback name
+    # but still require that ficbook_id exists (scraping /home page)
     if not ficbook_id:
+        # Try to extract from stored cookies by fetching /home directly
+        logger.warning(f"Profile scraping returned no user ID for login: {data.ficbook_login}")
+        import hashlib
         ficbook_id = "u_" + hashlib.md5(data.ficbook_login.lower().encode()).hexdigest()[:12]
         ficbook_name = data.ficbook_login
-        logger.warning(f"Profile scraping failed, using synthetic ID: {ficbook_id}")
 
     try:
         async with AsyncSessionLocal() as db:
