@@ -22,8 +22,8 @@ class FanficPageApi:
         return target
 
     async def get(self, fanfic_id: str) -> FanficPageModel:
-        # First try without JS render (faster, cheaper)
-        url = self._build_url(fanfic_id, render_js=False)
+        # Use JS render to get Vue-rendered chapter list
+        url = self._build_url(fanfic_id, render_js=bool(self._scraper_api_key))
         resp = await self._client.get(url)
         resp.raise_for_status()
         raw = resp.content.decode("utf-8", errors="replace")
@@ -33,24 +33,4 @@ class FanficPageApi:
         except ImportError:
             html = raw
 
-        page = self._parser.parse(html, fanfic_id)
-
-        # If no chapters found and it's a multi-chapter fanfic, retry with JS render
-        if page.chapters is None and page.name and self._scraper_api_key:
-            url_js = self._build_url(fanfic_id, render_js=True)
-            try:
-                resp2 = await self._client.get(url_js)
-                resp2.raise_for_status()
-                raw2 = resp2.content.decode("utf-8", errors="replace")
-                try:
-                    import ftfy
-                    html2 = ftfy.fix_text(raw2)
-                except ImportError:
-                    html2 = raw2
-                page2 = self._parser.parse(html2, fanfic_id)
-                if page2.chapters is not None:
-                    return page2
-            except Exception:
-                pass  # Fall back to original parse result
-
-        return page
+        return self._parser.parse(html, fanfic_id)

@@ -219,13 +219,7 @@ class FanficPageParser:
         return direction, rating, completion, likes, trophies, is_hot
 
     def _parse_chapters(self, soup: BeautifulSoup, fanfic_id: str) -> Optional[FanficChapterSeparate | FanficChapterSingle]:
-        # Single-chapter: content directly in page
-        content_div = soup.select_one("div#content, [itemprop=articleBody]")
-        if content_div:
-            return FanficChapterSingle(html_content=str(content_div))
-
-        # Multi-chapter: look for chapter list (rendered HTML — need JS render)
-        # Old layout
+        # Old layout multi-chapter list
         chapter_items = soup.select("li.chapter-item, div.chapter-row")
         if chapter_items:
             chapters = []
@@ -240,15 +234,13 @@ class FanficPageParser:
             if chapters:
                 return FanficChapterSeparate(chapters=chapters)
 
-        # New layout: extract part IDs from all readfic/{fanfic_id}/{part_id} links
-        # Filter out known non-chapter paths
+        # New layout: extract part IDs from readfic/{fanfic_id}/{part_id} links
         NON_CHAPTER = {"download", "rewards", "comments", "collections", "print"}
         part_links = []
         seen = set()
         for a in soup.select(f"a[href*='{fanfic_id}/']"):
             href = a.get("href", "")
             after = href.split(f"{fanfic_id}/")[-1].split("?")[0].strip("/")
-            # Valid part ID: numeric or UUID-like, not a known non-chapter path
             if (after and after not in seen and after not in NON_CHAPTER
                     and re.match(r"^[\w\-]+$", after)):
                 seen.add(after)
@@ -258,10 +250,19 @@ class FanficPageParser:
                     date="",
                 ))
 
+        if len(part_links) > 1:
+            # Multiple part links = confirmed multi-chapter
+            return FanficChapterSeparate(chapters=part_links)
+
+        # Single-chapter: content directly in page (no part navigation found)
+        content_div = soup.select_one("div#content, [itemprop=articleBody]")
+        if content_div:
+            return FanficChapterSingle(html_content=str(content_div))
+
+        # Exactly one part link found — could be a single-chapter with explicit URL
         if part_links:
             return FanficChapterSeparate(chapters=part_links)
 
-        # No content, no chapters found — probably need JS render
         return None
 
     def _parse_rewards(self, soup: BeautifulSoup) -> list[RewardModel]:
