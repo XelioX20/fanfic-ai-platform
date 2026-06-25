@@ -54,9 +54,12 @@ async def get_search_counts(data: CountsRequest):
     if not data.query.strip():
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
+    import os
+    scraper_key = os.environ.get("SCRAPINGANT_API_KEY", "") or os.environ.get("SCRAPER_API_KEY", "")
+
     try:
         from ficbook_parser.client import FicbookClient
-        async with FicbookClient() as client:
+        async with FicbookClient(scraper_api_key=scraper_key or None) as client:
             fanfics, has_next = await client.search.search(data.query, page=1)
         count = len([f for f in fanfics if f.id])
         fanfic_count: int | str = f"{count}+" if has_next else count
@@ -74,13 +77,16 @@ async def search_fanfics(
     page_size: int = Query(20, ge=1, le=100),
 ):
     """Search fanfics using FicbookClient.search()"""
+    import os
+    scraper_key = os.environ.get("SCRAPINGANT_API_KEY", "") or os.environ.get("SCRAPER_API_KEY", "")
+
     try:
         from ficbook_parser.client import FicbookClient
     except ImportError as e:
         raise HTTPException(status_code=503, detail=f"Parser not available: {e}")
 
     try:
-        async with FicbookClient() as client:
+        async with FicbookClient(scraper_api_key=scraper_key or None) as client:
             fanfics, has_next = await client.search.search(q, page=page)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
