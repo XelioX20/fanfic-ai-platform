@@ -181,32 +181,31 @@ async def debug_fanfic_html(fanfic_id: str):
     except ImportError:
         pass
     from bs4 import BeautifulSoup
+    import re
     soup = BeautifulSoup(html, "html.parser")
-    # Key elements we need
-    title_candidates = [
-        soup.select_one("h1.fanfic-main-info"),
-        soup.select_one("h1"),
-        soup.select_one("[itemprop=name]"),
-    ]
-    content_candidates = [
-        soup.select_one("div#content"),
-        soup.select_one("[itemprop=articleBody]"),
-        soup.select_one(".js-part-text"),
-    ]
-    chapter_candidates = [
-        soup.select("li.chapter-item"),
-        soup.select("div.chapter-row"),
-        soup.select("a[href*=readfic][href*='/']"),
-    ]
+
+    # Find all elements that look like chapter lists
+    chapter_containers = []
+    for tag in soup.find_all(True):
+        classes = " ".join(tag.get("class", []))
+        if any(kw in classes for kw in ["chapter", "part", "toc", "contents"]):
+            chapter_containers.append({"tag": tag.name, "class": classes, "html": str(tag)[:300]})
+
+    # Find readfic links with part_ids (numeric or uuid after fanfic_id)
+    part_links = []
+    for a in soup.select(f"a[href*='{fanfic_id}/']"):
+        href = a.get("href", "")
+        part_id = href.split(f"{fanfic_id}/")[-1].split("?")[0].strip("/")
+        if part_id:
+            part_links.append({"href": href, "part_id": part_id, "class": " ".join(a.get("class", [])), "text": a.get_text(strip=True)[:50]})
+
     return {
-        "title_h1_fanfic_main_info": str(title_candidates[0])[:200] if title_candidates[0] else None,
-        "title_h1": str(title_candidates[1])[:200] if title_candidates[1] else None,
-        "content_div_id": str(content_candidates[0])[:300] if content_candidates[0] else None,
-        "content_itemprop": str(content_candidates[1])[:300] if content_candidates[1] else None,
-        "content_js_part": str(content_candidates[2])[:300] if content_candidates[2] else None,
-        "chapter_items_count": len(chapter_candidates[0]),
-        "chapter_rows_count": len(chapter_candidates[1]),
-        "readfic_links": [str(a)[:100] for a in chapter_candidates[2][:5]],
-        "all_h1": [str(h)[:100] for h in soup.select("h1")[:5]],
-        "html_snippet_5000": html[2000:5000],
+        "title": soup.select_one("h1[itemprop=name], h1.heading, h1.fanfic-main-info"),
+        "title_text": safe_text(soup.select_one("h1[itemprop=name], h1.heading, h1.fanfic-main-info")),
+        "has_content_div": soup.select_one("div#content") is not None,
+        "has_articleBody": soup.select_one("[itemprop=articleBody]") is not None,
+        "chapter_containers": chapter_containers[:10],
+        "part_links": part_links[:15],
+        "html_start": html[:3000],
+        "html_mid": html[8000:11000],
     }
