@@ -13,6 +13,16 @@ export default function HomePage() {
             AI-powered рекомендации фанфиков с ficbook.net
           </p>
           <SearchBar className="max-w-2xl" />
+          <div className="mt-4">
+            <a
+              href="/discover"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-900 border border-zinc-700 hover:border-purple-600/60 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-sm transition-all group"
+            >
+              <span className="text-lg">🎲</span>
+              <span>Не знаю что почитать — помоги выбрать</span>
+              <span className="text-zinc-600 group-hover:text-zinc-400 transition-colors">→</span>
+            </a>
+          </div>
         </header>
 
         <div className="space-y-10">

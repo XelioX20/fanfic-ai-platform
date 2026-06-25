@@ -78,3 +78,14 @@ export const profileApi = {
   liked: (page = 1) => api.get('/profile/liked', { params: { page } }),
   subscriptions: (page = 1) => api.get('/profile/subscriptions', { params: { page } }),
 }
+
+export const discoverApi = {
+  search: (params: {
+    direction?: string
+    mood?: string
+    size?: string
+    status?: string
+    category?: string
+    page?: number
+  }) => api.get('/discover/discover', { params }),
+}
