@@ -241,17 +241,20 @@ class FanficPageParser:
                 return FanficChapterSeparate(chapters=chapters)
 
         # New layout: extract part IDs from all readfic/{fanfic_id}/{part_id} links
+        # Filter out known non-chapter paths
+        NON_CHAPTER = {"download", "rewards", "comments", "collections", "print"}
         part_links = []
         seen = set()
         for a in soup.select(f"a[href*='{fanfic_id}/']"):
             href = a.get("href", "")
             after = href.split(f"{fanfic_id}/")[-1].split("?")[0].strip("/")
-            # Valid part ID: numeric or UUID-like
-            if after and after not in seen and re.match(r"^[\w\-]+$", after):
+            # Valid part ID: numeric or UUID-like, not a known non-chapter path
+            if (after and after not in seen and after not in NON_CHAPTER
+                    and re.match(r"^[\w\-]+$", after)):
                 seen.add(after)
                 part_links.append(ChapterModel(
                     id=after,
-                    title=a.get_text(strip=True) or f"Глава",
+                    title=a.get_text(strip=True) or "Глава",
                     date="",
                 ))
 
