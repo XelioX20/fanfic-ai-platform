@@ -89,6 +89,7 @@ export default function LoginPage() {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<LoginError | null>(null)
   const [loadingHint, setLoadingHint] = useState<string | null>(null)
@@ -116,6 +117,11 @@ export default function LoginPage() {
         },
         data.access_token,
       )
+      // If not remembering — store token in sessionStorage only (clears on tab close)
+      if (!rememberMe) {
+        localStorage.removeItem('access_token')
+        sessionStorage.setItem('access_token', data.access_token)
+      }
       router.push('/')
     } catch (err: unknown) {
       setError(parseError(err))
@@ -180,6 +186,25 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {/* Remember me */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <div
+                onClick={() => setRememberMe(!rememberMe)}
+                className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                  rememberMe
+                    ? 'bg-purple-600 border-purple-600'
+                    : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                }`}
+              >
+                {rememberMe && (
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm text-zinc-400">Запомнить меня</span>
+            </label>
 
             {/* Loading hint */}
             {loading && loadingHint && (
