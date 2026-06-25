@@ -61,6 +61,12 @@ class FanficRepository:
     async def bulk_upsert(self, fanfics: list[Fanfic]) -> list[Fanfic]:
         result = []
         for f in fanfics:
-            result.append(await self.upsert(f))
+            if not f.id:  # skip fanfics without ID
+                continue
+            try:
+                result.append(await self.upsert(f))
+            except Exception as e:
+                await self.db.rollback()
+                continue
         await self.db.commit()
         return result

@@ -121,8 +121,21 @@ class ScraperService:
         }
 
     def _card_to_dict(self, card) -> dict:
+        # Build ficbook_url from href, stripping query params
+        href = card.href.split("?")[0] if card.href else ""
+        ficbook_url = f"https://ficbook.net{href}" if href.startswith("/") else href
+
+        # Use card.id if available, else extract from href
+        fanfic_id = card.id
+        if not fanfic_id and href:
+            from ficbook_parser.parsers.utils import extract_id_from_href
+            fanfic_id = extract_id_from_href(href)
+
+        if not fanfic_id:
+            return {}  # skip cards without ID
+
         return {
-            "id": card.id,
+            "id": fanfic_id,
             "title": card.title,
             "description": card.description,
             "author_name": card.author.name if card.author else "",
@@ -137,5 +150,5 @@ class ScraperService:
             "trophies": card.status.trophies,
             "is_hot": card.status.is_hot,
             "cover_url": card.cover_url,
-            "ficbook_url": f"https://ficbook.net{card.href}",
+            "ficbook_url": ficbook_url,
         }

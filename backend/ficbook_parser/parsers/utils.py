@@ -4,16 +4,23 @@ from bs4 import BeautifulSoup, Tag
 
 
 NOT_NUMBER_RE = re.compile(r"[^0-9]")
+UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 
 
 def extract_id_from_href(href: str) -> str:
-    """Extract numeric ID from ficbook.net href."""
-    parts = [p for p in href.rstrip("/").split("/") if p]
+    """Extract ID from ficbook.net href. Supports both numeric and UUID formats."""
+    # Strip query params first
+    href_clean = href.split("?")[0].rstrip("/")
+    parts = [p for p in href_clean.split("/") if p]
+    # Try numeric ID (old format)
     for part in reversed(parts):
         if part.isdigit():
             return part
-    match = re.search(r"/(d+)", href)
-    return match.group(1) if match else ""
+    # Try UUID (new format: readfic/019d742c-7084-7c16-8977-eb4ca8ea0ae4)
+    uuid_match = UUID_RE.search(href_clean)
+    if uuid_match:
+        return uuid_match.group(0)
+    return ""
 
 
 def parse_int(text: str, default: int = 0) -> int:
