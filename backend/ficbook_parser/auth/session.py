@@ -200,15 +200,23 @@ class FicbookAuth:
             return False
 
     def _parse_user(self, soup: BeautifulSoup) -> Optional[UserModel]:
-        user_link = soup.select_one("a.user-name-avatar, a[href*='/authors/']")
-        if user_link:
-            href = user_link.get("href", "")
-            name = user_link.get_text(strip=True)
-            user_id = extract_id_from_href(href)
-            avatar = soup.select_one("img.user-avatar-img")
-            avatar_url = avatar.get("src", "") if avatar else None
-            if user_id:
-                return UserModel(id=user_id, name=name, href=href, avatar_url=avatar_url)
+        # Try multiple selectors for different ficbook.net layouts
+        for selector in [
+            "a.user-name-avatar",
+            "a[href*='/authors/']",
+            "a.username",
+            ".header-user-name a",
+            "nav a[href*=authors]",
+        ]:
+            user_link = soup.select_one(selector)
+            if user_link:
+                href = user_link.get("href", "")
+                name = user_link.get_text(strip=True)
+                user_id = extract_id_from_href(href)
+                if user_id:
+                    avatar = soup.select_one("img.user-avatar-img, img.user-avatar, .avatar img")
+                    avatar_url = avatar.get("src", "") if avatar else None
+                    return UserModel(id=user_id, name=name, href=href, avatar_url=avatar_url)
         return None
 
     @staticmethod

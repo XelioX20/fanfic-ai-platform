@@ -55,8 +55,12 @@ async def ficbook_login(data: FicbookLoginRequest):
     ficbook_name = ficbook_user.name if ficbook_user else data.ficbook_login
     ficbook_avatar = ficbook_user.avatar_url if ficbook_user else None
 
+    # Fallback: derive synthetic ID from login name if scraping failed
     if not ficbook_id:
-        raise HTTPException(status_code=502, detail="Could not get ficbook user ID")
+        import hashlib
+        ficbook_id = "u_" + hashlib.md5(data.ficbook_login.lower().encode()).hexdigest()[:12]
+        ficbook_name = data.ficbook_login
+        logger.warning(f"Could not scrape ficbook user ID, using synthetic: {ficbook_id}")
 
     async with AsyncSessionLocal() as db:
         repo = UserRepository(db)
