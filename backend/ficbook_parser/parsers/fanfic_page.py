@@ -34,7 +34,7 @@ class FanficPageParser:
             likes=likes, trophies=trophies, is_hot=is_hot,
         )
 
-        chapters = self._parse_chapters(soup, fanfic_id)
+        chapters = self._parse_chapters(soup, fanfic_id, raw_html=html)
         rewards = self._parse_rewards(soup)
         comments_count = parse_int(safe_text(soup.select_one("span.comments-count, span.js-comments-count")))
         is_liked = soup.select_one("span.badge-like.active, button.like-button.active") is not None
@@ -218,7 +218,7 @@ class FanficPageParser:
 
         return direction, rating, completion, likes, trophies, is_hot
 
-    def _parse_chapters(self, soup: BeautifulSoup, fanfic_id: str) -> Optional[FanficChapterSeparate | FanficChapterSingle]:
+    def _parse_chapters(self, soup: BeautifulSoup, fanfic_id: str, raw_html: str = "") -> Optional[FanficChapterSeparate | FanficChapterSingle]:
         # 1. Try to extract chapter list from embedded JSON in <script> tags
         # ficbook.net embeds chapter data as window.__initial_state__ or similar
         import json as _json
@@ -268,12 +268,12 @@ class FanficPageParser:
         NON_CHAPTER = {"download", "rewards", "comments", "collections", "print"}
         part_links = []
         seen: set = set()
-        raw_html = str(soup)
+        search_html = raw_html if raw_html else str(soup)
         link_pattern = re.compile(
             rf'href="[^"]*{re.escape(fanfic_id)}/(\d+)[^"#]*(?:#[^"]*)?">([^<]*(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</a>',
             re.DOTALL | re.IGNORECASE
         )
-        for m in link_pattern.finditer(raw_html):
+        for m in link_pattern.finditer(search_html):
             part_id = m.group(1)
             link_text = re.sub(r'<[^>]+>', '', m.group(2)).strip()
             if part_id in seen:
