@@ -49,11 +49,14 @@ class FanficsListApi:
                     await asyncio.sleep(3 * (attempt + 1))
                     continue
                 resp.raise_for_status()
-                # Always decode as UTF-8 — ficbook.net is UTF-8, ScraperAPI preserves it
-                # Using resp.content (raw bytes) avoids httpx charset misdetection
-                html = resp.content.decode("utf-8", errors="surrogatepass")
-                # Fix any surrogate escapes that slipped through
-                html = html.encode("utf-8", errors="surrogatepass").decode("utf-8", errors="replace")
+                # ficbook.net is UTF-8 but ScraperAPI can cause double-encoding.
+                # ftfy detects and fixes garbled unicode automatically.
+                raw_text = resp.content.decode("utf-8", errors="replace")
+                try:
+                    import ftfy
+                    html = ftfy.fix_text(raw_text)
+                except ImportError:
+                    html = raw_text
                 return self._parser.parse(html)
             except httpx.HTTPStatusError:
                 if attempt == 2:
