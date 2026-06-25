@@ -51,6 +51,30 @@ async def seed_fanfics(background_tasks: BackgroundTasks):
     return {"status": "accepted", "message": "Scraping started in background. Check /api/v1/fanfics/ in ~2 minutes."}
 
 
+@router.get("/seed-sync")
+async def seed_fanfics_sync():
+    """Synchronous seed — runs inline and returns result. For debugging only."""
+    try:
+        scraper = ScraperService()
+        fanfics_data = await scraper.scrape_popular(pages_per_section=1)
+        if not fanfics_data:
+            return {"error": "scraper returned 0 fanfics"}
+
+        async with AsyncSessionLocal() as db:
+            repo = FanficRepository(db)
+            allowed = {c.key for c in Fanfic.__table__.columns}
+            fanfics = [Fanfic(**{k: v for k, v in d.items() if k in allowed}) for d in fanfics_data]
+            saved = await repo.bulk_upsert(fanfics)
+            return {
+                "scraped": len(fanfics_data),
+                "saved": len(saved),
+                "sample": fanfics_data[0] if fanfics_data else None,
+            }
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "trace": traceback.format_exc()[-1000:]}
+
+
 @router.get("/status")
 async def scraper_status():
     """Check how many fanfics are in DB and whether ficbook_parser is available."""
