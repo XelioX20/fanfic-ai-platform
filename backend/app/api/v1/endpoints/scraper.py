@@ -51,6 +51,46 @@ async def seed_fanfics(background_tasks: BackgroundTasks):
     return {"status": "accepted", "message": "Scraping started in background. Check /api/v1/fanfics/ in ~2 minutes."}
 
 
+@router.get("/encoding-test")
+async def encoding_test():
+    """Test what encoding ScraperAPI returns for ficbook.net."""
+    scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
+    import httpx, urllib.parse
+    target = "https://ficbook.net/fanfiction"
+    if scraper_api_key:
+        encoded = urllib.parse.quote(target, safe="")
+        url = f"http://api.scraperapi.com/?api_key={scraper_api_key}&url={encoded}"
+    else:
+        url = target
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(url)
+        raw = resp.content
+        content_type = resp.headers.get("content-type", "")
+        # Try different decodings
+        try:
+            utf8 = raw.decode("utf-8")
+            utf8_ok = "Джен" in utf8 or "Автор" in utf8 or "fanfic" in utf8.lower()
+        except Exception as e:
+            utf8 = str(e)
+            utf8_ok = False
+        try:
+            latin1 = raw.decode("latin-1")
+            latin1_reenc = latin1.encode("latin-1").decode("utf-8", errors="replace")
+            latin1_ok = "Джен" in latin1_reenc or "Автор" in latin1_reenc
+        except Exception as e:
+            latin1_reenc = str(e)
+            latin1_ok = False
+        # Show sample of raw bytes around a known Russian word
+        sample_bytes = raw[2000:2100].hex()
+        return {
+            "content_type": content_type,
+            "utf8_contains_russian": utf8_ok,
+            "latin1_reenc_contains_russian": latin1_ok,
+            "sample_bytes_hex": sample_bytes,
+            "utf8_sample": utf8[2000:2100] if utf8_ok else "N/A",
+        }
+
+
 @router.delete("/clear-db")
 async def clear_fanfics_db():
     """Delete all fanfics from DB so reseed picks up fresh data."""
