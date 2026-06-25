@@ -1,7 +1,7 @@
 from __future__ import annotations
 import httpx
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 from bs4 import BeautifulSoup
 from ..constants import FICBOOK_BASE_URL, ROUTE_SETTINGS
@@ -19,13 +19,15 @@ DEFAULT_HEADERS = {
     "Referer": "https://ficbook.net/",
 }
 
+SCRAPERAPI_BASE = "http://api.scraperapi.com/"
+
 
 @dataclass
 class AuthResult:
     success: bool
     user: Optional[UserModel] = None
     error: Optional[str] = None
-    cookies: Optional[dict] = None
+    cookies: dict = field(default_factory=dict)
 
 
 class FicbookAuth:
@@ -35,83 +37,117 @@ class FicbookAuth:
         self._client = client
         self._scraper_api_key = scraper_api_key
 
-    def _scraper_url(self, target: str, session_number: int, method: str = "GET", post_data: str = "") -> str:
-        """Build ScraperAPI URL with persistent session so cookies carry across requests."""
-        import urllib.parse
-        encoded = urllib.parse.quote(target, safe="")
-        url = (
-            f"http://api.scraperapi.com/?api_key={self._scraper_api_key}"
-            f"&url={encoded}&session_number={session_number}&render=false"
-        )
-        if method == "POST" and post_data:
-            url += f"&method=POST&post_data={urllib.parse.quote(post_data, safe='')}"
-        return url
-
     async def login(self, email: str, password: str) -> AuthResult:
         if self._scraper_api_key:
             return await self._login_via_scraperapi(email, password)
         return await self._login_direct(email, password)
 
+    async def _decode(self, resp: httpx.Response) -> str:
+        html = resp.content.decode("utf-8", errors="replace")
+        try:
+            import ftfy
+            html = ftfy.fix_text(html)
+        except ImportError:
+            pass
+        return html
+
+    def _collect_cookies(self, resp: httpx.Response, jar: dict) -> None:
+        """Extract Set-Cookie headers and merge into jar."""
+        for name, value in resp.headers.multi_items():
+            if name.lower() == "set-cookie":
+                part = value.split(";")[0].strip()
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    jar[k.strip()] = v.strip()
+
+    def _cookie_header(self, jar: dict) -> str:
+        return "; ".join(f"{k}={v}" for k, v in jar.items())
+
     async def _login_via_scraperapi(self, email: str, password: str) -> AuthResult:
         """
-        Uses ScraperAPI sessions (session_number) to persist cookies across requests,
-        bypassing Cloudflare on Render's blocked IPs.
+        Login through ScraperAPI to bypass Cloudflare.
+        ScraperAPI forwards Cookie headers we set and returns Set-Cookie headers.
+        We manually track cookies across requests.
         """
         session_number = random.randint(1, 9999)
+        base_params = {
+            "api_key": self._scraper_api_key,
+            "session_number": session_number,
+            "render": "false",
+        }
+        jar: dict = {}
+
         try:
             async with httpx.AsyncClient(
-                headers=DEFAULT_HEADERS,
                 timeout=60.0,
-                follow_redirects=True,
+                follow_redirects=False,
             ) as client:
-                # Step 1: GET login page via ScraperAPI session → get CSRF token
-                login_page_url = self._scraper_url(
-                    f"{FICBOOK_BASE_URL}/login", session_number
+                # --- Step 1: GET login page → extract CSRF token + initial cookies ---
+                r1 = await client.get(
+                    SCRAPERAPI_BASE,
+                    params={**base_params, "url": f"{FICBOOK_BASE_URL}/login"},
+                    headers=DEFAULT_HEADERS,
                 )
-                resp = await client.get(login_page_url)
-                resp.raise_for_status()
-                soup = BeautifulSoup(resp.text, "html.parser")
-                csrf = self._extract_csrf(soup)
+                self._collect_cookies(r1, jar)
+                html1 = await self._decode(r1)
+                soup1 = BeautifulSoup(html1, "html.parser")
+                csrf = self._extract_csrf(soup1)
 
-                if not csrf:
-                    return AuthResult(success=False, error="Could not extract CSRF token")
+                # --- Step 2: POST credentials with collected cookies ---
+                post_headers = {
+                    **DEFAULT_HEADERS,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                }
+                if jar:
+                    post_headers["Cookie"] = self._cookie_header(jar)
 
-                # Step 2: POST credentials via same ScraperAPI session → cookies persist
-                import urllib.parse
-                post_body = urllib.parse.urlencode({
-                    "login": email,
-                    "password": password,
-                    "_csrf_token": csrf,
-                })
-                post_url = self._scraper_url(
-                    self.LOGIN_ENDPOINT, session_number,
-                    method="POST", post_data=post_body,
+                r2 = await client.post(
+                    SCRAPERAPI_BASE,
+                    params={**base_params, "url": self.LOGIN_ENDPOINT},
+                    data={"login": email, "password": password, "_csrf_token": csrf},
+                    headers=post_headers,
                 )
-                await client.get(post_url)  # ScraperAPI POST uses GET with method=POST param
+                self._collect_cookies(r2, jar)
 
-                # Step 3: Verify authorization via same session
-                settings_url = self._scraper_url(
-                    f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}", session_number
+                # --- Step 3: Verify session via settings page ---
+                verify_headers = {**DEFAULT_HEADERS}
+                if jar:
+                    verify_headers["Cookie"] = self._cookie_header(jar)
+
+                r3 = await client.get(
+                    SCRAPERAPI_BASE,
+                    params={**base_params, "url": f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}"},
+                    headers=verify_headers,
                 )
-                check_resp = await client.get(settings_url)
 
-                # If redirected to login — not authorized
-                if "login" in check_resp.url.path or "login" in check_resp.text[:500]:
-                    return AuthResult(success=False, error="Login failed: invalid credentials")
+                if r3.status_code in (301, 302):
+                    location = r3.headers.get("location", "")
+                    if "login" in location:
+                        return AuthResult(success=False, error="Login failed: invalid credentials")
+                elif r3.status_code >= 400:
+                    # Check body for login redirect indicator
+                    html3 = await self._decode(r3)
+                    if "login" in html3[:1000].lower() and "settings" not in html3[:500].lower():
+                        return AuthResult(success=False, error="Login failed: invalid credentials")
 
-                # Step 4: Get user profile
-                home_url = self._scraper_url(f"{FICBOOK_BASE_URL}/home", session_number)
-                home_resp = await client.get(home_url)
-                soup2 = BeautifulSoup(home_resp.text, "html.parser")
-                user = self._parse_user(soup2)
+                # --- Step 4: Get user profile ---
+                r4 = await client.get(
+                    SCRAPERAPI_BASE,
+                    params={**base_params, "url": f"{FICBOOK_BASE_URL}/home"},
+                    headers=verify_headers,
+                )
+                self._collect_cookies(r4, jar)
+                html4 = await self._decode(r4)
+                soup4 = BeautifulSoup(html4, "html.parser")
+                user = self._parse_user(soup4)
 
-                return AuthResult(success=True, user=user)
+                return AuthResult(success=True, user=user, cookies=jar)
 
         except httpx.HTTPError as e:
             return AuthResult(success=False, error=str(e))
 
     async def _login_direct(self, email: str, password: str) -> AuthResult:
-        """Direct login without proxy — works only when IP is not blocked by Cloudflare."""
+        """Direct login — only works when server IP is not blocked by Cloudflare."""
         try:
             async with httpx.AsyncClient(
                 headers=DEFAULT_HEADERS,
@@ -129,24 +165,24 @@ class FicbookAuth:
                     follow_redirects=True,
                 )
 
-                check_resp = await direct.get(
+                check = await direct.get(
                     f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}",
                     follow_redirects=False,
                 )
-                if check_resp.status_code in (301, 302):
-                    if "login" in check_resp.headers.get("location", ""):
+                if check.status_code in (301, 302):
+                    if "login" in check.headers.get("location", ""):
                         return AuthResult(success=False, error="Login failed: invalid credentials")
-                elif check_resp.status_code != 200:
+                elif check.status_code != 200:
                     return AuthResult(success=False, error="Login failed: invalid credentials")
 
-                home_resp = await direct.get(f"{FICBOOK_BASE_URL}/home")
-                user = self._parse_user(BeautifulSoup(home_resp.text, "html.parser"))
+                home = await direct.get(f"{FICBOOK_BASE_URL}/home")
+                user = self._parse_user(BeautifulSoup(home.text, "html.parser"))
 
-                # Copy cookies to shared client
+                jar = {c.name: c.value for c in direct.cookies.jar}
                 for cookie in direct.cookies.jar:
                     self._client.cookies.set(cookie.name, cookie.value, domain=cookie.domain)
 
-                return AuthResult(success=True, user=user)
+                return AuthResult(success=True, user=user, cookies=jar)
 
         except httpx.HTTPError as e:
             return AuthResult(success=False, error=str(e))
@@ -171,124 +207,8 @@ class FicbookAuth:
             user_id = extract_id_from_href(href)
             avatar = soup.select_one("img.user-avatar-img")
             avatar_url = avatar.get("src", "") if avatar else None
-            return UserModel(id=user_id, name=name, href=href, avatar_url=avatar_url)
-        return None
-
-    @staticmethod
-    def _extract_csrf(soup: BeautifulSoup) -> str:
-        token = soup.select_one("input[name=_csrf_token]")
-        return safe_attr(token, "value") if token else ""
-
-
-
-@dataclass
-class AuthResult:
-    success: bool
-    user: Optional[UserModel] = None
-    error: Optional[str] = None
-
-
-class FicbookAuth:
-    LOGIN_ENDPOINT = f"{FICBOOK_BASE_URL}/login_check"
-
-    def __init__(self, client: httpx.AsyncClient, scraper_api_key: Optional[str] = None):
-        self._client = client
-        self._scraper_api_key = scraper_api_key
-
-    def _wrap(self, url: str) -> str:
-        if self._scraper_api_key:
-            import urllib.parse
-            encoded = urllib.parse.quote(url, safe="")
-            return f"http://api.scraperapi.com/?api_key={self._scraper_api_key}&url={encoded}"
-        return url
-
-    async def login(self, email: str, password: str) -> AuthResult:
-        """
-        Auth flow always uses direct requests (no ScraperAPI) because
-        ScraperAPI does not forward Set-Cookie headers to the httpx session,
-        so cookies from login_check never reach check_authorized().
-        """
-        try:
-            async with httpx.AsyncClient(
-                headers=DEFAULT_HEADERS,
-                timeout=30.0,
-                follow_redirects=True,
-            ) as direct:
-                # Step 1: GET login page to extract CSRF token
-                resp = await direct.get(f"{FICBOOK_BASE_URL}/login")
-                resp.raise_for_status()
-                soup = BeautifulSoup(resp.text, "html.parser")
-                csrf = self._extract_csrf(soup)
-
-                # Step 2: POST credentials
-                form_data = {
-                    "login": email,
-                    "password": password,
-                    "_csrf_token": csrf,
-                }
-                await direct.post(
-                    self.LOGIN_ENDPOINT,
-                    data=form_data,
-                    follow_redirects=True,
-                )
-
-                # Step 3: Verify by checking settings page redirect
-                check_resp = await direct.get(
-                    f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}",
-                    follow_redirects=False,
-                )
-                if check_resp.status_code in (301, 302):
-                    location = check_resp.headers.get("location", "")
-                    if "login" in location:
-                        return AuthResult(success=False, error="Login failed: invalid credentials")
-                elif check_resp.status_code != 200:
-                    return AuthResult(success=False, error="Login failed: invalid credentials")
-
-                # Step 4: Get user profile
-                home_resp = await direct.get(f"{FICBOOK_BASE_URL}/home")
-                soup2 = BeautifulSoup(home_resp.text, "html.parser")
-                user = self._parse_user(soup2)
-
-                # Step 5: Copy cookies to the shared client for subsequent requests
-                for cookie in direct.cookies.jar:
-                    self._client.cookies.set(cookie.name, cookie.value, domain=cookie.domain)
-
-                return AuthResult(success=True, user=user)
-
-        except httpx.HTTPError as e:
-            return AuthResult(success=False, error=str(e))
-
-    async def check_authorized(self) -> bool:
-        try:
-            resp = await self._client.get(
-                self._wrap(f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}"),
-                follow_redirects=False,
-            )
-            if resp.status_code in (301, 302):
-                location = resp.headers.get("location", "")
-                return "login" not in location
-            return resp.status_code == 200
-        except httpx.HTTPError:
-            return False
-
-    async def _get_current_user(self) -> Optional[UserModel]:
-        try:
-            resp = await self._client.get(self._wrap(f"{FICBOOK_BASE_URL}/home"))
-            soup = BeautifulSoup(resp.text, "html.parser")
-            return self._parse_user(soup)
-        except Exception:
-            pass
-        return None
-
-    def _parse_user(self, soup: BeautifulSoup) -> Optional[UserModel]:
-        user_link = soup.select_one("a.user-name-avatar, a[href*='/authors/']")
-        if user_link:
-            href = user_link.get("href", "")
-            name = user_link.get_text(strip=True)
-            user_id = extract_id_from_href(href)
-            avatar = soup.select_one("img.user-avatar-img")
-            avatar_url = avatar.get("src", "") if avatar else None
-            return UserModel(id=user_id, name=name, href=href, avatar_url=avatar_url)
+            if user_id:
+                return UserModel(id=user_id, name=name, href=href, avatar_url=avatar_url)
         return None
 
     @staticmethod

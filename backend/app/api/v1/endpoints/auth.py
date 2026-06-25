@@ -63,12 +63,11 @@ async def ficbook_login(data: FicbookLoginRequest):
         user = await repo.get_by_ficbook_id(ficbook_id)
 
         if not user:
-            # First login — create platform account
             synthetic_email = f"ficbook_{ficbook_id}@ficbook.local"
             user = UserModel(
                 id=str(uuid.uuid4()),
                 email=synthetic_email,
-                hashed_password="ficbook_auth",  # sentinel — not a real password
+                hashed_password="ficbook_auth",
                 ficbook_user_id=ficbook_id,
                 ficbook_username=ficbook_name,
                 ficbook_avatar_url=ficbook_avatar,
@@ -77,15 +76,15 @@ async def ficbook_login(data: FicbookLoginRequest):
             await repo.create(user)
             logger.info(f"Created new platform user for ficbook user {ficbook_id}")
         else:
-            # Update profile data
             user.ficbook_username = ficbook_name
             user.ficbook_avatar_url = ficbook_avatar
             user.last_login = datetime.utcnow()
             await repo.update(user)
 
-        # Re-fetch cookies from the client session and store
-        # Note: FicbookClient closes after context — cookies were set during login
-        # We store them by re-authenticating next request if needed
+        # Save ficbook session cookies for profile endpoints
+        if hasattr(result, "cookies") and result.cookies:
+            await repo.update_cookies(user.id, result.cookies)
+
         user_id = user.id
 
     from datetime import timedelta
