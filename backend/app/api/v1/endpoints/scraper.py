@@ -127,6 +127,39 @@ async def test_scraper():
         return {"scraper_api_key_set": bool(scraper_api_key), "error": str(e), "type": type(e).__name__}
 
 
+@router.get("/html-sample")
+async def get_html_sample():
+    """Fetch raw HTML of ficbook.net fanfiction page for selector debugging."""
+    scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
+    try:
+        import httpx, urllib.parse
+        target = "https://ficbook.net/fanfiction"
+        if scraper_api_key:
+            encoded = urllib.parse.quote(target, safe="")
+            url = f"http://api.scraperapi.com/?api_key={scraper_api_key}&url={encoded}"
+        else:
+            url = target
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url)
+            html = resp.text
+            # Extract first article element
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, "html.parser")
+            article = soup.select_one("article[class*=fanfic-inline]")
+            if article:
+                return {"found": True, "html": str(article)[:3000], "classes": article.get("class")}
+            # Show available article classes
+            all_articles = soup.find_all("article")
+            return {
+                "found": False,
+                "article_count": len(all_articles),
+                "article_classes": [a.get("class") for a in all_articles[:3]],
+                "html_snippet": html[5000:8000],
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @router.post("/fanfic", status_code=status.HTTP_202_ACCEPTED)
 async def scrape_fanfic(
     data: ScrapeRequest,
