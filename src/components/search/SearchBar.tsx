@@ -65,22 +65,39 @@ export function SearchBar({ defaultValue = '', className, onSearch }: SearchBarP
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Fetch counts with debounce when user types
+  // Fetch counts directly from ficbook.net — browser IP not blocked
   const fetchCounts = useCallback(async (q: string) => {
     if (!q.trim()) { setCounts(null); return }
     setCountsLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/v1/search/counts`, {
+      const body = new URLSearchParams({ query: q })
+      const res = await fetch('https://ficbook.net/get_multi_count', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+        },
+        body: body.toString(),
+        mode: 'cors',
+        credentials: 'include',
       })
       if (res.ok) {
         const data = await res.json()
-        setCounts(data)
+        if (data.result && data.data) {
+          setCounts(data.data)
+        }
       }
     } catch {
-      // silent fail
+      // CORS block — fall back to backend
+      try {
+        const res = await fetch(`${API_URL}/api/v1/search/counts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q }),
+        })
+        if (res.ok) setCounts(await res.json())
+      } catch { /* silent */ }
     } finally {
       setCountsLoading(false)
     }
