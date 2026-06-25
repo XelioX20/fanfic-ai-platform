@@ -63,3 +63,18 @@ export const interactionsApi = {
     chapter_id?: string
   }) => api.post('/interactions/', data),
 }
+
+export const authApi = {
+  ficbookLogin: (ficbook_login: string, ficbook_password: string) =>
+    api.post('/auth/ficbook/login', { ficbook_login, ficbook_password }),
+  logout: () => api.post('/auth/logout'),
+  me: () => api.get('/auth/me'),
+}
+
+export const profileApi = {
+  me: () => api.get('/profile/me'),
+  favourites: (page = 1) => api.get('/profile/favourites', { params: { page } }),
+  history: (page = 1) => api.get('/profile/history', { params: { page } }),
+  liked: (page = 1) => api.get('/profile/liked', { params: { page } }),
+  subscriptions: (page = 1) => api.get('/profile/subscriptions', { params: { page } }),
+}
