@@ -264,27 +264,28 @@ class FanficPageParser:
             if chapters:
                 return FanficChapterSeparate(chapters=chapters)
 
-        # 3. New layout: extract part IDs from readfic/{fanfic_id}/{part_id} links
+        # 3. New layout: extract part IDs via regex on raw HTML (BS4 CSS selector fails with UUID)
         NON_CHAPTER = {"download", "rewards", "comments", "collections", "print"}
         part_links = []
-        seen = set()
-        for a in soup.select(f"a[href*='{fanfic_id}/']"):
-            href = a.get("href", "")
-            after = href.split(f"{fanfic_id}/")[-1].split("?")[0]
-            # Strip anchor (#part_content, #comments, etc.)
-            after = after.split("#")[0].strip("/")
-            # Skip non-chapter IDs and "Отзывы" links
-            text = a.get_text(strip=True)
-            if (after and after not in seen and after not in NON_CHAPTER
-                    and re.match(r"^\d+$", after)  # numeric part IDs only
-                    and "тзыв" not in text  # skip "Отзывы" links
-                    and "Начать" not in text):  # skip "Начать читать"
-                seen.add(after)
-                part_links.append(ChapterModel(
-                    id=after,
-                    title=text or f"Глава {len(part_links)+1}",
-                    date="",
-                ))
+        seen: set = set()
+        raw_html = str(soup)
+        link_pattern = re.compile(
+            rf'href="[^"]*{re.escape(fanfic_id)}/(\d+)[^"#]*(?:#[^"]*)?">([^<]*(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</a>',
+            re.DOTALL | re.IGNORECASE
+        )
+        for m in link_pattern.finditer(raw_html):
+            part_id = m.group(1)
+            link_text = re.sub(r'<[^>]+>', '', m.group(2)).strip()
+            if part_id in seen:
+                continue
+            if any(skip in link_text for skip in ("тзыв", "Начать", "Скачать")):
+                continue
+            seen.add(part_id)
+            part_links.append(ChapterModel(
+                id=part_id,
+                title=link_text or f"Глава {len(part_links)+1}",
+                date="",
+            ))
 
         if len(part_links) > 1:
             return FanficChapterSeparate(chapters=part_links)
