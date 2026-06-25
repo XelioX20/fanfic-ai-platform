@@ -49,22 +49,11 @@ class FanficsListApi:
                     await asyncio.sleep(3 * (attempt + 1))
                     continue
                 resp.raise_for_status()
-                # ScraperAPI may return bytes with wrong charset detection
-                # Try UTF-8 first, then latin-1 re-encoded
-                raw = resp.content
-                try:
-                    html = raw.decode("utf-8")
-                except UnicodeDecodeError:
-                    html = raw.decode("latin-1").encode("latin-1").decode("utf-8", errors="replace")
-                # If still garbled (surrogate chars), use chardet or fallback
-                if "\udcff" in html or "\udc80" in html:
-                    # Try treating as latin-1 bytes re-interpreted as utf-8
-                    try:
-                        html = raw.decode("latin-1")
-                        # re-encode and decode to fix double-encoding
-                        html = html.encode("latin-1").decode("utf-8")
-                    except Exception:
-                        html = raw.decode("utf-8", errors="replace")
+                # Always decode as UTF-8 — ficbook.net is UTF-8, ScraperAPI preserves it
+                # Using resp.content (raw bytes) avoids httpx charset misdetection
+                html = resp.content.decode("utf-8", errors="surrogatepass")
+                # Fix any surrogate escapes that slipped through
+                html = html.encode("utf-8", errors="surrogatepass").decode("utf-8", errors="replace")
                 return self._parser.parse(html)
             except httpx.HTTPStatusError:
                 if attempt == 2:
