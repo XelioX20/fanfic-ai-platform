@@ -29,82 +29,20 @@ export function ReaderSettingsPanel() {
           <div className="space-y-4">
             <div>
               <label className="text-xs text-zinc-500 block mb-2">Тема</label>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 {(['light', 'dark', 'amoled'] as Theme[]).map((t) => (
-                  <Button
+                  <button
                     key={t}
-                    variant={settings.theme === t ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => updateSettings({ theme: t })}
+                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs border transition-colors ${
+                      settings.theme === t
+                        ? 'bg-purple-600 border-purple-600 text-white'
+                        : 'border-zinc-600 text-zinc-400 hover:border-zinc-400 hover:text-zinc-200'
+                    }`}
                   >
-                    {t === 'light' ? <Sun size={12} /> : t === 'dark' ? <Moon size={12} /> : <Smartphone size={12} />}
-                    <span className="ml-1 capitalize">{t === 'amoled' ? 'AMOLED' : t === 'light' ? 'Светлая' : 'Тёмная'}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-zinc-500 block mb-2">Размер шрифта: {settings.font_size}px</label>
-              <input
-                type="range" min="12" max="24" step="1"
-                value={settings.font_size}
-                onChange={(e) => updateSettings({ font_size: Number(e.target.value) })}
-                className="w-full"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-zinc-500 block mb-2">Межстрочный интервал: {settings.line_height}</label>
-              <input
-                type="range" min="1.2" max="2.5" step="0.1"
-                value={settings.line_height}
-                onChange={(e) => updateSettings({ line_height: Number(e.target.value) })}
-                className="w-full"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-zinc-500 block mb-2">Шрифт</label>
-              <div className="flex gap-2">
-                <Button
-                  variant={settings.font_family === 'serif' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => updateSettings({ font_family: 'serif' })}
-                >
-                  Serif
-                </Button>
-                <Button
-                  variant={settings.font_family === 'sans' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => updateSettings({ font_family: 'sans' })}
-                >
-                  Sans
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs text-zinc-500 block mb-2">Тема</label>
-              <div className="flex gap-2">
-                {(['light', 'dark', 'amoled'] as Theme[]).map((t) => (
-                  <Button
-                    key={t}
-                    variant={settings.theme === t ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => updateSettings({ theme: t })}
-                  >
-                    {t === 'light' ? <Sun size={12} /> : t === 'dark' ? <Moon size={12} /> : <Smartphone size={12} />}
-                    <span className="ml-1 capitalize">{t === 'amoled' ? 'AMOLED' : t === 'light' ? 'Светлая' : 'Тёмная'}</span>
-                  </Button>
+                    {t === 'light' ? <Sun size={11} /> : t === 'dark' ? <Moon size={11} /> : <Smartphone size={11} />}
+                    <span>{t === 'amoled' ? 'AMOLED' : t === 'light' ? 'Светлая' : 'Тёмная'}</span>
+                  </button>
                 ))}
               </div>
             </div>
