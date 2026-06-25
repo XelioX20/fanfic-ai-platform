@@ -63,64 +63,47 @@ class FicbookAuth:
     async def _login_via_proxy(self, email: str, password: str) -> AuthResult:
         """
         Hybrid login:
-        - GET login page via proxy (Cloudflare blocks datacenter GETs)
-        - POST login_check DIRECTLY (JSON API, not blocked by Cloudflare)
-        - Fetch profile via proxy with collected PHPSESSID cookie
+        - POST login_check directly to ficbook.net (JSON API, not blocked)
+        - GET profile via proxy with the obtained session cookie
         """
         jar: dict = {}
         try:
-            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-                # Step 1: GET login page via proxy — extract CSRF if present
-                login_url = proxy_url(f"{FICBOOK_BASE_URL}/login") or f"{FICBOOK_BASE_URL}/login"
-                r1 = await client.get(login_url, headers=DEFAULT_HEADERS)
-                self._collect_cookies(r1, jar)
-                html1 = await self._decode(r1)
-                soup1 = BeautifulSoup(html1, "html.parser")
-                csrf = self._extract_csrf(soup1)
-
-                # Step 2: POST login_check DIRECTLY (not through proxy)
-                # ficbook's login_check is a JSON API endpoint not blocked by Cloudflare
-                post_headers = {
-                    **DEFAULT_HEADERS,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                }
-                if jar:
-                    post_headers["Cookie"] = self._cookie_header(jar)
-
-                r2 = await client.post(
+            async with httpx.AsyncClient(
+                timeout=60.0,
+                follow_redirects=True,
+                headers=DEFAULT_HEADERS,
+            ) as client:
+                # Step 1: POST login_check directly — ficbook JSON API not blocked
+                r1 = await client.post(
                     LOGIN_ENDPOINT,
-                    data={"login": email, "password": password, "_csrf_token": csrf},
-                    headers=post_headers,
+                    data={"login": email, "password": password, "_csrf_token": ""},
+                    headers={**DEFAULT_HEADERS, "Content-Type": "application/x-www-form-urlencoded"},
                 )
-                # Collect cookies from httpx cookiejar (handles redirects properly)
+                # Collect PHPSESSID from response and httpx jar
+                self._collect_cookies(r1, jar)
                 for cookie in client.cookies.jar:
                     jar[cookie.name] = cookie.value
-                # Also collect from response headers directly
-                self._collect_cookies(r2, jar)
-                html2 = await self._decode(r2)
+                html1 = await self._decode(r1)
 
-                # ficbook returns JSON: {"result": true} or {"result": false, "error": {...}}
+                # ficbook returns JSON: {"result": true} or {"result": false, ...}
                 try:
-                    resp_json = _json.loads(html2)
+                    resp_json = _json.loads(html1)
                     if resp_json.get("result") is False:
                         reason = resp_json.get("error", {}).get("reason", "invalid credentials")
                         return AuthResult(success=False, error=f"Login failed: {reason}")
                 except _json.JSONDecodeError:
-                    if any(phrase in html2 for phrase in [
-                        "Неверный логин", "Invalid login", "user_not_found", "wrong_password"
-                    ]):
+                    if any(p in html1 for p in ["Неверный логин", "user_not_found", "wrong_password"]):
                         return AuthResult(success=False, error="Login failed: invalid credentials")
 
-                if not jar:
-                    return AuthResult(success=False, error="Login failed: no session cookie received")
-
-                # Step 3: Fetch user profile via proxy, forwarding session cookies
-                verify_headers = {**DEFAULT_HEADERS, "Cookie": self._cookie_header(jar)}
+                # Step 2: GET user profile via proxy, forwarding session cookies
+                verify_headers = {**DEFAULT_HEADERS}
+                if jar:
+                    verify_headers["Cookie"] = self._cookie_header(jar)
                 home_url = proxy_url(f"{FICBOOK_BASE_URL}/home") or f"{FICBOOK_BASE_URL}/home"
-                r3 = await client.get(home_url, headers=verify_headers)
-                self._collect_cookies(r3, jar)
-                soup3 = BeautifulSoup(await self._decode(r3), "html.parser")
-                user = self._parse_user(soup3)
+                r2 = await client.get(home_url, headers=verify_headers)
+                self._collect_cookies(r2, jar)
+                soup = BeautifulSoup(await self._decode(r2), "html.parser")
+                user = self._parse_user(soup)
 
                 return AuthResult(success=True, user=user, cookies=jar)
 
