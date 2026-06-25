@@ -212,41 +212,42 @@ export default function FanficPage() {
             </a>
           </div>
 
-          {/* Chapter list — inline under buttons */}
-          {fanfic.chapters.length > 1 && (
-            <div className="mt-5">
-              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">
-                Содержание ({fanfic.chapters.length})
-              </h3>
-              <div className="border border-zinc-800 rounded-lg overflow-hidden">
-                {fanfic.chapters.map((ch, idx) => (
-                  <Link
-                    key={ch.id}
-                    href={`/fanfic/${id}/read/${ch.id}?all=${chapterIds}`}
-                    className={`flex items-center justify-between px-4 py-3 hover:bg-zinc-800/60 transition-colors group ${
-                      idx < fanfic.chapters.length - 1 ? 'border-b border-zinc-800' : ''
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-zinc-200 group-hover:text-white text-sm font-medium truncate transition-colors">
-                        {ch.title || `Часть ${idx + 1}`}
-                      </p>
-                      {(ch.date || ch.words_count > 0) && (
-                        <p className="text-zinc-600 text-xs mt-0.5">
-                          {ch.date && <span>{ch.date}</span>}
-                          {ch.date && ch.words_count > 0 && <span className="mx-1.5">·</span>}
-                          {ch.words_count > 0 && <span>{formatWordCount(ch.words_count)} слов</span>}
-                        </p>
-                      )}
-                    </div>
-                    <svg className="text-zinc-600 group-hover:text-zinc-400 flex-shrink-0 ml-3 transition-colors" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Chapter list — full width below header */}
+      {fanfic.chapters.length > 1 && (
+        <div className="mb-6">
+          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">
+            Содержание ({fanfic.chapters.length})
+          </h3>
+          <div className="border border-zinc-800 rounded-lg overflow-hidden">
+            {fanfic.chapters.map((ch, idx) => (
+              <Link
+                key={ch.id}
+                href={`/fanfic/${id}/read/${ch.id}?all=${chapterIds}`}
+                className={`flex items-center justify-between px-4 py-3 hover:bg-zinc-800/60 transition-colors group ${
+                  idx < fanfic.chapters.length - 1 ? 'border-b border-zinc-800' : ''
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-zinc-200 group-hover:text-white text-sm font-medium truncate transition-colors">
+                    {ch.title || `Часть ${idx + 1}`}
+                  </p>
+                  {(ch.date || ch.words_count > 0) && (
+                    <p className="text-zinc-600 text-xs mt-0.5">
+                      {ch.date && <span>{ch.date}</span>}
+                      {ch.date && ch.words_count > 0 && <span className="mx-1.5">·</span>}
+                      {ch.words_count > 0 && <span>{formatWordCount(ch.words_count)} слов</span>}
+                    </p>
+                  )}
+                </div>
+                <svg className="text-zinc-600 group-hover:text-zinc-400 flex-shrink-0 ml-3 transition-colors" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tags */}
       {fanfic.tags.length > 0 && (
