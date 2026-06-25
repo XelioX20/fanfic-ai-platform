@@ -61,10 +61,16 @@ class FicbookAuth:
         return "; ".join(f"{k}={v}" for k, v in jar.items())
 
     async def _login_via_proxy(self, email: str, password: str) -> AuthResult:
+        """
+        Hybrid login:
+        - GET login page via proxy (Cloudflare blocks datacenter GETs)
+        - POST login_check DIRECTLY (JSON API, not blocked by Cloudflare)
+        - Fetch profile via proxy with collected PHPSESSID cookie
+        """
         jar: dict = {}
         try:
-            async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
-                # Step 1: GET login page via proxy
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+                # Step 1: GET login page via proxy — extract CSRF if present
                 login_url = proxy_url(f"{FICBOOK_BASE_URL}/login") or f"{FICBOOK_BASE_URL}/login"
                 r1 = await client.get(login_url, headers=DEFAULT_HEADERS)
                 self._collect_cookies(r1, jar)
@@ -72,7 +78,8 @@ class FicbookAuth:
                 soup1 = BeautifulSoup(html1, "html.parser")
                 csrf = self._extract_csrf(soup1)
 
-                # Step 2: POST credentials
+                # Step 2: POST login_check DIRECTLY (not through proxy)
+                # ficbook's login_check is a JSON API endpoint not blocked by Cloudflare
                 post_headers = {
                     **DEFAULT_HEADERS,
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -80,35 +87,36 @@ class FicbookAuth:
                 if jar:
                     post_headers["Cookie"] = self._cookie_header(jar)
 
-                post_proxy = proxy_url(LOGIN_ENDPOINT) or LOGIN_ENDPOINT
                 r2 = await client.post(
-                    post_proxy,
+                    LOGIN_ENDPOINT,
                     data={"login": email, "password": password, "_csrf_token": csrf},
                     headers=post_headers,
                 )
                 self._collect_cookies(r2, jar)
                 html2 = await self._decode(r2)
 
-                # ficbook login_check returns JSON
+                # ficbook returns JSON: {"result": true} or {"result": false, "error": {...}}
                 try:
                     resp_json = _json.loads(html2)
                     if resp_json.get("result") is False:
                         reason = resp_json.get("error", {}).get("reason", "invalid credentials")
                         return AuthResult(success=False, error=f"Login failed: {reason}")
                 except _json.JSONDecodeError:
-                    if any(phrase in html2 for phrase in ["Неверный логин", "Invalid login", "user_not_found", "wrong_password"]):
+                    if any(phrase in html2 for phrase in [
+                        "Неверный логин", "Invalid login", "user_not_found", "wrong_password"
+                    ]):
                         return AuthResult(success=False, error="Login failed: invalid credentials")
 
-                # Step 3: Verify and get profile
-                verify_headers = {**DEFAULT_HEADERS}
-                if jar:
-                    verify_headers["Cookie"] = self._cookie_header(jar)
+                if not jar:
+                    return AuthResult(success=False, error="Login failed: no session cookie received")
 
-                home_proxy = proxy_url(f"{FICBOOK_BASE_URL}/home") or f"{FICBOOK_BASE_URL}/home"
-                r4 = await client.get(home_proxy, headers=verify_headers)
-                self._collect_cookies(r4, jar)
-                soup4 = BeautifulSoup(await self._decode(r4), "html.parser")
-                user = self._parse_user(soup4)
+                # Step 3: Fetch user profile via proxy, forwarding session cookies
+                verify_headers = {**DEFAULT_HEADERS, "Cookie": self._cookie_header(jar)}
+                home_url = proxy_url(f"{FICBOOK_BASE_URL}/home") or f"{FICBOOK_BASE_URL}/home"
+                r3 = await client.get(home_url, headers=verify_headers)
+                self._collect_cookies(r3, jar)
+                soup3 = BeautifulSoup(await self._decode(r3), "html.parser")
+                user = self._parse_user(soup3)
 
                 return AuthResult(success=True, user=user, cookies=jar)
 
