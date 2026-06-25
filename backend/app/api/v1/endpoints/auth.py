@@ -117,6 +117,29 @@ async def ficbook_login(data: FicbookLoginRequest):
     )
 
 
+@router.get("/debug-cookies")
+async def debug_cookies(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+):
+    """Debug: show what cookies are stored in DB for current user."""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = verify_token(credentials.credentials)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    async with AsyncSessionLocal() as db:
+        repo = UserRepository(db)
+        user = await repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "user_id": user.id,
+            "ficbook_user_id": user.ficbook_user_id,
+            "cookies_keys": list((user.ficbook_cookies or {}).keys()),
+            "has_cookies": bool(user.ficbook_cookies),
+            "updated_at": user.ficbook_cookies_updated_at.isoformat() if user.ficbook_cookies_updated_at else None,
+        }
+
 @router.get("/debug-login")
 async def debug_login(login: str = "fake_user", password: str = "wrongpass"):
     """Debug: show what login flow returns from ficbook.net."""

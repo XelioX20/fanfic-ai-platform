@@ -92,6 +92,10 @@ class FicbookAuth:
                     data={"login": email, "password": password, "_csrf_token": csrf},
                     headers=post_headers,
                 )
+                # Collect cookies from httpx cookiejar (handles redirects properly)
+                for cookie in client.cookies.jar:
+                    jar[cookie.name] = cookie.value
+                # Also collect from response headers directly
                 self._collect_cookies(r2, jar)
                 html2 = await self._decode(r2)
 
