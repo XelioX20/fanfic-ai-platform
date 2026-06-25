@@ -158,7 +158,7 @@ export default function LoginPage() {
                 type="text"
                 value={login}
                 onChange={e => { setLogin(e.target.value); setError(null) }}
-                placeholder="Имя пользователя"
+                placeholder="Имя пользователя или email"
                 autoComplete="username"
                 required
                 className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-purple-500 transition-colors text-sm"
