@@ -33,8 +33,8 @@ async def get_search_counts(data: CountsRequest):
     except ImportError:
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
-    # Direct request — Render IP works fine for ficbook.net GET requests
-    target = f"{FICBOOK_BASE}/find?q={urllib.parse.quote(data.query)}"
+    # ficbook /find returns 403 from datacenter IPs — use /fanfiction?q= instead
+    target = f"{FICBOOK_BASE}/fanfiction?q={urllib.parse.quote(data.query)}"
 
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
@@ -70,7 +70,7 @@ async def search_fanfics(
     except ImportError as e:
         raise HTTPException(status_code=503, detail=f"Parser not available: {e}")
 
-    target = f"{FICBOOK_BASE}/find?q={urllib.parse.quote(q)}&p={page}"
+    target = f"{FICBOOK_BASE}/fanfiction?q={urllib.parse.quote(q)}&p={page}"
 
     try:
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
