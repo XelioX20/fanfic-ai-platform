@@ -22,8 +22,8 @@ class FanficPageApi:
         return target
 
     async def get(self, fanfic_id: str) -> FanficPageModel:
-        # Use JS render to get Vue-rendered chapter list
-        url = self._build_url(fanfic_id, render_js=bool(self._scraper_api_key))
+        # Always use static fetch (JS render is too slow)
+        url = self._build_url(fanfic_id, render_js=False)
         resp = await self._client.get(url)
         resp.raise_for_status()
         raw = resp.content.decode("utf-8", errors="replace")

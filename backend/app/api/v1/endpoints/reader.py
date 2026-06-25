@@ -170,6 +170,27 @@ async def get_chapter(fanfic_id: str, chapter_id: str, all_chapters: str = ""):
     )
 
 
+@router.get("/fanfics/{fanfic_id}/debug-scripts")
+async def debug_scripts(fanfic_id: str):
+    """Show script tag contents from fanfic page to find embedded chapter data."""
+    target = f"https://ficbook.net/readfic/{fanfic_id}"
+    html = await _fetch_html(target)
+    try:
+        import ftfy
+        html = ftfy.fix_text(html)
+    except ImportError:
+        pass
+    from bs4 import BeautifulSoup
+    import re
+    soup = BeautifulSoup(html, "html.parser")
+    scripts = []
+    for s in soup.find_all("script"):
+        text = s.string or ""
+        if any(kw in text for kw in ["parts", "chapters", "chapter", "part_id", "readfic"]):
+            scripts.append(text[:500])
+    return {"script_count": len(scripts), "scripts": scripts[:5]}
+
+
 @router.get("/fanfics/{fanfic_id}/debug-html")
 async def debug_fanfic_html(fanfic_id: str):
     """Return raw HTML snippet from ficbook.net fanfic page for debugging selectors."""
@@ -184,28 +205,27 @@ async def debug_fanfic_html(fanfic_id: str):
     import re
     soup = BeautifulSoup(html, "html.parser")
 
-    # Find all elements that look like chapter lists
+    title_el = soup.select_one("h1[itemprop=name], h1.heading, h1.fanfic-main-info, h1")
+    title_text = title_el.get_text(strip=True) if title_el else None
+
     chapter_containers = []
     for tag in soup.find_all(True):
         classes = " ".join(tag.get("class", []))
         if any(kw in classes for kw in ["chapter", "part", "toc", "contents"]):
             chapter_containers.append({"tag": tag.name, "class": classes, "html": str(tag)[:300]})
 
-    # Find readfic links with part_ids (numeric or uuid after fanfic_id)
     part_links = []
     for a in soup.select(f"a[href*='{fanfic_id}/']"):
         href = a.get("href", "")
-        part_id = href.split(f"{fanfic_id}/")[-1].split("?")[0].strip("/")
-        if part_id:
-            part_links.append({"href": href, "part_id": part_id, "class": " ".join(a.get("class", [])), "text": a.get_text(strip=True)[:50]})
+        after = href.split(f"{fanfic_id}/")[-1].split("?")[0].strip("/")
+        if after:
+            part_links.append({"href": href, "part_id": after, "text": a.get_text(strip=True)[:50]})
 
     return {
-        "title": soup.select_one("h1[itemprop=name], h1.heading, h1.fanfic-main-info"),
-        "title_text": safe_text(soup.select_one("h1[itemprop=name], h1.heading, h1.fanfic-main-info")),
+        "title_text": title_text,
         "has_content_div": soup.select_one("div#content") is not None,
-        "has_articleBody": soup.select_one("[itemprop=articleBody]") is not None,
         "chapter_containers": chapter_containers[:10],
         "part_links": part_links[:15],
-        "html_start": html[:3000],
-        "html_mid": html[8000:11000],
+        "html_snippet": html[3000:7000],
     }
+

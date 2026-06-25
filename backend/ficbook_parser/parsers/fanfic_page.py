@@ -219,7 +219,37 @@ class FanficPageParser:
         return direction, rating, completion, likes, trophies, is_hot
 
     def _parse_chapters(self, soup: BeautifulSoup, fanfic_id: str) -> Optional[FanficChapterSeparate | FanficChapterSingle]:
-        # Old layout multi-chapter list
+        # 1. Try to extract chapter list from embedded JSON in <script> tags
+        # ficbook.net embeds chapter data as window.__initial_state__ or similar
+        import json as _json
+        for script in soup.find_all("script"):
+            text = script.string or ""
+            # Look for parts/chapters array in JS state
+            for pattern in [
+                r'"parts"\s*:\s*(\[.*?\])',
+                r'"chapters"\s*:\s*(\[.*?\])',
+                r'window\.__CHAPTERS__\s*=\s*(\[.*?\])',
+            ]:
+                m = re.search(pattern, text, re.DOTALL)
+                if m:
+                    try:
+                        parts = _json.loads(m.group(1))
+                        if parts and isinstance(parts, list):
+                            chapters = []
+                            for p in parts:
+                                if isinstance(p, dict):
+                                    pid = str(p.get("id", "") or p.get("part_id", ""))
+                                    title = p.get("title", "") or p.get("name", "") or f"Глава {len(chapters)+1}"
+                                    date = p.get("date", "") or p.get("created_at", "")
+                                    words = int(p.get("words_count", 0) or 0)
+                                    if pid:
+                                        chapters.append(ChapterModel(id=pid, title=title, date=str(date), words_count=words))
+                            if len(chapters) > 1:
+                                return FanficChapterSeparate(chapters=chapters)
+                    except Exception:
+                        pass
+
+        # 2. Old layout multi-chapter list
         chapter_items = soup.select("li.chapter-item, div.chapter-row")
         if chapter_items:
             chapters = []
@@ -234,7 +264,7 @@ class FanficPageParser:
             if chapters:
                 return FanficChapterSeparate(chapters=chapters)
 
-        # New layout: extract part IDs from readfic/{fanfic_id}/{part_id} links
+        # 3. New layout: extract part IDs from readfic/{fanfic_id}/{part_id} links
         NON_CHAPTER = {"download", "rewards", "comments", "collections", "print"}
         part_links = []
         seen = set()
@@ -251,15 +281,13 @@ class FanficPageParser:
                 ))
 
         if len(part_links) > 1:
-            # Multiple part links = confirmed multi-chapter
             return FanficChapterSeparate(chapters=part_links)
 
-        # Single-chapter: content directly in page (no part navigation found)
+        # 4. Single-chapter: content directly in page
         content_div = soup.select_one("div#content, [itemprop=articleBody]")
         if content_div:
             return FanficChapterSingle(html_content=str(content_div))
 
-        # Exactly one part link found — could be a single-chapter with explicit URL
         if part_links:
             return FanficChapterSeparate(chapters=part_links)
 
