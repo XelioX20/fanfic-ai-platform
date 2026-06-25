@@ -168,3 +168,45 @@ async def get_chapter(fanfic_id: str, chapter_id: str, all_chapters: str = ""):
         prev_chapter_id=prev_id,
         next_chapter_id=next_id,
     )
+
+
+@router.get("/fanfics/{fanfic_id}/debug-html")
+async def debug_fanfic_html(fanfic_id: str):
+    """Return raw HTML snippet from ficbook.net fanfic page for debugging selectors."""
+    target = f"https://ficbook.net/readfic/{fanfic_id}"
+    html = await _fetch_html(target)
+    try:
+        import ftfy
+        html = ftfy.fix_text(html)
+    except ImportError:
+        pass
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    # Key elements we need
+    title_candidates = [
+        soup.select_one("h1.fanfic-main-info"),
+        soup.select_one("h1"),
+        soup.select_one("[itemprop=name]"),
+    ]
+    content_candidates = [
+        soup.select_one("div#content"),
+        soup.select_one("[itemprop=articleBody]"),
+        soup.select_one(".js-part-text"),
+    ]
+    chapter_candidates = [
+        soup.select("li.chapter-item"),
+        soup.select("div.chapter-row"),
+        soup.select("a[href*=readfic][href*='/']"),
+    ]
+    return {
+        "title_h1_fanfic_main_info": str(title_candidates[0])[:200] if title_candidates[0] else None,
+        "title_h1": str(title_candidates[1])[:200] if title_candidates[1] else None,
+        "content_div_id": str(content_candidates[0])[:300] if content_candidates[0] else None,
+        "content_itemprop": str(content_candidates[1])[:300] if content_candidates[1] else None,
+        "content_js_part": str(content_candidates[2])[:300] if content_candidates[2] else None,
+        "chapter_items_count": len(chapter_candidates[0]),
+        "chapter_rows_count": len(chapter_candidates[1]),
+        "readfic_links": [str(a)[:100] for a in chapter_candidates[2][:5]],
+        "all_h1": [str(h)[:100] for h in soup.select("h1")[:5]],
+        "html_snippet_5000": html[2000:5000],
+    }
