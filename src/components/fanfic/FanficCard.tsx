@@ -152,7 +152,7 @@ export function FanficCard({ fanfic, className }: FanficCardProps) {
             {fanfic.is_hot && <HotChip />}
           </div>
 
-          <Link href={fanfic.ficbook_url} target="_blank" rel="noopener noreferrer">
+          <Link href={`/fanfic/${fanfic.id}`}>
             <h3 className="font-bold text-zinc-100 hover:text-purple-400 transition-colors mb-1.5 leading-snug">
               {fanfic.title}
             </h3>
