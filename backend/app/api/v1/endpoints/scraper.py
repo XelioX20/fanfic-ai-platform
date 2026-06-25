@@ -51,6 +51,16 @@ async def seed_fanfics(background_tasks: BackgroundTasks):
     return {"status": "accepted", "message": "Scraping started in background. Check /api/v1/fanfics/ in ~2 minutes."}
 
 
+@router.delete("/clear-db")
+async def clear_fanfics_db():
+    """Delete all fanfics from DB so reseed picks up fresh data."""
+    from sqlalchemy import text
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(text("DELETE FROM fanfics"))
+        await db.commit()
+        return {"deleted": result.rowcount}
+
+
 @router.get("/seed-sync")
 async def seed_fanfics_sync():
     """Synchronous seed — runs inline and returns result. For debugging only."""
