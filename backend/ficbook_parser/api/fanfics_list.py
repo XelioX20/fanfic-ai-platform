@@ -49,7 +49,9 @@ class FanficsListApi:
                     await asyncio.sleep(3 * (attempt + 1))
                     continue
                 resp.raise_for_status()
-                return self._parser.parse(resp.text)
+                # Force UTF-8 — ficbook.net serves UTF-8 but httpx may misdetect
+                html = resp.content.decode("utf-8", errors="replace")
+                return self._parser.parse(html)
             except httpx.HTTPStatusError:
                 if attempt == 2:
                     raise

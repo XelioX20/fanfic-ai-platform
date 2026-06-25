@@ -16,9 +16,13 @@ class FanficDirection(str, Enum):
 
     @classmethod
     def get_for_name(cls, name: str) -> "FanficDirection":
+        name = name.strip()
         for member in cls:
             if member.value == name:
                 return member
+        # ficbook.net uses "Не определено" for unknown direction
+        if "определено" in name.lower() or "unknown" in name.lower():
+            return cls.UNKNOWN
         return cls.UNKNOWN
 
 

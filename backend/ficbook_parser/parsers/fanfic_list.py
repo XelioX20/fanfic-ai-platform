@@ -222,17 +222,18 @@ class FanficCardParser:
         # New layout: size info in dl
         for dl in article.select("dl.fanfic-inline-info"):
             dt = dl.select_one("dt")
-            if dt and "Размер" in safe_text(dt):
-                text = safe_text(dl.select_one("dd"))
-                # Extract numbers — "написано X слов" or "X слов"
-                match = re.search(r"([\d\s]+)\s*слов", text)
-                if match:
-                    return parse_int(match.group(1))
+            if dt and "Размер" in dt.get_text(strip=True):
+                dd = dl.select_one("dd")
+                if dd:
+                    text = dd.get_text(strip=True)
+                    match = re.search(r"([\d\s ]+)\s*слов", text)
+                    if match:
+                        return parse_int(match.group(1))
         # Fallback
         size_el = article.select_one("span.badge-text")
         if size_el:
-            text = safe_text(size_el)
-            match = re.search(r"([\d\s]+)\s*слов", text)
+            text = size_el.get_text(strip=True)
+            match = re.search(r"([\d\s ]+)\s*слов", text)
             if match:
                 return parse_int(match.group(1))
         return 0
@@ -240,11 +241,13 @@ class FanficCardParser:
     def _parse_chapters_count(self, article: Tag) -> int:
         for dl in article.select("dl.fanfic-inline-info"):
             dt = dl.select_one("dt")
-            if dt and "Размер" in safe_text(dt):
-                text = safe_text(dl.select_one("dd"))
-                match = re.search(r"(\d+)\s*част", text)
-                if match:
-                    return int(match.group(1))
+            if dt and "Размер" in dt.get_text(strip=True):
+                dd = dl.select_one("dd")
+                if dd:
+                    text = dd.get_text(strip=True)
+                    match = re.search(r"(\d+)\s*част", text)
+                    if match:
+                        return int(match.group(1))
         return 0
 
     def _parse_date(self, article: Tag) -> str:
