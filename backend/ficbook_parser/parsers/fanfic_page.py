@@ -264,26 +264,30 @@ class FanficPageParser:
             if chapters:
                 return FanficChapterSeparate(chapters=chapters)
 
-        # 3. New layout: extract part IDs via regex on raw HTML (BS4 CSS selector fails with UUID)
-        NON_CHAPTER = {"download", "rewards", "comments", "collections", "print"}
+        # 3. New layout: iterate all <a> tags, find numeric part IDs
+        NON_CHAPTER_TEXT = {"тзыв", "Начать", "Скачать", "скачать"}
         part_links = []
         seen: set = set()
-        search_html = raw_html if raw_html else str(soup)
-        link_pattern = re.compile(
-            rf'href="[^"]*{re.escape(fanfic_id)}/(\d+)[^"#]*(?:#[^"]*)?">([^<]*(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</a>',
-            re.DOTALL | re.IGNORECASE
-        )
-        for m in link_pattern.finditer(search_html):
-            part_id = m.group(1)
-            link_text = re.sub(r'<[^>]+>', '', m.group(2)).strip()
+
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            # Must contain fanfic_id followed by a slash and numeric ID
+            if fanfic_id not in href:
+                continue
+            after = href.split(fanfic_id + "/")[-1]
+            # Strip anchor
+            part_id = after.split("#")[0].split("?")[0].strip("/")
+            if not part_id or not part_id.isdigit():
+                continue
             if part_id in seen:
                 continue
-            if any(skip in link_text for skip in ("тзыв", "Начать", "Скачать")):
+            link_text = a.get_text(strip=True)
+            if any(skip in link_text for skip in NON_CHAPTER_TEXT):
                 continue
             seen.add(part_id)
             part_links.append(ChapterModel(
                 id=part_id,
-                title=link_text or f"Глава {len(part_links)+1}",
+                title=link_text or f"Часть {len(part_links)+1}",
                 date="",
             ))
 
