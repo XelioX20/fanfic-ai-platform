@@ -211,6 +211,29 @@ export default function FanficPage() {
               <ExternalLink size={14} /> На ficbook.net
             </a>
           </div>
+
+          {/* Chapter list — inline under buttons */}
+          {fanfic.chapters.length > 1 && (
+            <div className="mt-4 space-y-1">
+              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Главы ({fanfic.chapters.length})</h3>
+              {fanfic.chapters.map((ch, idx) => (
+                <Link
+                  key={ch.id}
+                  href={`/fanfic/${id}/read/${ch.id}?all=${chapterIds}`}
+                  className="flex items-center justify-between px-3 py-2 bg-zinc-800/50 border border-zinc-800 rounded-lg hover:border-zinc-600 hover:bg-zinc-800 transition-all group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-zinc-600 text-xs w-5 flex-shrink-0">{idx + 1}</span>
+                    <span className="text-zinc-300 group-hover:text-zinc-100 text-sm truncate transition-colors">{ch.title || `Глава ${idx + 1}`}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-zinc-600 flex-shrink-0 ml-3">
+                    {ch.words_count > 0 && <span>{formatWordCount(ch.words_count)} сл.</span>}
+                    {ch.date && <span>{ch.date}</span>}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -261,30 +284,6 @@ export default function FanficPage() {
         </div>
       )}
 
-      {/* Chapter list */}
-      {fanfic.chapters.length > 1 && (
-        <div>
-          <h3 className="text-sm font-semibold text-zinc-300 mb-3">Главы ({fanfic.chapters.length})</h3>
-          <div className="space-y-1">
-            {fanfic.chapters.map((ch, idx) => (
-              <Link
-                key={ch.id}
-                href={`/fanfic/${id}/read/${ch.id}?all=${chapterIds}`}
-                className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-zinc-600 hover:bg-zinc-800/50 transition-all group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-zinc-600 text-xs w-6 flex-shrink-0">{idx + 1}</span>
-                  <span className="text-zinc-300 group-hover:text-zinc-100 text-sm truncate transition-colors">{ch.title || `Глава ${idx + 1}`}</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-zinc-600 flex-shrink-0 ml-4">
-                  {ch.words_count > 0 && <span>{formatWordCount(ch.words_count)} сл.</span>}
-                  {ch.date && <span>{ch.date}</span>}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </main>
   )
 }
