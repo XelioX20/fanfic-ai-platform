@@ -1,5 +1,5 @@
 'use client'
-import { Settings, Sun, Moon, Smartphone } from 'lucide-react'
+import { Settings, Sun, Moon, Smartphone, X } from 'lucide-react'
 import { useState } from 'react'
 import { useReaderStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,80 @@ export function ReaderSettingsPanel() {
       </Button>
       {open && (
         <div className="absolute right-0 top-full mt-2 w-72 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl p-4 z-50">
-          <h3 className="text-sm font-medium text-zinc-300 mb-4">Настройки чтения</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-zinc-300">Настройки чтения</h3>
+            <button
+              onClick={() => setOpen(false)}
+              className="text-zinc-500 hover:text-zinc-200 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs text-zinc-500 block mb-2">Тема</label>
+              <div className="flex gap-2">
+                {(['light', 'dark', 'amoled'] as Theme[]).map((t) => (
+                  <Button
+                    key={t}
+                    variant={settings.theme === t ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => updateSettings({ theme: t })}
+                  >
+                    {t === 'light' ? <Sun size={12} /> : t === 'dark' ? <Moon size={12} /> : <Smartphone size={12} />}
+                    <span className="ml-1 capitalize">{t === 'amoled' ? 'AMOLED' : t === 'light' ? 'Светлая' : 'Тёмная'}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-zinc-500 block mb-2">Размер шрифта: {settings.font_size}px</label>
+              <input
+                type="range" min="12" max="24" step="1"
+                value={settings.font_size}
+                onChange={(e) => updateSettings({ font_size: Number(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-zinc-500 block mb-2">Межстрочный интервал: {settings.line_height}</label>
+              <input
+                type="range" min="1.2" max="2.5" step="0.1"
+                value={settings.line_height}
+                onChange={(e) => updateSettings({ line_height: Number(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-zinc-500 block mb-2">Шрифт</label>
+              <div className="flex gap-2">
+                <Button
+                  variant={settings.font_family === 'serif' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateSettings({ font_family: 'serif' })}
+                >
+                  Serif
+                </Button>
+                <Button
+                  variant={settings.font_family === 'sans' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateSettings({ font_family: 'sans' })}
+                >
+                  Sans
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 
           <div className="space-y-4">
             <div>
