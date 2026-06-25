@@ -270,13 +270,19 @@ class FanficPageParser:
         seen = set()
         for a in soup.select(f"a[href*='{fanfic_id}/']"):
             href = a.get("href", "")
-            after = href.split(f"{fanfic_id}/")[-1].split("?")[0].strip("/")
+            after = href.split(f"{fanfic_id}/")[-1].split("?")[0]
+            # Strip anchor (#part_content, #comments, etc.)
+            after = after.split("#")[0].strip("/")
+            # Skip non-chapter IDs and "Отзывы" links
+            text = a.get_text(strip=True)
             if (after and after not in seen and after not in NON_CHAPTER
-                    and re.match(r"^[\w\-]+$", after)):
+                    and re.match(r"^\d+$", after)  # numeric part IDs only
+                    and "тзыв" not in text  # skip "Отзывы" links
+                    and "Начать" not in text):  # skip "Начать читать"
                 seen.add(after)
                 part_links.append(ChapterModel(
                     id=after,
-                    title=a.get_text(strip=True) or "Глава",
+                    title=text or f"Глава {len(part_links)+1}",
                     date="",
                 ))
 
