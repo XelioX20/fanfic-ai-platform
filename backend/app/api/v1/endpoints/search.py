@@ -30,11 +30,18 @@ async def get_search_counts(data: CountsRequest):
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
     try:
+        # ficbook requires proper UTF-8 URL-encoding — must use urlencode explicitly
+        encoded = urllib.parse.urlencode({"query": data.query}).encode("utf-8")
+
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             resp = await client.post(
                 f"{FICBOOK_BASE}/get_multi_count",
-                data={"query": data.query},
-                headers=DEFAULT_HEADERS,
+                content=encoded,
+                headers={
+                    **DEFAULT_HEADERS,
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                },
             )
             resp.raise_for_status()
             result = resp.json()
