@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, BookOpen, Loader2, AlertCircle, WifiOff, Clock } from 'lucide-react'
 import { authApi } from '@/lib/api'
@@ -93,6 +93,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<LoginError | null>(null)
   const [loadingHint, setLoadingHint] = useState<string | null>(null)
+  const errorRef = useRef<LoginError | null>(null)
+
+  useEffect(() => {
+    errorRef.current = error
+  }, [error])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -159,8 +164,7 @@ export default function LoginPage() {
                 value={login}
                 onChange={e => setLogin(e.target.value)}
                 placeholder="Имя пользователя или email"
-                autoComplete="username"
-                required
+                autoComplete="off"
                 className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-purple-500 transition-colors text-sm"
               />
             </div>
@@ -173,8 +177,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  autoComplete="current-password"
-                  required
+                  autoComplete="off"
                   className="w-full px-3 py-2.5 pr-10 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-purple-500 transition-colors text-sm"
                 />
                 <button
@@ -305,8 +308,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  autoComplete="current-password"
-                  required
+                  autoComplete="off"
                   className="w-full px-3 py-2.5 pr-10 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-purple-500 transition-colors text-sm"
                 />
                 <button
