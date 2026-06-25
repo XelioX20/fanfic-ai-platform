@@ -108,6 +108,31 @@ class FicbookAuth:
                     headers=post_headers,
                 )
                 self._collect_cookies(r2, jar)
+                html2 = await self._decode(r2)
+
+                # Log what we got for debugging
+                import logging as _log
+                _log.getLogger(__name__).info(
+                    f"POST login_check: status={r2.status_code}, "
+                    f"cookies_after={list(jar.keys())}, "
+                    f"html_snippet={html2[:300]}"
+                )
+
+                # ficbook sets auth cookie on successful login
+                AUTH_COOKIES = {"ficbook_user_id", "ficbook_remember_me", "remember_me", "user_id", "uid"}
+                has_auth_cookie = any(k in jar for k in AUTH_COOKIES)
+
+                # If no auth cookie AND response looks like login form — bad credentials
+                has_login_form = "_csrf_token" in html2 and "login" in html2.lower()
+                has_error_msg = any(phrase in html2 for phrase in [
+                    "Неверный логин",
+                    "Invalid login",
+                    "неверный пароль",
+                    "Неверный пароль",
+                ])
+
+                if has_error_msg or (not has_auth_cookie and has_login_form):
+                    return AuthResult(success=False, error="Login failed: invalid credentials")
 
                 # --- Step 3: Verify session — check settings page content ---
                 verify_headers = {**DEFAULT_HEADERS}
