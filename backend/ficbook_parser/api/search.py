@@ -14,7 +14,8 @@ class SearchApi:
 
     def _build_url(self, query: str, page: int) -> str:
         import urllib.parse
-        target = f"{FICBOOK_BASE_URL}/{ROUTE_FIND}?{QUERY_SEARCH}={urllib.parse.quote(query)}&{QUERY_PAGE}={page}"
+        # /find returns 403 from datacenter IPs — use /fanfiction?q= instead
+        target = f"{FICBOOK_BASE_URL}/fanfiction?{QUERY_SEARCH}={urllib.parse.quote(query)}&{QUERY_PAGE}={page}"
         return proxy_url(target) or target
 
     async def search(self, query: str, page: int = 1):
