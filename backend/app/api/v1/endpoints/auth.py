@@ -94,8 +94,10 @@ async def ficbook_login(data: FicbookLoginRequest):
                 await repo.update(user)
 
             # Save ficbook session cookies for profile endpoints
-            if getattr(result, "cookies", None):
-                await repo.update_cookies(user.id, result.cookies)
+            cookies_to_save = getattr(result, "cookies", None)
+            logger.info(f"Cookies from login: {list(cookies_to_save.keys()) if cookies_to_save else 'none'}")
+            if cookies_to_save:
+                await repo.update_cookies(user.id, cookies_to_save)
 
             user_id = user.id
     except Exception as e:

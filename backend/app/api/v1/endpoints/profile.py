@@ -1,5 +1,7 @@
 import os
 import logging
+import urllib.parse
+import httpx
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
@@ -11,7 +13,16 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
-SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY", "")
+FICBOOK_BASE = "https://ficbook.net"
+SCRAPERAPI_BASE = "http://api.scraperapi.com/"
+
+# User section paths on ficbook.net
+SECTIONS = {
+    "favourites": "home/favourites",
+    "history":    "home/viewed",
+    "liked":      "home/liked-fanfics",
+    "subscriptions": "home/follow",
+}
 
 
 async def _get_current_user_id(
@@ -25,130 +36,81 @@ async def _get_current_user_id(
     return user_id
 
 
-async def _make_ficbook_client(user_id: str):
-    """Create FicbookClient with stored user cookies, or re-auth if cookies missing."""
-    try:
-        from ficbook_parser.client import FicbookClient
-    except ImportError:
-        raise HTTPException(status_code=503, detail="ficbook_parser not available")
+async def _fetch_section(user_id: str, section_path: str, page: int) -> dict:
+    """
+    Fetch a ficbook user section through ScraperAPI, forwarding the user's
+    session cookies so ficbook returns authenticated content.
+    """
+    scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
 
     async with AsyncSessionLocal() as db:
         repo = UserRepository(db)
         user = await repo.get_by_id(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        cookies = user.ficbook_cookies or {}
+        cookies: dict = user.ficbook_cookies or {}
 
-    # Use stored cookies — no ScraperAPI needed for authenticated requests
-    return FicbookClient(cookies=cookies)
+    if not cookies:
+        raise HTTPException(
+            status_code=403,
+            detail="No ficbook session. Please log in again.",
+        )
 
-
-@router.get("/me")
-async def get_profile(user_id: str = Depends(_get_current_user_id)):
-    async with AsyncSessionLocal() as db:
-        repo = UserRepository(db)
-        user = await repo.get_by_id(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        return {
-            "id": user.id,
-            "ficbook_user_id": user.ficbook_user_id,
-            "ficbook_username": user.ficbook_username,
-            "ficbook_avatar_url": user.ficbook_avatar_url,
-            "ficbook_profile_url": f"https://ficbook.net/authors/{user.ficbook_user_id}" if user.ficbook_user_id else None,
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-            "last_login": user.last_login.isoformat() if user.last_login else None,
-        }
-
-
-@router.get("/favourites")
-async def get_favourites(
-    page: int = Query(1, ge=1),
-    user_id: str = Depends(_get_current_user_id),
-):
-    """Get user's favourites from ficbook.net."""
-    try:
-        from ficbook_parser.models.sections import UserSections
-        client = await _make_ficbook_client(user_id)
-        async with client:
-            fanfics, has_next = await client.fanfics_list.get(
-                UserSections.FAVOURITES, page=page
-            )
-    except Exception as e:
-        logger.error(f"Failed to fetch favourites for {user_id}: {e}")
-        raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
-
-    return {
-        "items": [_card_to_dict(f) for f in fanfics],
-        "page": page,
-        "has_next": has_next,
-        "total": len(fanfics),
+    target = f"{FICBOOK_BASE}/{section_path}?p={page}"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.9",
+        "Referer": f"{FICBOOK_BASE}/",
     }
 
+    # Forward user's ficbook cookies to ScraperAPI which passes them to ficbook.net
+    if cookies:
+        headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in cookies.items())
 
-@router.get("/history")
-async def get_history(
-    page: int = Query(1, ge=1),
-    user_id: str = Depends(_get_current_user_id),
-):
-    """Get user's reading history from ficbook.net."""
+    params = {"api_key": scraper_api_key, "url": target, "render": "false"}
+
     try:
-        from ficbook_parser.models.sections import UserSections
-        client = await _make_ficbook_client(user_id)
-        async with client:
-            fanfics, has_next = await client.fanfics_list.get(
-                UserSections.READ, page=page
-            )
-    except Exception as e:
-        logger.error(f"Failed to fetch history for {user_id}: {e}")
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            if scraper_api_key:
+                resp = await client.get(SCRAPERAPI_BASE, params=params, headers=headers)
+            else:
+                resp = await client.get(target, headers=headers)
+            resp.raise_for_status()
+            raw = resp.content.decode("utf-8", errors="replace")
+            try:
+                import ftfy
+                html = ftfy.fix_text(raw)
+            except ImportError:
+                html = raw
+    except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
 
-    return {
-        "items": [_card_to_dict(f) for f in fanfics],
-        "page": page,
-        "has_next": has_next,
-    }
-
-
-@router.get("/liked")
-async def get_liked(
-    page: int = Query(1, ge=1),
-    user_id: str = Depends(_get_current_user_id),
-):
-    """Get user's liked fanfics from ficbook.net."""
+    # Parse fanfic list
     try:
-        from ficbook_parser.models.sections import UserSections
-        client = await _make_ficbook_client(user_id)
-        async with client:
-            fanfics, has_next = await client.fanfics_list.get(
-                UserSections.LIKED, page=page
-            )
+        from ficbook_parser.parsers.fanfic_list import FanficListParser
+        fanfics, has_next = FanficListParser().parse(html)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
+        logger.error(f"Parser error for {section_path}: {e}")
+        return {"items": [], "page": page, "has_next": False}
 
-    return {"items": [_card_to_dict(f) for f in fanfics], "page": page, "has_next": has_next}
+    # Check if we got redirected to login (not authenticated)
+    if "_csrf_token" in html and not fanfics:
+        raise HTTPException(
+            status_code=403,
+            detail="Ficbook session expired. Please log in again.",
+        )
 
-
-@router.get("/subscriptions")
-async def get_subscriptions(
-    page: int = Query(1, ge=1),
-    user_id: str = Depends(_get_current_user_id),
-):
-    """Get user's author subscriptions from ficbook.net."""
-    try:
-        from ficbook_parser.models.sections import UserSections
-        client = await _make_ficbook_client(user_id)
-        async with client:
-            fanfics, has_next = await client.fanfics_list.get(
-                UserSections.FOLLOW, page=page
-            )
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
-
-    return {"items": [_card_to_dict(f) for f in fanfics], "page": page, "has_next": has_next}
+    items = [_card_to_dict(f) for f in fanfics if f.id]
+    return {"items": items, "page": page, "has_next": has_next}
 
 
 def _card_to_dict(card) -> dict:
+    href = card.href.split("?")[0] if card.href else ""
+    ficbook_url = f"https://ficbook.net{href}" if href.startswith("/") else href
     return {
         "id": card.id,
         "title": card.title,
@@ -165,8 +127,61 @@ def _card_to_dict(card) -> dict:
         "trophies": card.status.trophies,
         "is_hot": card.status.is_hot,
         "cover_url": card.cover_url,
-        "ficbook_url": f"https://ficbook.net{card.href}",
+        "ficbook_url": ficbook_url,
         "words_count": 0,
         "chapters_count": 0,
         "comments_count": 0,
     }
+
+
+@router.get("/me")
+async def get_profile(user_id: str = Depends(_get_current_user_id)):
+    async with AsyncSessionLocal() as db:
+        repo = UserRepository(db)
+        user = await repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "id": user.id,
+            "ficbook_user_id": user.ficbook_user_id,
+            "ficbook_username": user.ficbook_username,
+            "ficbook_avatar_url": user.ficbook_avatar_url,
+            "ficbook_profile_url": (
+                f"https://ficbook.net/authors/{user.ficbook_user_id}"
+                if user.ficbook_user_id and not user.ficbook_user_id.startswith("u_")
+                else None
+            ),
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+        }
+
+
+@router.get("/favourites")
+async def get_favourites(
+    page: int = Query(1, ge=1),
+    user_id: str = Depends(_get_current_user_id),
+):
+    return await _fetch_section(user_id, SECTIONS["favourites"], page)
+
+
+@router.get("/history")
+async def get_history(
+    page: int = Query(1, ge=1),
+    user_id: str = Depends(_get_current_user_id),
+):
+    return await _fetch_section(user_id, SECTIONS["history"], page)
+
+
+@router.get("/liked")
+async def get_liked(
+    page: int = Query(1, ge=1),
+    user_id: str = Depends(_get_current_user_id),
+):
+    return await _fetch_section(user_id, SECTIONS["liked"], page)
+
+
+@router.get("/subscriptions")
+async def get_subscriptions(
+    page: int = Query(1, ge=1),
+    user_id: str = Depends(_get_current_user_id),
+):
+    return await _fetch_section(user_id, SECTIONS["subscriptions"], page)
