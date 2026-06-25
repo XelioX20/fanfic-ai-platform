@@ -25,23 +25,31 @@ class CountsRequest(BaseModel):
 
 @router.post("/counts")
 async def get_search_counts(data: CountsRequest):
-    """Get search result counts per category from ficbook.net (mirrors /get_multi_count)."""
+    """Get search result counts per category from ficbook.net."""
     if not data.query.strip():
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
-    try:
-        # ficbook requires proper UTF-8 URL-encoding — must use urlencode explicitly
-        encoded = urllib.parse.urlencode({"query": data.query}).encode("utf-8")
+    import os
+    encoded_body = urllib.parse.urlencode({"query": data.query}).encode("utf-8")
 
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+    # Get a ficbook session to bypass datacenter IP blocking
+    # Reuse stored session cookies from any logged-in user, or get anonymous session
+    session_cookie = await _get_ficbook_session()
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            headers = {
+                **DEFAULT_HEADERS,
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+            }
+            if session_cookie:
+                headers["Cookie"] = session_cookie
+
             resp = await client.post(
                 f"{FICBOOK_BASE}/get_multi_count",
-                content=encoded,
-                headers={
-                    **DEFAULT_HEADERS,
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                    "Accept": "application/json, text/javascript, */*; q=0.01",
-                },
+                content=encoded_body,
+                headers=headers,
             )
             resp.raise_for_status()
             result = resp.json()
@@ -58,6 +66,60 @@ async def get_search_counts(data: CountsRequest):
         logger.warning(f"get_multi_count failed: {e}")
 
     return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
+
+
+# Cache anonymous ficbook session
+_ficbook_session_cache: dict = {"cookie": None, "expires": 0}
+
+
+async def _get_ficbook_session() -> str | None:
+    """
+    Get a ficbook.net session cookie.
+    First tries to reuse any stored user cookie from DB.
+    Falls back to getting an anonymous session from ficbook.net.
+    """
+    import time
+    global _ficbook_session_cache
+
+    # Return cached if still valid (30 min)
+    if _ficbook_session_cache["cookie"] and time.time() < _ficbook_session_cache["expires"]:
+        return _ficbook_session_cache["cookie"]
+
+    # Try to get any stored ficbook session from DB
+    try:
+        from app.db.session import AsyncSessionLocal
+        from sqlalchemy import select, text
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                text("SELECT ficbook_cookies FROM platform_users WHERE ficbook_cookies IS NOT NULL LIMIT 1")
+            )
+            row = result.fetchone()
+            if row and row[0]:
+                import json
+                cookies = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+                if cookies:
+                    cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+                    _ficbook_session_cache = {"cookie": cookie_str, "expires": time.time() + 1800}
+                    return cookie_str
+    except Exception as e:
+        logger.debug(f"Could not get session from DB: {e}")
+
+    # Get anonymous session from ficbook.net
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.get(
+                f"{FICBOOK_BASE}/",
+                headers={"User-Agent": DEFAULT_HEADERS["User-Agent"]},
+            )
+            cookies = dict(resp.cookies)
+            if cookies:
+                cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+                _ficbook_session_cache = {"cookie": cookie_str, "expires": time.time() + 1800}
+                return cookie_str
+    except Exception as e:
+        logger.debug(f"Could not get anonymous session: {e}")
+
+    return None
 
 
 @router.get("/")
