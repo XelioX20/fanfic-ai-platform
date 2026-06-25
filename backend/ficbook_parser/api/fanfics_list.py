@@ -28,10 +28,9 @@ class FanficsListApi:
             target += f"?{QUERY_PAGE}={page}"
 
         if self._scraper_api_key:
-            # ScraperAPI wraps the target URL as a query parameter
             import urllib.parse
-            encoded = urllib.parse.quote(target)
-            return f"/?api_key={self._scraper_api_key}&url={encoded}"
+            encoded = urllib.parse.quote(target, safe="")
+            return f"http://api.scraperapi.com/?api_key={self._scraper_api_key}&url={encoded}"
         return target
 
     async def get(

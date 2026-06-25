@@ -25,8 +25,8 @@ class FicbookAuth:
     def _wrap(self, url: str) -> str:
         if self._scraper_api_key:
             import urllib.parse
-            encoded = urllib.parse.quote(url)
-            return f"/?api_key={self._scraper_api_key}&url={encoded}"
+            encoded = urllib.parse.quote(url, safe="")
+            return f"http://api.scraperapi.com/?api_key={self._scraper_api_key}&url={encoded}"
         return url
 
     async def login(self, email: str, password: str) -> AuthResult:

@@ -60,22 +60,13 @@ class FicbookClient:
         self._scraper_api_key = scraper_api_key
         self._rate_limit_delay = rate_limit_delay
 
-        if scraper_api_key:
-            # Route through ScraperAPI — it handles Cloudflare, rotating IPs, JS rendering
-            self._http = httpx.AsyncClient(
-                base_url=SCRAPERAPI_BASE,
-                params={"api_key": scraper_api_key, "render": "false"},
-                headers=DEFAULT_HEADERS,
-                timeout=timeout,
-                follow_redirects=True,
-            )
-        else:
-            self._http = httpx.AsyncClient(
-                headers=DEFAULT_HEADERS,
-                cookies=cookies or {},
-                timeout=timeout,
-                follow_redirects=True,
-            )
+        # Always use a plain client — ScraperAPI URL wrapping is done per-request in each API module
+        self._http = httpx.AsyncClient(
+            headers=DEFAULT_HEADERS,
+            cookies=cookies or {},
+            timeout=timeout,
+            follow_redirects=True,
+        )
 
         self.auth = FicbookAuth(self._http, scraper_api_key=scraper_api_key)
         self.fanfics_list = FanficsListApi(self._http, scraper_api_key=scraper_api_key)

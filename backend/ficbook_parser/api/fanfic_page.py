@@ -16,8 +16,8 @@ class FanficPageApi:
         target = f"{FICBOOK_BASE_URL}/{ROUTE_READ_FIC}/{fanfic_id}"
         if self._scraper_api_key:
             import urllib.parse
-            encoded = urllib.parse.quote(target)
-            return f"/?api_key={self._scraper_api_key}&url={encoded}"
+            encoded = urllib.parse.quote(target, safe="")
+            return f"http://api.scraperapi.com/?api_key={self._scraper_api_key}&url={encoded}"
         return target
 
     async def get(self, fanfic_id: str) -> FanficPageModel:
