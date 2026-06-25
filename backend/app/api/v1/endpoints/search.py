@@ -22,35 +22,44 @@ class CountsRequest(BaseModel):
     query: str
 
 
+def _fanfic_to_dict(f, href: str = "") -> dict:
+    href = (f.href or href).split("?")[0]
+    ficbook_url = f"https://ficbook.net{href}" if href.startswith("/") else href
+    return {
+        "id": f.id,
+        "title": f.title,
+        "description": f.description,
+        "author_name": f.author.name if f.author else "",
+        "author_id": f.author.id if f.author else None,
+        "fandoms": f.fandoms,
+        "pairings": [{"characters": p.characters, "is_highlight": p.is_highlight} for p in f.pairings],
+        "tags": [{"name": t.name, "is_adult": t.is_adult} for t in f.tags],
+        "direction": f.status.direction.value,
+        "rating": f.status.rating.value,
+        "completion_status": f.status.status.value,
+        "likes": f.status.likes,
+        "trophies": f.status.trophies,
+        "is_hot": f.status.is_hot,
+        "cover_url": f.cover_url,
+        "ficbook_url": ficbook_url,
+        "words_count": 0,
+        "chapters_count": 0,
+        "comments_count": 0,
+    }
+
+
 @router.post("/counts")
 async def get_search_counts(data: CountsRequest):
-    """Get search result counts by fetching ficbook.net /find page directly."""
+    """Get search result counts using FicbookClient (handles proxy automatically)."""
     if not data.query.strip():
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
     try:
-        from ficbook_parser.parsers.fanfic_list import FanficListParser
-    except ImportError:
-        return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
-
-    # ficbook /find returns 403 from datacenter IPs — use /fanfiction?q= instead
-    target = f"{FICBOOK_BASE}/fanfiction?q={urllib.parse.quote(data.query)}"
-
-    try:
-        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-            resp = await client.get(target, headers=DEFAULT_HEADERS)
-            resp.raise_for_status()
-            raw = resp.content.decode("utf-8", errors="replace")
-            try:
-                import ftfy
-                html = ftfy.fix_text(raw)
-            except ImportError:
-                html = raw
-
-        fanfics, has_next = FanficListParser().parse(html)
+        from ficbook_parser.client import FicbookClient
+        async with FicbookClient() as client:
+            fanfics, has_next = await client.search.search(data.query, page=1)
         count = len([f for f in fanfics if f.id])
         fanfic_count: int | str = f"{count}+" if has_next else count
-
         return {"fanfics": fanfic_count, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
     except Exception as e:
         logger.warning(f"search counts failed: {e}")
@@ -64,60 +73,19 @@ async def search_fanfics(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    """Search fanfics on ficbook.net via /find?q=... — direct request."""
+    """Search fanfics using FicbookClient.search()"""
     try:
-        from ficbook_parser.parsers.fanfic_list import FanficListParser
+        from ficbook_parser.client import FicbookClient
     except ImportError as e:
         raise HTTPException(status_code=503, detail=f"Parser not available: {e}")
 
-    target = f"{FICBOOK_BASE}/fanfiction?q={urllib.parse.quote(q)}&p={page}"
-
     try:
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            resp = await client.get(target, headers=DEFAULT_HEADERS)
-            resp.raise_for_status()
-            raw = resp.content.decode("utf-8", errors="replace")
-            try:
-                import ftfy
-                html = ftfy.fix_text(raw)
-            except ImportError:
-                html = raw
-    except httpx.HTTPError as e:
+        async with FicbookClient() as client:
+            fanfics, has_next = await client.search.search(q, page=page)
+    except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
 
-    try:
-        fanfics, has_next = FanficListParser().parse(html)
-    except Exception as e:
-        logger.error(f"Search parser error: {e}")
-        return {"items": [], "total": 0, "page": page, "page_size": page_size, "has_next": False}
-
-    items = []
-    for f in fanfics:
-        if not f.id:
-            continue
-        href = f.href.split("?")[0] if f.href else ""
-        ficbook_url = f"https://ficbook.net{href}" if href.startswith("/") else href
-        items.append({
-            "id": f.id,
-            "title": f.title,
-            "description": f.description,
-            "author_name": f.author.name if f.author else "",
-            "author_id": f.author.id if f.author else None,
-            "fandoms": f.fandoms,
-            "pairings": [{"characters": p.characters, "is_highlight": p.is_highlight} for p in f.pairings],
-            "tags": [{"name": t.name, "is_adult": t.is_adult} for t in f.tags],
-            "direction": f.status.direction.value,
-            "rating": f.status.rating.value,
-            "completion_status": f.status.status.value,
-            "likes": f.status.likes,
-            "trophies": f.status.trophies,
-            "is_hot": f.status.is_hot,
-            "cover_url": f.cover_url,
-            "ficbook_url": ficbook_url,
-            "words_count": 0,
-            "chapters_count": 0,
-            "comments_count": 0,
-        })
+    items = [_fanfic_to_dict(f) for f in fanfics if f.id]
 
     return {
         "items": items,
