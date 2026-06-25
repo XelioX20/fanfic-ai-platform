@@ -2,11 +2,55 @@ import logging
 import urllib.parse
 import httpx
 from fastapi import APIRouter, Query, HTTPException
+from pydantic import BaseModel
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 FICBOOK_BASE = "https://ficbook.net"
+
+DEFAULT_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "ru-RU,ru;q=0.9",
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Referer": "https://ficbook.net/",
+    "X-Requested-With": "XMLHttpRequest",
+}
+
+
+class CountsRequest(BaseModel):
+    query: str
+
+
+@router.post("/counts")
+async def get_search_counts(data: CountsRequest):
+    """Get search result counts per category from ficbook.net (mirrors /get_multi_count)."""
+    if not data.query.strip():
+        return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.post(
+                f"{FICBOOK_BASE}/get_multi_count",
+                data={"query": data.query},
+                headers=DEFAULT_HEADERS,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            if result.get("result") and result.get("data"):
+                d = result["data"]
+                return {
+                    "fanfics": d.get("fanfics", 0),
+                    "requests": d.get("requests", 0),
+                    "users": d.get("users", 0),
+                    "collections": d.get("collections", 0),
+                    "fandoms": d.get("fandoms", 0),
+                }
+    except Exception as e:
+        logger.warning(f"get_multi_count failed: {e}")
+
+    return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
 
 @router.get("/")
