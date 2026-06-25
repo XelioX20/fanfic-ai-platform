@@ -57,7 +57,7 @@ async def _fetch_section(user_id: str, section_path: str, page: int) -> dict:
 
     try:
         from ficbook_parser.proxy import proxy_url
-        url = proxy_url(target) or target
+        url = proxy_url(target, render_js=True, cookies=cookies) or target
     except ImportError:
         url = target
 

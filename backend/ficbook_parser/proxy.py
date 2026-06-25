@@ -2,9 +2,9 @@
 Centralized proxy URL builder.
 Configure via environment variables:
   PROXY_SERVICE=scrapingant|zenrows|scraperapi|none  (default: scraperapi)
-  SCRAPER_API_KEY=...     (ScraperAPI)
-  SCRAPINGANT_API_KEY=... (ScrapingAnt)
-  ZENROWS_API_KEY=...     (ZenRows)
+  SCRAPER_API_KEY=...       (ScraperAPI)
+  SCRAPINGANT_API_KEY=...   (ScrapingAnt)
+  ZENROWS_API_KEY=...       (ZenRows)
 """
 import os
 import urllib.parse
@@ -25,10 +25,16 @@ def _get_key() -> str:
     return key_map.get(service, "")
 
 
-def proxy_url(target: str, *, render_js: bool = False, session: int = 0) -> str | None:
+def proxy_url(
+    target: str,
+    *,
+    render_js: bool = False,
+    session: int = 0,
+    cookies: dict | None = None,
+) -> str | None:
     """
     Build a proxy URL for the target. Returns None if no proxy configured.
-    The caller should fall back to direct request when None is returned.
+    cookies: dict of cookies to forward to the target site (supported by ScrapingAnt).
     """
     service = _get_service()
     key = _get_key()
@@ -45,26 +51,30 @@ def proxy_url(target: str, *, render_js: bool = False, session: int = 0) -> str 
         return url
 
     if service == "scrapingant":
-        # ScrapingAnt: https://api.scrapingant.com/v2/general?url=...&x-api-key=...
+        # ScrapingAnt v2: browser=true executes JS, cookies param forwards session
         url = f"https://api.scrapingant.com/v2/general?url={encoded}&x-api-key={key}"
         if render_js:
-            url += "&browser=false"  # browser=true for JS render
+            url += "&browser=true&wait_for_selector=article"
+        else:
+            url += "&browser=false"
+        if cookies:
+            # ScrapingAnt cookies format: name1=value1;name2=value2 (URL-encoded)
+            cookie_str = ";".join(f"{k}={v}" for k, v in cookies.items())
+            url += f"&cookies={urllib.parse.quote(cookie_str, safe='')}"
         return url
 
     if service == "zenrows":
-        # ZenRows: https://api.zenrows.com/v1/?apikey=...&url=...
         url = f"https://api.zenrows.com/v1/?apikey={key}&url={encoded}"
         if render_js:
             url += "&js_render=true"
+        if cookies:
+            cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+            url += f"&custom_headers=true"
         return url
 
     if service == "scrapingbee":
-        # ScrapingBee: https://app.scrapingbee.com/api/v1/?api_key=...&url=...
         url = f"https://app.scrapingbee.com/api/v1/?api_key={key}&url={encoded}"
-        if render_js:
-            url += "&render_js=true"
-        else:
-            url += "&render_js=false"
+        url += f"&render_js={'true' if render_js else 'false'}"
         return url
 
     return None
