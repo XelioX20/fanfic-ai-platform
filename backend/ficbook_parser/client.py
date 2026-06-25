@@ -71,7 +71,7 @@ class FicbookClient:
         self.auth = FicbookAuth(self._http, scraper_api_key=scraper_api_key)
         self.fanfics_list = FanficsListApi(self._http, scraper_api_key=scraper_api_key)
         self.fanfic_page = FanficPageApi(self._http, scraper_api_key=scraper_api_key)
-        self.chapters = ChaptersApi(self._http)
+        self.chapters = ChaptersApi(self._http, scraper_api_key=scraper_api_key)
         self.collections = CollectionsApi(self._http)
         self.comments = CommentsApi(self._http)
         self.search = SearchApi(self._http, scraper_api_key=scraper_api_key)
