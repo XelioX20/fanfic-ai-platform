@@ -23,8 +23,8 @@ export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
 
   // Fix image URLs in content — make relative paths absolute
   const fixedContent = content
-    .replace(/src="///g, 'src="https://')
-    .replace(/src="//g, 'src="https://ficbook.net/')
+    .replace(/src="\/\//g, 'src="https://')
+    .replace(/src="\//g, 'src="https://ficbook.net/')
 
   return (
     <div className={cn('min-h-screen transition-colors duration-200', bgClass, textClass)}>
