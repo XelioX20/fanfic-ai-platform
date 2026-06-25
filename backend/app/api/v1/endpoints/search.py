@@ -24,25 +24,21 @@ class CountsRequest(BaseModel):
 
 @router.post("/counts")
 async def get_search_counts(data: CountsRequest):
-    """
-    Get search result counts by fetching ficbook.net /find page via ScrapingAnt proxy.
-    Returns number of fanfic results found.
-    """
+    """Get search result counts by fetching ficbook.net /find page directly."""
     if not data.query.strip():
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
     try:
-        from ficbook_parser.proxy import proxy_url
         from ficbook_parser.parsers.fanfic_list import FanficListParser
     except ImportError:
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
+    # Direct request — Render IP works fine for ficbook.net GET requests
     target = f"{FICBOOK_BASE}/find?q={urllib.parse.quote(data.query)}"
-    fetch_url = proxy_url(target) or target
 
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-            resp = await client.get(fetch_url, headers=DEFAULT_HEADERS)
+            resp = await client.get(target, headers=DEFAULT_HEADERS)
             resp.raise_for_status()
             raw = resp.content.decode("utf-8", errors="replace")
             try:
@@ -53,18 +49,11 @@ async def get_search_counts(data: CountsRequest):
 
         fanfics, has_next = FanficListParser().parse(html)
         count = len([f for f in fanfics if f.id])
-        # If there are more pages, show count with + indicator
-        fanfic_count = f"{count}+" if has_next else count
+        fanfic_count: int | str = f"{count}+" if has_next else count
 
-        return {
-            "fanfics": fanfic_count,
-            "requests": 0,
-            "users": 0,
-            "collections": 0,
-            "fandoms": 0,
-        }
+        return {"fanfics": fanfic_count, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
     except Exception as e:
-        logger.warning(f"search counts via proxy failed: {e}")
+        logger.warning(f"search counts failed: {e}")
 
     return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
@@ -75,19 +64,17 @@ async def search_fanfics(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    """Search fanfics on ficbook.net via /find?q=..."""
+    """Search fanfics on ficbook.net via /find?q=... — direct request."""
     try:
-        from ficbook_parser.proxy import proxy_url
         from ficbook_parser.parsers.fanfic_list import FanficListParser
     except ImportError as e:
         raise HTTPException(status_code=503, detail=f"Parser not available: {e}")
 
     target = f"{FICBOOK_BASE}/find?q={urllib.parse.quote(q)}&p={page}"
-    fetch_url = proxy_url(target) or target
 
     try:
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            resp = await client.get(fetch_url, headers=DEFAULT_HEADERS)
+            resp = await client.get(target, headers=DEFAULT_HEADERS)
             resp.raise_for_status()
             raw = resp.content.decode("utf-8", errors="replace")
             try:
