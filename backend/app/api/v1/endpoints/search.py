@@ -68,7 +68,35 @@ async def get_search_counts(data: CountsRequest):
     return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
 
-# Cache anonymous ficbook session
+@router.get("/debug-counts")
+async def debug_counts(query: str = "harry potter"):
+    """Debug: test get_multi_count with session cookie from DB."""
+    session_cookie = await _get_ficbook_session()
+    encoded_body = urllib.parse.urlencode({"query": query}).encode("utf-8")
+    headers = {
+        **DEFAULT_HEADERS,
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+    }
+    if session_cookie:
+        headers["Cookie"] = session_cookie
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            resp = await client.post(
+                f"{FICBOOK_BASE}/get_multi_count",
+                content=encoded_body,
+                headers=headers,
+            )
+            return {
+                "status": resp.status_code,
+                "session_cookie": session_cookie[:50] + "..." if session_cookie else None,
+                "response": resp.text[:200],
+            }
+    except Exception as e:
+        return {"error": str(e), "session_cookie": session_cookie[:50] if session_cookie else None}
+
+
 _ficbook_session_cache: dict = {"cookie": None, "expires": 0}
 
 
