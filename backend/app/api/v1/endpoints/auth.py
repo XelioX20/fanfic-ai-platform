@@ -1,13 +1,13 @@
 import uuid
 import os
 import logging
-from datetime import datetime
+import hashlib
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 from app.core.security import create_access_token, verify_token
-from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.db.repositories.users import UserRepository
 from app.db.models.user import UserModel
@@ -16,7 +16,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
-SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY", "")
 JWT_EXPIRE_DAYS = 7
 
 
@@ -36,13 +35,19 @@ class AuthResponse(BaseModel):
 @router.post("/ficbook/login", response_model=AuthResponse)
 async def ficbook_login(data: FicbookLoginRequest):
     """Login with ficbook.net credentials. Creates platform account if first login."""
+    scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
+
     try:
         from ficbook_parser.client import FicbookClient
     except ImportError:
         raise HTTPException(status_code=503, detail="ficbook_parser not available")
 
-    async with FicbookClient(scraper_api_key=SCRAPER_API_KEY or None) as client:
-        result = await client.auth.login(data.ficbook_login, data.ficbook_password)
+    try:
+        async with FicbookClient(scraper_api_key=scraper_api_key or None) as client:
+            result = await client.auth.login(data.ficbook_login, data.ficbook_password)
+    except Exception as e:
+        logger.error(f"FicbookClient error during login: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail=f"Auth error: {e}")
 
     if not result.success:
         raise HTTPException(
@@ -55,43 +60,45 @@ async def ficbook_login(data: FicbookLoginRequest):
     ficbook_name = ficbook_user.name if ficbook_user else data.ficbook_login
     ficbook_avatar = ficbook_user.avatar_url if ficbook_user else None
 
-    # Fallback: derive synthetic ID from login name if scraping failed
+    # Fallback synthetic ID if profile scraping failed
     if not ficbook_id:
-        import hashlib
         ficbook_id = "u_" + hashlib.md5(data.ficbook_login.lower().encode()).hexdigest()[:12]
         ficbook_name = data.ficbook_login
-        logger.warning(f"Could not scrape ficbook user ID, using synthetic: {ficbook_id}")
+        logger.warning(f"Profile scraping failed, using synthetic ID: {ficbook_id}")
 
-    async with AsyncSessionLocal() as db:
-        repo = UserRepository(db)
-        user = await repo.get_by_ficbook_id(ficbook_id)
+    try:
+        async with AsyncSessionLocal() as db:
+            repo = UserRepository(db)
+            user = await repo.get_by_ficbook_id(ficbook_id)
 
-        if not user:
-            synthetic_email = f"ficbook_{ficbook_id}@ficbook.local"
-            user = UserModel(
-                id=str(uuid.uuid4()),
-                email=synthetic_email,
-                hashed_password="ficbook_auth",
-                ficbook_user_id=ficbook_id,
-                ficbook_username=ficbook_name,
-                ficbook_avatar_url=ficbook_avatar,
-                created_at=datetime.utcnow(),
-            )
-            await repo.create(user)
-            logger.info(f"Created new platform user for ficbook user {ficbook_id}")
-        else:
-            user.ficbook_username = ficbook_name
-            user.ficbook_avatar_url = ficbook_avatar
-            user.last_login = datetime.utcnow()
-            await repo.update(user)
+            if not user:
+                synthetic_email = f"ficbook_{ficbook_id}@ficbook.local"
+                user = UserModel(
+                    id=str(uuid.uuid4()),
+                    email=synthetic_email,
+                    hashed_password="ficbook_auth",
+                    ficbook_user_id=ficbook_id,
+                    ficbook_username=ficbook_name,
+                    ficbook_avatar_url=ficbook_avatar,
+                    created_at=datetime.utcnow(),
+                )
+                await repo.create(user)
+                logger.info(f"Created platform user for ficbook {ficbook_id}")
+            else:
+                user.ficbook_username = ficbook_name
+                user.ficbook_avatar_url = ficbook_avatar
+                user.last_login = datetime.utcnow()
+                await repo.update(user)
 
-        # Save ficbook session cookies for profile endpoints
-        if hasattr(result, "cookies") and result.cookies:
-            await repo.update_cookies(user.id, result.cookies)
+            # Save ficbook session cookies for profile endpoints
+            if getattr(result, "cookies", None):
+                await repo.update_cookies(user.id, result.cookies)
 
-        user_id = user.id
+            user_id = user.id
+    except Exception as e:
+        logger.error(f"DB error during login: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
-    from datetime import timedelta
     token = create_access_token(
         subject=user_id,
         expires_delta=timedelta(days=JWT_EXPIRE_DAYS),
