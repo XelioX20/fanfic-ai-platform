@@ -115,6 +115,70 @@ async def ficbook_login(data: FicbookLoginRequest):
     )
 
 
+@router.get("/debug-login")
+async def debug_login(login: str = "fake_user", password: str = "wrongpass"):
+    """Debug: show what login flow returns from ficbook.net."""
+    scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
+    import random, httpx
+    from bs4 import BeautifulSoup
+
+    session_number = random.randint(1, 9999)
+    base_params = {"api_key": scraper_api_key, "session_number": session_number, "render": "false"}
+    SCRAPERAPI_BASE = "http://api.scraperapi.com/"
+    FICBOOK_BASE = "https://ficbook.net"
+
+    jar: dict = {}
+
+    def collect(resp):
+        for name, value in resp.headers.multi_items():
+            if name.lower() == "set-cookie":
+                part = value.split(";")[0].strip()
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    jar[k.strip()] = v.strip()
+
+    async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
+        r1 = await client.get(SCRAPERAPI_BASE, params={**base_params, "url": f"{FICBOOK_BASE}/login"})
+        collect(r1)
+        html1 = r1.content.decode("utf-8", errors="replace")
+        soup1 = BeautifulSoup(html1, "html.parser")
+        csrf_el = soup1.select_one("input[name=_csrf_token]")
+        csrf = csrf_el.get("value", "") if csrf_el else ""
+
+        post_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        if jar:
+            post_headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in jar.items())
+
+        r2 = await client.post(
+            SCRAPERAPI_BASE,
+            params={**base_params, "url": f"{FICBOOK_BASE}/login_check"},
+            data={"login": login, "password": password, "_csrf_token": csrf},
+            headers=post_headers,
+        )
+        collect(r2)
+        html2 = r2.content.decode("utf-8", errors="replace")
+
+        verify_headers = {}
+        if jar:
+            verify_headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in jar.items())
+
+        r3 = await client.get(SCRAPERAPI_BASE, params={**base_params, "url": f"{FICBOOK_BASE}/home"}, headers=verify_headers)
+        html3 = r3.content.decode("utf-8", errors="replace")
+
+    return {
+        "csrf_found": bool(csrf),
+        "cookies_after_post": list(jar.keys()),
+        "r1_status": r1.status_code,
+        "r2_status": r2.status_code,
+        "r2_html_snippet": html2[:500],
+        "r3_status": r3.status_code,
+        "r3_html_snippet": html3[1000:2000],
+        "r3_has_logout": "Выйти" in html3 or "logout" in html3.lower(),
+        "r3_has_login_form": "_csrf_token" in html3,
+        "r3_has_войти_in_nav": "Войти" in html3[:3000],
+    }
+
+
 @router.post("/logout")
 async def logout(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
