@@ -157,7 +157,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 value={login}
-                onChange={e => { setLogin(e.target.value); setError(null) }}
+                onChange={e => setLogin(e.target.value)}
                 placeholder="Имя пользователя или email"
                 autoComplete="username"
                 required
@@ -171,7 +171,7 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={e => { setPassword(e.target.value); setError(null) }}
+                  onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="current-password"
                   required
