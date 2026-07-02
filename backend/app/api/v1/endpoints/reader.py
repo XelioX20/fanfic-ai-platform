@@ -79,11 +79,11 @@ class ChapterResponse(BaseModel):
 
 @router.get("/fanfics/{fanfic_id}/full", response_model=FanficFullResponse)
 async def get_fanfic_full(fanfic_id: str):
-    """Fetch full fanfic metadata + chapter list live from ficbook.net."""
+    """Fetch full fanfic metadata + chapter list via Cloudflare Worker."""
     try:
-        from ficbook_parser.client import FicbookClient
-        async with FicbookClient() as client:
-            page = await client.fanfic_page.get(fanfic_id)
+        html = await _fetch_html(f"https://ficbook.net/readfic/{fanfic_id}")
+        from ficbook_parser.parsers.fanfic_page import FanficPageParser
+        page = FanficPageParser().parse(html, fanfic_id)
     except Exception as e:
         logger.error(f"Failed to fetch fanfic {fanfic_id}: {e}")
         raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
@@ -132,11 +132,12 @@ async def get_fanfic_full(fanfic_id: str):
 
 @router.get("/fanfics/{fanfic_id}/chapter/{chapter_id}", response_model=ChapterResponse)
 async def get_chapter(fanfic_id: str, chapter_id: str, all_chapters: str = ""):
-    """Fetch a specific chapter content live from ficbook.net."""
+    """Fetch chapter content via Cloudflare Worker."""
     try:
-        from ficbook_parser.client import FicbookClient
-        async with FicbookClient() as client:
-            chapter = await client.chapters.get_chapter(fanfic_id, chapter_id)
+        clean_id = chapter_id.split("#")[0].strip("/")
+        html = await _fetch_html(f"https://ficbook.net/readfic/{fanfic_id}/{clean_id}")
+        from ficbook_parser.parsers.chapter import ChapterParser
+        chapter = ChapterParser().parse(html, clean_id)
     except Exception as e:
         logger.error(f"Failed to fetch chapter {chapter_id}: {e}")
         raise HTTPException(status_code=502, detail=f"Failed to fetch chapter: {e}")
