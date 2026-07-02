@@ -89,3 +89,23 @@ export const discoverApi = {
     page?: number
   }) => api.get('/discover/discover', { params }),
 }
+
+// Ficbook proxy — routes through Vercel (not blocked like Render datacenter IP)
+export const ficbookProxyApi = {
+  // Fetch fanfic list — Next.js route proxies to ficbook.net
+  list: (path: string, page = 1, cookie?: string) => {
+    const params = new URLSearchParams({ path, p: String(page) })
+    if (cookie) params.set('cookie', cookie)
+    return api.get(`/api/ficbook/list?${params}`, { baseURL: '' })
+  },
+  // Search fanfics through Next.js proxy
+  search: (q: string, page = 1) =>
+    api.get(`/api/ficbook/search?q=${encodeURIComponent(q)}&p=${page}`, { baseURL: '' }),
+  // Login via Next.js proxy
+  login: (login: string, password: string) =>
+    fetch('/api/ficbook/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login, password }),
+    }).then(r => r.json()),
+}
