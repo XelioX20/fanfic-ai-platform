@@ -83,7 +83,10 @@ function parseCard(article: string) {
   const coverMatch = article.match(/fanfic-hat-cover-picture[\s\S]*?src="([^"]+)"/)
 
   const href = hrefMatch ? hrefMatch[1] : ''
-  const id = idMatch ? idMatch[1] : (href.match(/\/(\d+)$/) || [])[1] || ''
+  // Extract UUID from href (ficbook now uses UUIDs like 019efa9f-ccf8-...)
+  // Numeric IDs (16501704) are old format that no longer work on ficbook.net
+  const uuidMatch = href.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)
+  const id = uuidMatch ? uuidMatch[1] : (idMatch ? idMatch[1] : '')
 
   return {
     id,

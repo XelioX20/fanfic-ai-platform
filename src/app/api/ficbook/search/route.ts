@@ -49,7 +49,8 @@ function parseCard(article: string) {
   const titleMatch = article.match(/class="visit-link"[^>]*>([^<]+)</)
   const authorMatch = article.match(/class="word-break urlize"[^>]*href="([^"]+)"[^>]*>([^<]+)</)
   const href = hrefMatch ? hrefMatch[1] : ''
-  const id = idMatch ? idMatch[1] : (href.match(/\/(\d+)$/) || [])[1] || ''
+  const uuidMatch = href.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)
+  const id = uuidMatch ? uuidMatch[1] : (idMatch ? idMatch[1] : '')
   return {
     id, title: titleMatch ? titleMatch[1].trim() : '', href,
     author_name: authorMatch ? authorMatch[2].trim() : '',
