@@ -6,24 +6,25 @@ from ..constants import FICBOOK_BASE_URL, QUERY_PAGE
 from ..models.fanfic import FanficCardModel
 from ..models.sections import Section, SectionWithQuery
 from ..parsers.fanfic_list import FanficListParser
-from ..proxy import proxy_url
 
 
 class FanficsListApi:
+    """
+    Fetch fanfic lists via direct HTTP — no proxy needed with AppleWebKit/605.1 UA.
+    """
+
     def __init__(self, client: httpx.AsyncClient, scraper_api_key: Optional[str] = None):
         self._client = client
         self._parser = FanficListParser()
-        # scraper_api_key kept for backward compat but proxy.py uses env vars now
 
     def _build_url(self, path: str, page: int) -> str:
         target = f"{FICBOOK_BASE_URL}/{path}"
         sep = "&" if "?" in target else "?"
-        target += f"{sep}{QUERY_PAGE}={page}"
-        return proxy_url(target) or target
+        return f"{target}{sep}{QUERY_PAGE}={page}"
 
     async def get(
         self,
-        section: Section | SectionWithQuery | str,
+        section,
         page: int = 1,
     ) -> tuple[list[FanficCardModel], bool]:
         path = str(section) if not isinstance(section, str) else section
@@ -33,7 +34,7 @@ class FanficsListApi:
             try:
                 resp = await self._client.get(url)
                 if resp.status_code in (403, 429):
-                    await asyncio.sleep(3 * (attempt + 1))
+                    await asyncio.sleep(2 * (attempt + 1))
                     continue
                 resp.raise_for_status()
                 raw = resp.content.decode("utf-8", errors="replace")
@@ -46,7 +47,7 @@ class FanficsListApi:
             except httpx.HTTPStatusError:
                 if attempt == 2:
                     raise
-                await asyncio.sleep(3 * (attempt + 1))
+                await asyncio.sleep(2 * (attempt + 1))
 
         return [], False
 

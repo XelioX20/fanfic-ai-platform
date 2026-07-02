@@ -1,0 +1,359 @@
+{
+  "communities": {
+    "0": [
+      "api_author_profile",
+      "api_author_profile_authorprofileapi",
+      "api_author_profile_authorprofileapi_get",
+      "api_chapters",
+      "api_chapters_chaptersapi",
+      "api_chapters_chaptersapi_build_url",
+      "api_chapters_chaptersapi_get_chapter",
+      "api_collections",
+      "api_collections_collectionsapi",
+      "api_comments",
+      "api_comments_commentsapi",
+      "api_fanfic_page",
+      "api_fanfic_page_fanficpageapi",
+      "api_fanfic_page_fanficpageapi_build_url",
+      "api_fanfic_page_fanficpageapi_get",
+      "api_fanfics_list",
+      "api_fanfics_list_fanficslistapi",
+      "api_fanfics_list_fanficslistapi_build_url",
+      "api_fanfics_list_fanficslistapi_get",
+      "api_fanfics_list_fanficslistapi_get_by_href",
+      "api_init",
+      "api_search",
+      "api_search_searchapi",
+      "api_search_searchapi_build_url",
+      "api_search_searchapi_search",
+      "api_users",
+      "api_users_usersapi",
+      "api_users_usersapi_get",
+      "auth_session",
+      "client",
+      "client_ficbookclient_init",
+      "constants",
+      "models_sections",
+      "models_sections_categoriessections",
+      "models_sections_collectionstypes",
+      "models_sections_popularsections",
+      "models_sections_section",
+      "models_sections_section_str",
+      "models_sections_section_with_query",
+      "models_sections_sectionwithquery",
+      "models_sections_sectionwithquery_str",
+      "models_sections_sectionwithquery_to_url_path",
+      "models_sections_usersections",
+      "proxy",
+      "proxy_get_key",
+      "proxy_get_service",
+      "proxy_is_proxy_available",
+      "proxy_proxy_url",
+      "proxy_rationale_1",
+      "proxy_rationale_35"
+    ],
+    "1": [
+      "api_author_profile_authorprofileapi_init",
+      "api_author_profile_py_asyncclient",
+      "api_chapters_chaptersapi_init",
+      "api_chapters_py_asyncclient",
+      "api_comments_commentsapi_get_fanfic_comments",
+      "api_comments_commentsapi_init",
+      "api_comments_py_asyncclient",
+      "api_fanfics_list_fanficslistapi_init",
+      "api_fanfics_list_py_asyncclient",
+      "api_search_py_asyncclient",
+      "api_search_searchapi_init",
+      "api_users_py_asyncclient",
+      "api_users_usersapi_init",
+      "models_comment_commentmodel",
+      "parsers_author",
+      "parsers_author_authorprofileparser",
+      "parsers_author_authorprofileparser_parse",
+      "parsers_author_rationale_10",
+      "parsers_chapter",
+      "parsers_chapter_chapterparser",
+      "parsers_chapter_chapterparser_parse",
+      "parsers_chapter_rationale_8",
+      "parsers_collections",
+      "parsers_comments",
+      "parsers_comments_commentsparser",
+      "parsers_comments_commentsparser_parse",
+      "parsers_comments_commentsparser_parse_comment",
+      "parsers_comments_py_tag",
+      "parsers_comments_rationale_9",
+      "parsers_fanfic_list_fanficlistparser",
+      "parsers_fanfic_list_rationale_14",
+      "parsers_init",
+      "parsers_user",
+      "parsers_user_userparser",
+      "parsers_user_userparser_parse",
+      "parsers_utils",
+      "parsers_utils_absolute_url",
+      "parsers_utils_extract_id_from_href",
+      "parsers_utils_parse_int",
+      "parsers_utils_rationale_11",
+      "parsers_utils_rationale_27",
+      "parsers_utils_safe_attr"
+    ],
+    "2": [
+      "enum",
+      "models_author",
+      "models_author_authorprofilemodel",
+      "models_author_popularauthormodel",
+      "models_collection",
+      "models_collection_availablecollectionsmodel",
+      "models_comment",
+      "models_comment_commentmetadata",
+      "models_fanfic",
+      "models_fanfic_chaptermodel",
+      "models_fanfic_fanficauthormodel",
+      "models_fanfic_fanficcardmodel",
+      "models_fanfic_fanficchapterseparate",
+      "models_fanfic_fanficchapterseparate_size",
+      "models_fanfic_fanficchaptersingle",
+      "models_fanfic_fanficchaptersingle_size",
+      "models_fanfic_fanficcompletionstatus",
+      "models_fanfic_fanficdirection",
+      "models_fanfic_fanficpagemodel",
+      "models_fanfic_fanficrating",
+      "models_fanfic_fanficstatus",
+      "models_fanfic_fanfictag",
+      "models_fanfic_pairingmodel",
+      "models_fanfic_pairingmodel_str",
+      "models_fanfic_readbadgemodel",
+      "models_fanfic_rewardmodel",
+      "models_init",
+      "models_search",
+      "models_search_charactermodel",
+      "models_search_fandommodel",
+      "models_search_searchmodels",
+      "models_search_tagsearchresult",
+      "models_user",
+      "models_user_usermodel",
+      "parsers_fanfic_list",
+      "parsers_fanfic_page",
+      "str"
+    ],
+    "3": [
+      "api_fanfic_page_fanficpageapi_init",
+      "api_fanfic_page_py_asyncclient",
+      "models_fanfic_fanficcompletionstatus_get_for_name",
+      "models_fanfic_fanficdirection_get_for_name",
+      "models_fanfic_fanficrating_get_for_name",
+      "parsers_fanfic_page_fanficpageparser",
+      "parsers_fanfic_page_fanficpageparser_parse",
+      "parsers_fanfic_page_fanficpageparser_parse_authors",
+      "parsers_fanfic_page_fanficpageparser_parse_block",
+      "parsers_fanfic_page_fanficpageparser_parse_chapters",
+      "parsers_fanfic_page_fanficpageparser_parse_cover",
+      "parsers_fanfic_page_fanficpageparser_parse_description",
+      "parsers_fanfic_page_fanficpageparser_parse_fandoms",
+      "parsers_fanfic_page_fanficpageparser_parse_pairings",
+      "parsers_fanfic_page_fanficpageparser_parse_rewards",
+      "parsers_fanfic_page_fanficpageparser_parse_status",
+      "parsers_fanfic_page_fanficpageparser_parse_tags",
+      "parsers_fanfic_page_fanficpageparser_parse_title",
+      "parsers_fanfic_page_py_beautifulsoup",
+      "parsers_fanfic_page_rationale_15",
+      "parsers_fanfic_page_rationale_166"
+    ],
+    "4": [
+      "parsers_fanfic_list_fanficcardparser",
+      "parsers_fanfic_list_fanficcardparser_parse",
+      "parsers_fanfic_list_fanficcardparser_parse_author",
+      "parsers_fanfic_list_fanficcardparser_parse_chapters_count",
+      "parsers_fanfic_list_fanficcardparser_parse_cover",
+      "parsers_fanfic_list_fanficcardparser_parse_date",
+      "parsers_fanfic_list_fanficcardparser_parse_description",
+      "parsers_fanfic_list_fanficcardparser_parse_fandoms",
+      "parsers_fanfic_list_fanficcardparser_parse_href",
+      "parsers_fanfic_list_fanficcardparser_parse_pairings",
+      "parsers_fanfic_list_fanficcardparser_parse_read_badge",
+      "parsers_fanfic_list_fanficcardparser_parse_status",
+      "parsers_fanfic_list_fanficcardparser_parse_tags",
+      "parsers_fanfic_list_fanficcardparser_parse_title",
+      "parsers_fanfic_list_fanficcardparser_parse_words_count",
+      "parsers_fanfic_list_fanficlistparser_parse",
+      "parsers_fanfic_list_py_tag",
+      "parsers_fanfic_list_rationale_25",
+      "parsers_utils_py_tag",
+      "parsers_utils_safe_text"
+    ],
+    "5": [
+      "auth_init",
+      "auth_session_authresult",
+      "auth_session_ficbookauth",
+      "auth_session_ficbookauth_check_authorized",
+      "auth_session_ficbookauth_collect_cookies",
+      "auth_session_ficbookauth_cookie_header",
+      "auth_session_ficbookauth_decode",
+      "auth_session_ficbookauth_extract_csrf",
+      "auth_session_ficbookauth_init",
+      "auth_session_ficbookauth_login",
+      "auth_session_ficbookauth_login_direct",
+      "auth_session_ficbookauth_login_via_proxy",
+      "auth_session_ficbookauth_parse_user",
+      "auth_session_py_asyncclient",
+      "auth_session_py_beautifulsoup",
+      "auth_session_rationale_64",
+      "client_ficbookclient_login",
+      "response"
+    ],
+    "6": [
+      "api_collections_collectionsapi_get_collections",
+      "api_collections_collectionsapi_get_user_collections",
+      "api_collections_collectionsapi_init",
+      "api_collections_py_asyncclient",
+      "models_collection_collectionmodel",
+      "parsers_collections_collectionsparser",
+      "parsers_collections_collectionsparser_parse_card",
+      "parsers_collections_collectionsparser_parse_list",
+      "parsers_collections_py_tag",
+      "parsers_collections_rationale_9"
+    ],
+    "7": [
+      "api_notifications",
+      "api_notifications_notificationsapi",
+      "api_notifications_notificationsapi_get",
+      "api_notifications_notificationsapi_init",
+      "api_notifications_py_asyncclient",
+      "models_notification",
+      "models_notification_notificationmodel",
+      "models_notification_notificationtype"
+    ],
+    "8": [
+      "client_ficbookclient",
+      "client_ficbookclient_aenter",
+      "client_ficbookclient_aexit",
+      "client_ficbookclient_close",
+      "client_ficbookclient_is_authorized",
+      "client_rationale_41",
+      "init"
+    ]
+  },
+  "cohesion": {
+    "0": 0.09877551020408164,
+    "1": 0.09291521486643438,
+    "2": 0.17867867867867868,
+    "3": 0.2,
+    "4": 0.2789473684210526,
+    "5": 0.2222222222222222,
+    "6": 0.24444444444444444,
+    "7": 0.35714285714285715,
+    "8": 0.3333333333333333
+  },
+  "gods": [
+    {
+      "id": "models_user_usermodel",
+      "label": "UserModel",
+      "degree": 42
+    },
+    {
+      "id": "parsers_utils_safe_text",
+      "label": "safe_text()",
+      "degree": 31
+    },
+    {
+      "id": "parsers_utils_safe_attr",
+      "label": "safe_attr()",
+      "degree": 20
+    },
+    {
+      "id": "parsers_fanfic_list_fanficcardparser",
+      "label": "FanficCardParser",
+      "degree": 18
+    },
+    {
+      "id": "parsers_fanfic_page_fanficpageparser",
+      "label": "FanficPageParser",
+      "degree": 17
+    },
+    {
+      "id": "parsers_utils_extract_id_from_href",
+      "label": "extract_id_from_href()",
+      "degree": 17
+    },
+    {
+      "id": "parsers_utils_parse_int",
+      "label": "parse_int()",
+      "degree": 16
+    },
+    {
+      "id": "models_fanfic_fanficcardmodel",
+      "label": "FanficCardModel",
+      "degree": 15
+    },
+    {
+      "id": "auth_session_ficbookauth",
+      "label": "FicbookAuth",
+      "degree": 14
+    },
+    {
+      "id": "proxy_proxy_url",
+      "label": "proxy_url()",
+      "degree": 14
+    }
+  ],
+  "surprises": [
+    {
+      "source": "CollectionModel",
+      "target": "FanficCardModel",
+      "source_files": [
+        "models/collection.py",
+        "models/fanfic.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "CollectionModel",
+      "target": "UserModel",
+      "source_files": [
+        "models/collection.py",
+        "models/user.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "CommentModel",
+      "target": "UserModel",
+      "source_files": [
+        "models/comment.py",
+        "models/user.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "AuthorProfileModel",
+      "target": "FanficCardModel",
+      "source_files": [
+        "models/author.py",
+        "models/fanfic.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source"
+    },
+    {
+      "source": "AuthorProfileModel",
+      "target": "UserModel",
+      "source_files": [
+        "models/author.py",
+        "models/user.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}

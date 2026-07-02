@@ -8,9 +8,6 @@ class Section:
     name: str
     path: str
 
-    def with_query(self, query: dict) -> "SectionWithQuery":
-        return SectionWithQuery(name=self.name, path=self.path, query=query)
-
     def __str__(self) -> str:
         return self.path
 
@@ -32,42 +29,42 @@ class SectionWithQuery:
 
 
 class PopularSections:
-    ALL = Section("Все", "fanfiction")
-    GEN = Section("Джен", "fanfiction/gen")
-    HET = Section("Гет", "fanfiction/het")
-    SLASH = Section("Слэш", "fanfiction/slash")
-    FEMSLASH = Section("Фемслэш", "fanfiction/femslash")
-    OTHER = Section("Другое", "fanfiction/other")
-    MIXED = Section("Смешанное", "fanfiction/mixed")
-    ORIGINALS = Section("Оригинальные", "originals")
-
-    ALL_SECTIONS = [ALL, GEN, HET, SLASH, FEMSLASH, OTHER, MIXED, ORIGINALS]
+    """Correct obfuscated paths from B1ays/ficbook-reader source."""
+    ALL = Section("Все", "popular-fanfics-376846")
+    GEN = Section("Джен", "popular-fanfics-376846/gen")
+    HET = Section("Гет", "popular-fanfics-376846/het")
+    SLASH = Section("Слэш", "popular-fanfics-376846/slash-fics-ngf3487tnsfb")
+    FEMSLASH = Section("Фемслэш", "popular-fanfics-376846/femslash-fanfics-kojhi9jhhmkhgi9t98")
+    ARTICLE = Section("Статьи", "popular-fanfics-376846/article")
+    MIXED = Section("Смешанное", "popular-fanfics-376846/mixed")
+    OTHER = Section("Другое", "popular-fanfics-376846/other")
+    ALL_SECTIONS = [ALL, GEN, HET, SLASH, FEMSLASH, ARTICLE, MIXED, OTHER]
 
 
 class CategoriesSections:
-    ANIME = Section("Аниме", "fanfiction/anime")
+    ANIME = Section("Аниме и манга", "fanfiction/anime_and_manga")
     BOOKS = Section("Книги", "fanfiction/books")
     CARTOONS = Section("Мультфильмы", "fanfiction/cartoons")
     COMICS = Section("Комиксы", "fanfiction/comics")
     GAMES = Section("Игры", "fanfiction/games")
-    MOVIES = Section("Фильмы", "fanfiction/movies")
-    MUSIC = Section("Музыка", "fanfiction/music")
-    SERIES = Section("Сериалы", "fanfiction/series")
-    THEATER = Section("Театр", "fanfiction/theatre")
-    SPORTS = Section("Спорт", "fanfiction/sport")
+    MOVIES = Section("Фильмы и сериалы", "fanfiction/movies_and_tv_series")
+    MUSICALS = Section("Мюзиклы", "fanfiction/musicals")
+    RPF = Section("RPF", "fanfiction/rpf")
+    ORIGINALS = Section("Оригинальные", "fanfiction/originals")
     OTHER = Section("Другое", "fanfiction/other")
 
 
 class UserSections:
-    FAVOURITES = SectionWithQuery("Избранное", "home/favourites")
-    LIKED = SectionWithQuery("Понравившееся", "home/liked-fanfics")
-    READ = SectionWithQuery("Прочитанное", "home/viewed")
-    FOLLOW = SectionWithQuery("Подписки", "home/follow")
-    VISITED = SectionWithQuery("Посещённое", "home/visited")
+    """Correct paths from B1ays — these differ from what we had before."""
+    FAVOURITES = SectionWithQuery("Подписки на авторов", "home/favourites")
+    LIKED = SectionWithQuery("Понравившееся", "home/liked_fanfics")      # NOT liked-fanfics
+    READ = SectionWithQuery("Прочитанное", "home/readedList")             # NOT viewed
+    FOLLOW = SectionWithQuery("Подписки на фанфики", "home/followList")  # NOT follow
+    VISITED = SectionWithQuery("Просмотренные", "home/visitedList")
 
     ALL_SECTIONS = [FAVOURITES, LIKED, READ, FOLLOW, VISITED]
 
 
 class CollectionsTypes:
-    OWN = SectionWithQuery("Мои коллекции", "collections", {"type": "own"})
-    TRACKED = SectionWithQuery("Отслеживаемые", "collections", {"type": "liked"})
+    OWN = SectionWithQuery("Мои коллекции", "home/collections")
+    TRACKED = SectionWithQuery("Отслеживаемые", "home/collections", {"type": "other"})

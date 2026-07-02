@@ -1,4 +1,3 @@
-import os
 import logging
 import httpx
 from fastapi import APIRouter, HTTPException, Depends, Query
@@ -13,12 +12,20 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 FICBOOK_BASE = "https://ficbook.net"
+HEADERS = {
+    "User-Agent": "AppleWebKit/605.1",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ru-RU,ru;q=0.9",
+    "Referer": "https://ficbook.net/",
+}
 
+# Correct paths from B1ays/ficbook-reader source
 SECTIONS = {
     "favourites":    "home/favourites",
-    "history":       "home/bookmarks",
-    "liked":         "home/bookmarks",
-    "subscriptions": "home/subscriptions",
+    "history":       "home/readedList",    # Was home/bookmarks — wrong
+    "liked":         "home/liked_fanfics", # Was home/bookmarks — wrong
+    "subscriptions": "home/followList",    # Was home/subscriptions — wrong
+    "visited":       "home/visitedList",
 }
 
 
@@ -45,25 +52,11 @@ async def _fetch_section(user_id: str, section_path: str, page: int) -> dict:
         raise HTTPException(status_code=403, detail="No ficbook session. Please log in again.")
 
     target = f"{FICBOOK_BASE}/{section_path}?p={page}"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ru-RU,ru;q=0.9",
-        "Referer": f"{FICBOOK_BASE}/",
-    }
-    if cookies:
-        headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in cookies.items())
+    headers = {**HEADERS, "Cookie": "; ".join(f"{k}={v}" for k, v in cookies.items())}
 
     try:
-        from ficbook_parser.proxy import proxy_url
-        url = proxy_url(target, render_js=True, cookies=cookies) or target
-    except ImportError:
-        url = target
-
-    try:
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            resp = await client.get(url, headers=headers)
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(target, headers=headers)
             resp.raise_for_status()
             raw = resp.content.decode("utf-8", errors="replace")
             try:
@@ -74,15 +67,16 @@ async def _fetch_section(user_id: str, section_path: str, page: int) -> dict:
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
 
+    # Check redirect to login (session expired)
+    if "_csrf_token" in html and "login" in html.lower()[:2000] and "readedList" not in html:
+        raise HTTPException(status_code=403, detail="Ficbook session expired. Please log in again.")
+
     try:
         from ficbook_parser.parsers.fanfic_list import FanficListParser
         fanfics, has_next = FanficListParser().parse(html)
     except Exception as e:
         logger.error(f"Parser error for {section_path}: {e}")
         return {"items": [], "page": page, "has_next": False}
-
-    if "_csrf_token" in html and not fanfics:
-        raise HTTPException(status_code=403, detail="Ficbook session expired. Please log in again.")
 
     items = [_card_to_dict(f) for f in fanfics if f.id]
     return {"items": items, "page": page, "has_next": has_next}
@@ -102,7 +96,8 @@ def _card_to_dict(card) -> dict:
         "completion_status": card.status.status.value,
         "likes": card.status.likes, "trophies": card.status.trophies,
         "is_hot": card.status.is_hot, "cover_url": card.cover_url,
-        "ficbook_url": ficbook_url, "words_count": 0, "chapters_count": 0, "comments_count": 0,
+        "ficbook_url": ficbook_url,
+        "words_count": 0, "chapters_count": 0, "comments_count": 0,
     }
 
 

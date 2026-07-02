@@ -13,54 +13,31 @@ from .api.notifications import NotificationsApi
 from .api.users import UsersApi
 from .models.sections import Section, SectionWithQuery, PopularSections
 
-
+# Exact User-Agent used by B1ays/ficbook-reader — avoids Cloudflare 403
 DEFAULT_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/125.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
+    "User-Agent": "AppleWebKit/605.1",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
     "Referer": "https://ficbook.net/",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "same-origin",
-    "Sec-Ch-Ua": '"Chromium";v="125", "Google Chrome";v="125"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-    "Upgrade-Insecure-Requests": "1",
-    "Connection": "keep-alive",
 }
-
-SCRAPERAPI_BASE = "http://api.scraperapi.com"
 
 
 class FicbookClient:
     """
-    Main async client for ficbook.net.
-    Architecture mirrors B1ays/ficbook-reader ficbookApi module.
-
-    Pass scraper_api_key to route all requests through ScraperAPI,
-    which handles Cloudflare protection automatically.
-
-    Usage:
-        async with FicbookClient(scraper_api_key="KEY") as client:
-            fanfics, has_next = await client.fanfics_list.get(PopularSections.ALL)
+    Async client for ficbook.net — direct HTTP, no proxy required.
+    Uses AppleWebKit/605.1 User-Agent as confirmed by B1ays/ficbook-reader reverse engineering.
+    Auth is cookie-based: PHPSESSID + rme cookies only.
     """
 
     def __init__(
         self,
         cookies: Optional[dict] = None,
-        timeout: float = 60.0,
+        timeout: float = 30.0,
         rate_limit_delay: float = 1.0,
+        # Kept for backward compat but ignored — no proxy needed
         scraper_api_key: Optional[str] = None,
     ):
-        self._scraper_api_key = scraper_api_key
         self._rate_limit_delay = rate_limit_delay
-
-        # Always use a plain client — ScraperAPI URL wrapping is done per-request in each API module
         self._http = httpx.AsyncClient(
             headers=DEFAULT_HEADERS,
             cookies=cookies or {},
@@ -68,13 +45,13 @@ class FicbookClient:
             follow_redirects=True,
         )
 
-        self.auth = FicbookAuth(self._http, scraper_api_key=scraper_api_key)
-        self.fanfics_list = FanficsListApi(self._http, scraper_api_key=scraper_api_key)
-        self.fanfic_page = FanficPageApi(self._http, scraper_api_key=scraper_api_key)
-        self.chapters = ChaptersApi(self._http, scraper_api_key=scraper_api_key)
+        self.auth = FicbookAuth(self._http)
+        self.fanfics_list = FanficsListApi(self._http)
+        self.fanfic_page = FanficPageApi(self._http)
+        self.chapters = ChaptersApi(self._http)
         self.collections = CollectionsApi(self._http)
         self.comments = CommentsApi(self._http)
-        self.search = SearchApi(self._http, scraper_api_key=scraper_api_key)
+        self.search = SearchApi(self._http)
         self.author_profile = AuthorProfileApi(self._http)
         self.notifications = NotificationsApi(self._http)
         self.users = UsersApi(self._http)

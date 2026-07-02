@@ -7,20 +7,21 @@ logger = logging.getLogger(__name__)
 
 try:
     from ficbook_parser.client import FicbookClient
-    from ficbook_parser.models.fanfic import FanficCardModel, FanficPageModel
-    from ficbook_parser.models.sections import PopularSections
+    from ficbook_parser.models.sections import PopularSections, CategoriesSections
 except ImportError:
     logger.warning("ficbook_parser not installed, scraping disabled")
     FicbookClient = None
-    FanficCardModel = None
-    FanficPageModel = None
     PopularSections = None
+    CategoriesSections = None
 
+# Sections to scrape on startup — using correct obfuscated paths
 STARTUP_SECTIONS = [
-    "fanfiction",
-    "fanfiction/het",
-    "fanfiction/slash",
-    "fanfiction/gen",
+    "popular-fanfics-376846",           # All popular
+    "popular-fanfics-376846/het",
+    "popular-fanfics-376846/slash-fics-ngf3487tnsfb",
+    "popular-fanfics-376846/gen",
+    "fanfiction/anime_and_manga",
+    "fanfiction/books",
 ]
 
 
@@ -28,13 +29,9 @@ class ScraperService:
     def __init__(self):
         self._email = os.environ.get("FICBOOK_EMAIL", "")
         self._password = os.environ.get("FICBOOK_PASSWORD", "")
-        self._scraper_api_key = os.environ.get("SCRAPER_API_KEY", "")
 
     def _make_client(self) -> "FicbookClient":
-        return FicbookClient(
-            scraper_api_key=self._scraper_api_key or None,
-            timeout=60.0,
-        )
+        return FicbookClient(timeout=30.0)
 
     async def scrape_popular(self, pages_per_section: int = 2) -> list[dict]:
         if not FicbookClient:
@@ -55,8 +52,11 @@ class ScraperService:
                     try:
                         fanfics, has_next = await client.fanfics_list.get(section_path, page=page_num)
                         logger.info(f"Scraped {len(fanfics)} fanfics from {section_path} page {page_num}")
-                        results.extend(self._card_to_dict(f) for f in fanfics)
-                        await asyncio.sleep(1.5)
+                        for f in fanfics:
+                            d = self._card_to_dict(f)
+                            if d:
+                                results.append(d)
+                        await asyncio.sleep(1.0)
                         if not has_next:
                             break
                     except Exception as e:
@@ -70,8 +70,6 @@ class ScraperService:
         if not FicbookClient:
             return None
         async with self._make_client() as client:
-            if self._email and self._password:
-                await client.auth.login(self._email, self._password)
             try:
                 page = await client.fanfic_page.get(fanfic_id)
                 return self._page_to_dict(page, fanfic_id)
@@ -84,13 +82,14 @@ class ScraperService:
             return []
         results = []
         async with self._make_client() as client:
-            if self._email and self._password:
-                await client.auth.login(self._email, self._password)
             for page_num in range(1, pages + 1):
                 try:
                     fanfics, has_next = await client.fanfics_list.get(section_path, page=page_num)
-                    results.extend(self._card_to_dict(f) for f in fanfics)
-                    await asyncio.sleep(1.5)
+                    for f in fanfics:
+                        d = self._card_to_dict(f)
+                        if d:
+                            results.append(d)
+                    await asyncio.sleep(1.0)
                     if not has_next:
                         break
                 except Exception as e:
@@ -120,20 +119,15 @@ class ScraperService:
             "ficbook_url": f"https://ficbook.net/readfic/{fanfic_id}",
         }
 
-    def _card_to_dict(self, card) -> dict:
-        # Build ficbook_url from href, stripping query params
+    def _card_to_dict(self, card) -> Optional[dict]:
         href = card.href.split("?")[0] if card.href else ""
         ficbook_url = f"https://ficbook.net{href}" if href.startswith("/") else href
-
-        # Use card.id if available, else extract from href
         fanfic_id = card.id
         if not fanfic_id and href:
             from ficbook_parser.parsers.utils import extract_id_from_href
             fanfic_id = extract_id_from_href(href)
-
         if not fanfic_id:
-            return {}  # skip cards without ID
-
+            return None
         return {
             "id": fanfic_id,
             "title": card.title,

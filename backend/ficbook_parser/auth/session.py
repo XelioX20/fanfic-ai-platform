@@ -1,27 +1,12 @@
 from __future__ import annotations
 import httpx
 import json as _json
-import random
 from dataclasses import dataclass, field
 from typing import Optional
 from bs4 import BeautifulSoup
-from ..constants import FICBOOK_BASE_URL, ROUTE_SETTINGS
+from ..constants import FICBOOK_BASE_URL, LOGIN_CHECK_URL, ROUTE_SETTINGS
 from ..models.user import UserModel
-from ..parsers.utils import safe_attr, extract_id_from_href
-from ..proxy import proxy_url, is_proxy_available
-
-DEFAULT_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/125.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
-    "Referer": "https://ficbook.net/",
-}
-
-LOGIN_ENDPOINT = f"{FICBOOK_BASE_URL}/login_check"
+from ..parsers.utils import safe_text, safe_attr, extract_id_from_href
 
 
 @dataclass
@@ -33,132 +18,113 @@ class AuthResult:
 
 
 class FicbookAuth:
-    def __init__(self, client: httpx.AsyncClient, scraper_api_key: Optional[str] = None):
+    """
+    Cookie-based auth for ficbook.net.
+    POST /login_check with login + password — no CSRF token required.
+    Stores PHPSESSID and rme cookies.
+    """
+
+    def __init__(self, client: httpx.AsyncClient):
         self._client = client
 
     async def login(self, email: str, password: str) -> AuthResult:
-        if is_proxy_available():
-            return await self._login_via_proxy(email, password)
-        return await self._login_direct(email, password)
-
-    async def _decode(self, resp: httpx.Response) -> str:
-        html = resp.content.decode("utf-8", errors="replace")
-        try:
-            import ftfy
-            return ftfy.fix_text(html)
-        except ImportError:
-            return html
-
-    def _collect_cookies(self, resp: httpx.Response, jar: dict) -> None:
-        for name, value in resp.headers.multi_items():
-            if name.lower() == "set-cookie":
-                part = value.split(";")[0].strip()
-                if "=" in part:
-                    k, v = part.split("=", 1)
-                    jar[k.strip()] = v.strip()
-
-    def _cookie_header(self, jar: dict) -> str:
-        return "; ".join(f"{k}={v}" for k, v in jar.items())
-
-    async def _login_via_proxy(self, email: str, password: str) -> AuthResult:
         """
-        Hybrid login:
-        - POST login_check directly to ficbook.net (JSON API, not blocked)
-        - GET profile via proxy with the obtained session cookie
+        Login flow from B1ays/ficbook-reader:
+        1. POST /login_check with login+password (form-encoded)
+        2. Server returns JSON: {"result": true/false, "data": {...}, "error": {...}}
+        3. Collect PHPSESSID + rme from Set-Cookie headers
         """
-        jar: dict = {}
         try:
-            async with httpx.AsyncClient(
-                timeout=60.0,
-                follow_redirects=True,
-                headers=DEFAULT_HEADERS,
-            ) as client:
-                # Step 1: POST login_check directly — ficbook JSON API not blocked
-                r1 = await client.post(
-                    LOGIN_ENDPOINT,
-                    data={"login": email, "password": password, "_csrf_token": ""},
-                    headers={**DEFAULT_HEADERS, "Content-Type": "application/x-www-form-urlencoded"},
-                )
-                # Collect PHPSESSID from response and httpx jar
-                self._collect_cookies(r1, jar)
-                for cookie in client.cookies.jar:
-                    jar[cookie.name] = cookie.value
-                html1 = await self._decode(r1)
+            resp = await self._client.post(
+                LOGIN_CHECK_URL,
+                data={"login": email, "password": password, "remember": "true"},
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "authority": "ficbook.net",
+                    "origin": "https://ficbook.net",
+                    "referer": "https://ficbook.net/",
+                },
+            )
+            resp.raise_for_status()
 
-                # ficbook returns JSON: {"result": true} or {"result": false, ...}
+            try:
+                result = resp.json()
+            except Exception:
+                raw = resp.content.decode("utf-8", errors="replace")
                 try:
-                    resp_json = _json.loads(html1)
-                    if resp_json.get("result") is False:
-                        reason = resp_json.get("error", {}).get("reason", "invalid credentials")
-                        return AuthResult(success=False, error=f"Login failed: {reason}")
-                except _json.JSONDecodeError:
-                    if any(p in html1 for p in ["Неверный логин", "user_not_found", "wrong_password"]):
-                        return AuthResult(success=False, error="Login failed: invalid credentials")
+                    import ftfy
+                    raw = ftfy.fix_text(raw)
+                except ImportError:
+                    pass
+                try:
+                    result = _json.loads(raw)
+                except Exception:
+                    return AuthResult(success=False, error="Invalid response from login endpoint")
 
-                # Step 2: GET user profile via proxy, forwarding session cookies
-                verify_headers = {**DEFAULT_HEADERS}
-                if jar:
-                    verify_headers["Cookie"] = self._cookie_header(jar)
-                home_url = proxy_url(f"{FICBOOK_BASE_URL}/home") or f"{FICBOOK_BASE_URL}/home"
-                r2 = await client.get(home_url, headers=verify_headers)
-                self._collect_cookies(r2, jar)
-                soup = BeautifulSoup(await self._decode(r2), "html.parser")
-                user = self._parse_user(soup)
+            if not result.get("result"):
+                reason = result.get("error", {}).get("reason", "Invalid credentials") if isinstance(result.get("error"), dict) else str(result.get("error", "Login failed"))
+                return AuthResult(success=False, error=f"Login failed: {reason}")
 
-                return AuthResult(success=True, user=user, cookies=jar)
+            # Collect only PHPSESSID and rme (as per B1ays cookie jar implementation)
+            jar = {}
+            for cookie in self._client.cookies.jar:
+                if cookie.name in ("PHPSESSID", "rme"):
+                    jar[cookie.name] = cookie.value
 
-        except httpx.HTTPError as e:
-            return AuthResult(success=False, error=str(e))
-
-    async def _login_direct(self, email: str, password: str) -> AuthResult:
-        try:
-            async with httpx.AsyncClient(headers=DEFAULT_HEADERS, timeout=30.0, follow_redirects=True) as direct:
-                resp = await direct.get(f"{FICBOOK_BASE_URL}/login")
-                resp.raise_for_status()
-                csrf = self._extract_csrf(BeautifulSoup(resp.text, "html.parser"))
-
-                await direct.post(
-                    LOGIN_ENDPOINT,
-                    data={"login": email, "password": password, "_csrf_token": csrf},
-                    follow_redirects=True,
-                )
-
-                check = await direct.get(f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}", follow_redirects=False)
-                if check.status_code in (301, 302) and "login" in check.headers.get("location", ""):
-                    return AuthResult(success=False, error="Login failed: invalid credentials")
-                elif check.status_code != 200:
-                    return AuthResult(success=False, error="Login failed: invalid credentials")
-
-                home = await direct.get(f"{FICBOOK_BASE_URL}/home")
-                user = self._parse_user(BeautifulSoup(home.text, "html.parser"))
-                jar = {c.name: c.value for c in direct.cookies.jar}
-                return AuthResult(success=True, user=user, cookies=jar)
+            user = await self._get_current_user()
+            return AuthResult(success=True, user=user, cookies=jar)
 
         except httpx.HTTPError as e:
             return AuthResult(success=False, error=str(e))
 
     async def check_authorized(self) -> bool:
+        """
+        Check auth by GETting /home/settings.
+        If final URL is ficbook.net/login — not authenticated.
+        """
         try:
-            resp = await self._client.get(f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}", follow_redirects=False)
-            if resp.status_code in (301, 302):
-                return "login" not in resp.headers.get("location", "")
-            return resp.status_code == 200
+            resp = await self._client.get(
+                f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}",
+                follow_redirects=True,
+            )
+            return "ficbook.net/login" not in str(resp.url)
         except httpx.HTTPError:
             return False
 
-    def _parse_user(self, soup: BeautifulSoup) -> Optional[UserModel]:
-        for selector in ["a.user-name-avatar", "a[href*='/authors/']", "a.username", ".header-user-name a"]:
-            user_link = soup.select_one(selector)
-            if user_link:
-                href = user_link.get("href", "")
-                name = user_link.get_text(strip=True)
-                user_id = extract_id_from_href(href)
-                if user_id:
-                    avatar = soup.select_one("img.user-avatar-img, img.user-avatar, .avatar img")
-                    return UserModel(id=user_id, name=name, href=href, avatar_url=avatar.get("src") if avatar else None)
-        return None
+    async def _get_current_user(self) -> Optional[UserModel]:
+        """Extract user from /home/settings page."""
+        try:
+            resp = await self._client.get(
+                f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}",
+                follow_redirects=True,
+            )
+            if "ficbook.net/login" in str(resp.url):
+                return None
 
-    @staticmethod
-    def _extract_csrf(soup: BeautifulSoup) -> str:
-        token = soup.select_one("input[name=_csrf_token]")
-        return safe_attr(token, "value") if token else ""
+            raw = resp.content.decode("utf-8", errors="replace")
+            try:
+                import ftfy
+                html = ftfy.fix_text(raw)
+            except ImportError:
+                html = raw
+
+            soup = BeautifulSoup(html, "html.parser")
+
+            # From B1ays: .dropdown.profile-holder > li a + span.text.hidden-xs + .avatar-cropper
+            name_el = soup.select_one("span.text.hidden-xs, span[class='text hidden-xs']")
+            avatar_el = soup.select_one(".avatar-cropper img, .avatar-cropper")
+            profile_link = soup.select_one(".dropdown.profile-holder li a[href*='/authors/']")
+
+            if not name_el and not profile_link:
+                return None
+
+            name = safe_text(name_el) if name_el else ""
+            href = safe_attr(profile_link, "href") if profile_link else ""
+            user_id = extract_id_from_href(href) if href else ""
+            avatar_url = None
+            if avatar_el:
+                avatar_url = safe_attr(avatar_el, "src") or safe_attr(avatar_el, "data-src")
+
+            return UserModel(id=user_id, name=name, href=href, avatar_url=avatar_url)
+        except Exception:
+            return None
