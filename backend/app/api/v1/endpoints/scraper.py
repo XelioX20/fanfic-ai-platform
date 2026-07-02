@@ -125,7 +125,35 @@ async def seed_fanfics_sync():
         return {"error": str(e), "trace": traceback.format_exc()[-1000:]}
 
 
-@router.get("/status")
+@router.get("/test-ua")
+async def test_ua():
+    """Test which ficbook.net paths work from this server IP with AppleWebKit UA."""
+    import httpx
+    headers = {
+        "User-Agent": "AppleWebKit/605.1",
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.9",
+    }
+    results = {}
+    urls = {
+        "fanfiction": "https://ficbook.net/fanfiction",
+        "popular": "https://ficbook.net/popular-fanfics-376846",
+        "search": "https://ficbook.net/find-fanfics-846555?title=гарри",
+        "login_page": "https://ficbook.net/login",
+    }
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+        for name, url in urls.items():
+            try:
+                r = await client.get(url, headers=headers)
+                from ficbook_parser.parsers.fanfic_list import FanficListParser
+                raw = r.content.decode("utf-8", errors="replace")
+                fanfics, has_next = FanficListParser().parse(raw)
+                results[name] = {"status": r.status_code, "fanfics": len([f for f in fanfics if f.id]), "has_next": has_next}
+            except Exception as e:
+                results[name] = {"error": str(e)[:100]}
+    return results
+
+
 async def scraper_status():
     """Check how many fanfics are in DB and whether ficbook_parser is available."""
     try:
