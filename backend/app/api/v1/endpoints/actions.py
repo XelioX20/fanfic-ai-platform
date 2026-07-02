@@ -42,17 +42,21 @@ async def _get_current_user_id(
 
 
 async def _ficbook_post(path: str, data: dict, cookies: dict) -> dict:
-    """POST to ficbook.net AJAX endpoint with user session cookies."""
+    """POST to ficbook.net AJAX endpoint via Cloudflare Worker with user session cookies."""
+    import os
+    worker_url = os.environ.get("FICBOOK_WORKER_URL", "https://ficbook-proxy.fanfic-ai-xelio.workers.dev")
     cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
         resp = await client.post(
-            f"{FICBOOK_BASE}/{path}",
+            f"{worker_url}/{path}",
             data=data,
             headers={
                 "User-Agent": UA,
-                "Cookie": cookie_str,
+                "x-ficbook-cookie": cookie_str,
                 "X-Requested-With": "XMLHttpRequest",
                 "Referer": f"{FICBOOK_BASE}/",
+                "Content-Type": "application/x-www-form-urlencoded",
             },
         )
         resp.raise_for_status()

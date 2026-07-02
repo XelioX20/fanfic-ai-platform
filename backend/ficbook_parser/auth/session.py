@@ -35,8 +35,12 @@ class FicbookAuth:
         3. Collect PHPSESSID + rme from Set-Cookie headers
         """
         try:
+            import os
+            worker_url = os.environ.get("FICBOOK_WORKER_URL", "https://ficbook-proxy.fanfic-ai-xelio.workers.dev")
+            login_url = f"{worker_url}/login_check"
+
             resp = await self._client.post(
-                LOGIN_CHECK_URL,
+                login_url,
                 data={"login": email, "password": password, "remember": "true"},
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -65,8 +69,16 @@ class FicbookAuth:
                 reason = result.get("error", {}).get("reason", "Invalid credentials") if isinstance(result.get("error"), dict) else str(result.get("error", "Login failed"))
                 return AuthResult(success=False, error=f"Login failed: {reason}")
 
-            # Collect only PHPSESSID and rme (as per B1ays cookie jar implementation)
+            # Collect PHPSESSID and rme from response
+            # Worker forwards Set-Cookie via x-ficbook-set-cookie header
             jar = {}
+            set_cookie_header = resp.headers.get("x-ficbook-set-cookie", "") or resp.headers.get("set-cookie", "")
+            if set_cookie_header:
+                for part in set_cookie_header.split(","):
+                    m = __import__("re").match(r"\s*(PHPSESSID|rme)=([^;]+)", part.strip())
+                    if m:
+                        jar[m.group(1)] = m.group(2)
+            # Also check httpx cookie jar
             for cookie in self._client.cookies.jar:
                 if cookie.name in ("PHPSESSID", "rme"):
                     jar[cookie.name] = cookie.value
@@ -92,15 +104,25 @@ class FicbookAuth:
             return False
 
     async def _get_current_user(self) -> Optional[UserModel]:
-        """Extract user from /home/settings page."""
+        """Extract user from /home/settings via Worker."""
         try:
+            import os
+            worker_url = os.environ.get("FICBOOK_WORKER_URL", "https://ficbook-proxy.fanfic-ai-xelio.workers.dev")
+            # Pass cookies we have so far via x-ficbook-cookie header
+            cookie_str = "; ".join(f"{k}={v}" for k, v in {
+                name: val for name, val in [(c.name, c.value) for c in self._client.cookies.jar]
+                if name in ("PHPSESSID", "rme")
+            }.items())
+
+            headers = {"User-Agent": "AppleWebKit/605.1"}
+            if cookie_str:
+                headers["x-ficbook-cookie"] = cookie_str
+
             resp = await self._client.get(
-                f"{FICBOOK_BASE_URL}/{ROUTE_SETTINGS}",
+                f"{worker_url}/home/settings",
+                headers=headers,
                 follow_redirects=True,
             )
-            if "ficbook.net/login" in str(resp.url):
-                return None
-
             raw = resp.content.decode("utf-8", errors="replace")
             try:
                 import ftfy
@@ -108,9 +130,11 @@ class FicbookAuth:
             except ImportError:
                 html = raw
 
-            soup = BeautifulSoup(html, "html.parser")
+            # Check if redirected to login
+            if "ficbook.net/login" in str(resp.url) or 'action="/login_check"' in html:
+                return None
 
-            # From B1ays: .dropdown.profile-holder > li a + span.text.hidden-xs + .avatar-cropper
+            soup = BeautifulSoup(html, "html.parser")
             name_el = soup.select_one("span.text.hidden-xs, span[class='text hidden-xs']")
             avatar_el = soup.select_one(".avatar-cropper img, .avatar-cropper")
             profile_link = soup.select_one(".dropdown.profile-holder li a[href*='/authors/']")
