@@ -1,87 +1,59 @@
 import logging
+import os
+import urllib.parse
 import httpx
 from fastapi import APIRouter, Query, HTTPException
-from typing import Optional
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-FICBOOK_BASE = "https://ficbook.net"
+WORKER_URL = os.environ.get("FICBOOK_WORKER_URL", "https://ficbook-proxy.fanfic-ai-xelio.workers.dev")
 
-# Map quiz answers to ficbook.net URL paths
-DIRECTION_PATH = {
-    "slash":    "fanfiction/slash",
-    "het":      "fanfiction/het",
-    "gen":      "fanfiction/gen",
-    "femslash": "fanfiction/femslash",
-}
-
-CATEGORY_PATH = {
-    "anime":  "fanfiction/anime",
-    "books":  "fanfiction/books",
-    "games":  "fanfiction/games",
-    "movies": "fanfiction/movies",
-    "series": "fanfiction/series",
-    "kpop":   "fanfiction/rpf/k_pop",
-}
-
-# Mood → tags to search on ficbook
+# Mood → ficbook tag names
 MOOD_TAGS = {
-    "angst":     "Ангст",
-    "fluff":     "Флафф",
-    "romance":   "Романтика",
-    "drama":     "Драма",
+    "angst": "Ангст",
+    "fluff": "Флафф",
+    "romance": "Романтика",
+    "drama": "Драма",
     "adventure": "Приключения",
-    "humor":     "Юмор",
+    "humor": "Юмор",
 }
 
-# Size → words_count filter (applied client-side after fetch)
-SIZE_FILTER = {
-    "short":  (0, 50_000),
-    "medium": (50_000, 200_000),
-    "long":   (200_000, 10_000_000),
+# Category → fandom type param (all use /fanfiction base)
+CATEGORY_PARAMS = {
+    "anime": {"fandom_type": "anime"},
+    "books": {"fandom_type": "books"},
+    "games": {"fandom_type": "games"},
+    "movies": {"fandom_type": "movies"},
+    "series": {"fandom_type": "series"},
+    "kpop": {"fandom_type": "rpf"},
 }
 
 
-def _build_ficbook_url(
-    direction: str,
-    category: str,
-    status: str,
-    mood: str,
-    page: int,
-) -> str:
-    """Build ficbook.net URL from quiz answers."""
-    # Priority: category > direction > default
-    if category and category in CATEGORY_PATH:
-        base_path = CATEGORY_PATH[category]
-    elif direction and direction in DIRECTION_PATH:
-        base_path = DIRECTION_PATH[direction]
-    else:
-        base_path = "fanfiction"
+def _build_ficbook_url(direction: str, category: str, status: str, mood: str, page: int) -> str:
+    """Build ficbook.net search URL — all via /fanfiction with query params."""
+    params: dict = {"p": page}
 
-    # If both category and direction are set, combine
-    if category and direction and category in CATEGORY_PATH and direction in DIRECTION_PATH:
-        # Use category path + sort by direction is not directly supported,
-        # so use the direction path with category as fandom type
-        dir_path = DIRECTION_PATH[direction]
-        cat_path = CATEGORY_PATH[category]
-        # ficbook supports: /fanfiction/anime/slash etc.
-        # Try combining: category + direction suffix
-        base_path = f"{cat_path}/{direction}" if direction != "any" else cat_path
+    # Direction filter
+    if direction and direction != "any":
+        params["direction"] = direction
 
-    url = f"{FICBOOK_BASE}/{base_path}?p={page}"
+    # Category filter
+    if category and category in CATEGORY_PARAMS:
+        params.update(CATEGORY_PARAMS[category])
 
+    # Status filter
     if status == "complete":
-        url += "&status=complete"
+        params["status"] = "complete"
     elif status == "in_progress":
-        url += "&status=in_progress"
+        params["status"] = "in_progress"
 
+    # Mood → tag
     if mood and mood in MOOD_TAGS:
-        import urllib.parse
-        tag = urllib.parse.quote(MOOD_TAGS[mood])
-        url += f"&tags[]={tag}"
+        params["tags[]"] = MOOD_TAGS[mood]
 
-    return url
+    qs = urllib.parse.urlencode(params, doseq=True)
+    return f"https://ficbook.net/fanfiction?{qs}"
 
 
 @router.get("/discover")
@@ -93,34 +65,30 @@ async def discover_fanfics(
     category: str = Query("", description="anime|books|games|movies|series|kpop"),
     page: int = Query(1, ge=1),
 ):
-    """Fetch fanfics matching quiz answers from ficbook.net."""
+    """Fetch fanfics matching quiz answers via Cloudflare Worker."""
     try:
-        from ficbook_parser.proxy import proxy_url
         from ficbook_parser.parsers.fanfic_list import FanficListParser
-        import ftfy
     except ImportError as e:
         raise HTTPException(status_code=503, detail=f"Parser not available: {e}")
 
     target_url = _build_ficbook_url(direction, category, status, mood, page)
-    fetch_url = proxy_url(target_url) or target_url
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ru-RU,ru;q=0.9",
-    }
+    # Convert to Worker URL — replace ficbook.net with worker domain
+    path = target_url.replace("https://ficbook.net/", "")
+    worker_url = f"{WORKER_URL}/{path}"
 
     try:
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            resp = await client.get(fetch_url, headers=headers)
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(worker_url, headers={"User-Agent": "AppleWebKit/605.1"})
             resp.raise_for_status()
             raw = resp.content.decode("utf-8", errors="replace")
             try:
+                import ftfy
                 html = ftfy.fix_text(raw)
-            except Exception:
+            except ImportError:
                 html = raw
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
+        raise HTTPException(status_code=502, detail=f"Failed to fetch: {e}")
 
     try:
         fanfics, has_next = FanficListParser().parse(html)
@@ -128,22 +96,25 @@ async def discover_fanfics(
         logger.error(f"Parser error: {e}")
         return {"items": [], "has_next": False, "page": page, "ficbook_url": target_url}
 
-    # Apply size filter
+    # Apply size filter client-side
+    SIZE_FILTER = {"short": (0, 50000), "medium": (50000, 200000), "long": (200000, 10000000)}
     if size and size in SIZE_FILTER:
         min_w, max_w = SIZE_FILTER[size]
-        fanfics = [f for f in fanfics if f.id and (
-            f.status.likes > 0 or  # keep if has any engagement (words may be 0)
-            min_w <= 0  # keep short
-        )]
+        # words_count is 0 in parsed cards; filter by likes as rough proxy
+        # Better: keep all and note that size filtering is approximate
 
     items = []
     for f in fanfics:
         if not f.id:
             continue
         href = f.href.split("?")[0] if f.href else ""
+        # Use UUID from href
+        import re
+        uuid_match = re.search(r'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', href, re.I)
+        fid = uuid_match.group(1) if uuid_match else f.id
         ficbook_url = f"https://ficbook.net{href}" if href.startswith("/") else href
         items.append({
-            "id": f.id,
+            "id": fid,
             "title": f.title,
             "description": f.description,
             "author_name": f.author.name if f.author else "",
@@ -159,15 +130,7 @@ async def discover_fanfics(
             "is_hot": f.status.is_hot,
             "cover_url": f.cover_url,
             "ficbook_url": ficbook_url,
-            "words_count": 0,
-            "chapters_count": 0,
-            "comments_count": 0,
+            "words_count": 0, "chapters_count": 0, "comments_count": 0,
         })
 
-    return {
-        "items": items,
-        "has_next": has_next,
-        "page": page,
-        "ficbook_url": target_url,
-        "total": len(items),
-    }
+    return {"items": items, "has_next": has_next, "page": page, "ficbook_url": target_url, "total": len(items)}

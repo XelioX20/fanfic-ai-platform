@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Heart, Trophy, MessageSquare, BookOpen, User, ArrowLeft, BookMarked, ExternalLink } from 'lucide-react'
 import { api } from '@/lib/api'
+import { FanficActions } from '@/components/fanfic/FanficActions'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -210,6 +211,11 @@ export default function FanficPage() {
             >
               <ExternalLink size={14} /> На ficbook.net
             </a>
+          </div>
+
+          {/* User actions (like, read, follow) */}
+          <div className="mt-3">
+            <FanficActions fanficId={id} />
           </div>
 
         </div>

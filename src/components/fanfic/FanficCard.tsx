@@ -5,22 +5,23 @@ import { useRouter } from 'next/navigation'
 import { Heart, Trophy, BookOpen, MessageSquare, Clock, User } from 'lucide-react'
 import type { Fanfic } from '@/types'
 import { cn, formatWordCount, formatNumber } from '@/lib/utils'
+import { FanficActions } from './FanficActions'
 
 const DIRECTION_COLORS: Record<string, string> = {
-  'Слэш':     'bg-blue-900/60 text-blue-300 border-blue-700/40',
-  'Гет':      'bg-pink-900/60 text-pink-300 border-pink-700/40',
-  'Джен':     'bg-green-900/60 text-green-300 border-green-700/40',
-  'Фемслэш':  'bg-purple-900/60 text-purple-300 border-purple-700/40',
-  'Смешанное':'bg-yellow-900/60 text-yellow-300 border-yellow-700/40',
-  'Другое':   'bg-zinc-700/60 text-zinc-300 border-zinc-600/40',
+  'Слэш':     'bg-blue-800/80 text-blue-200 border-blue-600/60',
+  'Гет':      'bg-pink-800/80 text-pink-200 border-pink-600/60',
+  'Джен':     'bg-green-800/80 text-green-200 border-green-600/60',
+  'Фемслэш':  'bg-purple-800/80 text-purple-200 border-purple-600/60',
+  'Смешанное':'bg-yellow-800/80 text-yellow-200 border-yellow-600/60',
+  'Другое':   'bg-zinc-700/80 text-zinc-200 border-zinc-500/60',
 }
 
 const RATING_COLORS: Record<string, string> = {
-  'G':     'bg-emerald-900/60 text-emerald-300 border-emerald-700/40',
-  'PG-13': 'bg-yellow-900/60 text-yellow-300 border-yellow-700/40',
-  'R':     'bg-orange-900/60 text-orange-300 border-orange-700/40',
-  'NC-17': 'bg-red-900/60 text-red-300 border-red-700/40',
-  'NC-21': 'bg-red-950/80 text-red-400 border-red-800/60',
+  'G':     'bg-emerald-800/80 text-emerald-200 border-emerald-600/60',
+  'PG-13': 'bg-yellow-800/80 text-yellow-200 border-yellow-600/60',
+  'R':     'bg-orange-800/80 text-orange-200 border-orange-600/60',
+  'NC-17': 'bg-red-800/80 text-red-200 border-red-600/60',
+  'NC-21': 'bg-red-900/90 text-red-200 border-red-700/80',
 }
 
 const STATUS_ICONS: Record<string, string> = {
@@ -221,6 +222,10 @@ export function FanficCard({ fanfic, className }: FanficCardProps) {
             {fanfic.updated_at && (
               <span className="flex items-center gap-1 ml-auto"><Clock size={11} />{new Date(fanfic.updated_at).toLocaleDateString('ru-RU')}</span>
             )}
+          </div>
+
+          <div className="mt-2">
+            <FanficActions fanficId={fanfic.id} compact />
           </div>
 
           {fanfic.description && (

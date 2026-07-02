@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import fanfics, search, recommendations, users, interactions, scraper, reader, auth, profile, discover
+from app.api.v1.endpoints import fanfics, search, recommendations, users, interactions, scraper, reader, auth, profile, discover, actions
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -12,3 +12,4 @@ api_router.include_router(scraper.router, prefix="/scraper", tags=["scraper"])
 api_router.include_router(reader.router, tags=["reader"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
 api_router.include_router(discover.router, prefix="/discover", tags=["discover"])
+api_router.include_router(actions.router, prefix="/actions", tags=["actions"])

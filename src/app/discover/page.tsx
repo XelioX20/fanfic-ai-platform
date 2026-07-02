@@ -187,6 +187,15 @@ export default function DiscoverPage() {
           </button>
         </div>
 
+        {ficbookUrl && (
+          <p className="text-zinc-600 text-xs mb-4">
+            Источник:{' '}
+            <a href={ficbookUrl} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-zinc-300 underline truncate">
+              {ficbookUrl.slice(0, 80)}...
+            </a>
+          </p>
+        )}
+
         {error && (
           <div className="mb-6 p-4 bg-red-950/30 border border-red-800/40 rounded-lg text-red-400 text-sm">
             {error}
@@ -195,9 +204,10 @@ export default function DiscoverPage() {
 
         {results.length === 0 && !error ? (
           <div className="text-center py-16">
-            <p className="text-zinc-500 mb-4">По таким параметрам ничего не нашлось</p>
+            <p className="text-zinc-400 text-lg mb-2">Ничего не нашлось</p>
+            <p className="text-zinc-600 text-sm mb-6">Попробуй другие параметры — ficbook иногда не поддерживает все комбинации фильтров</p>
             <button onClick={reset} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors">
-              Попробовать другие параметры
+              Попробовать снова
             </button>
           </div>
         ) : (
