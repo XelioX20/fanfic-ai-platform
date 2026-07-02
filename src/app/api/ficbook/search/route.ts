@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const UA = 'AppleWebKit/605.1'
-const FICBOOK = 'https://ficbook.net'
-const SEARCH_PATH = 'find-fanfics-846555'
+const WORKER_URL = process.env.FICBOOK_WORKER_URL || 'https://ficbook-proxy.fanfic-ai-xelio.workers.dev'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -14,19 +12,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const url = `${FICBOOK}/${SEARCH_PATH}?title=${encodeURIComponent(q)}&p=${page}`
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': UA,
-        'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
-        'Accept-Language': 'ru-RU,ru;q=0.9',
-        'Referer': `${FICBOOK}/`,
-      },
+    const path = `find-fanfics-846555?title=${encodeURIComponent(q)}&p=${page}`
+    const res = await fetch(`${WORKER_URL}/${path}`, {
+      headers: { 'User-Agent': 'AppleWebKit/605.1' },
       redirect: 'follow',
     })
 
     if (!res.ok) {
-      return NextResponse.json({ error: `ficbook returned ${res.status}`, items: [], has_next: false })
+      return NextResponse.json({ error: `Worker returned ${res.status}`, items: [], has_next: false })
     }
 
     const html = await res.text()
@@ -55,27 +48,16 @@ function parseCard(article: string) {
   const hrefMatch = article.match(/class="visit-link"[^>]*href="([^"?]+)/)
   const titleMatch = article.match(/class="visit-link"[^>]*>([^<]+)</)
   const authorMatch = article.match(/class="word-break urlize"[^>]*href="([^"]+)"[^>]*>([^<]+)</)
-  const likesMatch = article.match(/badge-like[\s\S]*?(\d+)/)
-
   const href = hrefMatch ? hrefMatch[1] : ''
   const id = idMatch ? idMatch[1] : (href.match(/\/(\d+)$/) || [])[1] || ''
-
   return {
-    id,
-    title: titleMatch ? titleMatch[1].trim() : '',
-    href,
+    id, title: titleMatch ? titleMatch[1].trim() : '', href,
     author_name: authorMatch ? authorMatch[2].trim() : '',
     author_id: authorMatch ? (authorMatch[1].match(/\/(\d+)/) || [])[1] || '' : '',
-    direction: 'Неизвестно',
-    rating: 'Неизвестно',
-    completion_status: 'Неизвестно',
-    is_hot: article.includes('hot-fanfic') || article.includes('premium-notice'),
-    likes: likesMatch ? parseInt(likesMatch[1]) : 0,
-    trophies: 0,
-    cover_url: (article.match(/fanfic-main-cover[^>]*src="([^"]+)"/) || [])[1] || null,
+    direction: 'Неизвестно', rating: 'Неизвестно', completion_status: 'Неизвестно',
+    is_hot: false, likes: 0, trophies: 0, cover_url: null,
     ficbook_url: href ? `https://ficbook.net${href}` : '',
-    fandoms: [], pairings: [], tags: [],
-    words_count: 0, chapters_count: 0, comments_count: 0,
+    fandoms: [], pairings: [], tags: [], words_count: 0, chapters_count: 0, comments_count: 0,
     description: '',
   }
 }

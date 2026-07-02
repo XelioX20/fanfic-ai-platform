@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const FICBOOK = 'https://ficbook.net'
-const UA = 'AppleWebKit/605.1'
+const WORKER_URL = process.env.FICBOOK_WORKER_URL || 'https://ficbook-proxy.fanfic-ai-xelio.workers.dev'
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,10 +10,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = new URLSearchParams({ login, password, remember: 'true' })
-    const res = await fetch(`${FICBOOK}/login_check`, {
+    const res = await fetch(`${WORKER_URL}/login_check`, {
       method: 'POST',
       headers: {
-        'User-Agent': UA,
+        'User-Agent': 'AppleWebKit/605.1',
         'Content-Type': 'application/x-www-form-urlencoded',
         'authority': 'ficbook.net',
         'origin': 'https://ficbook.net',
@@ -23,6 +22,7 @@ export async function POST(req: NextRequest) {
       body: body.toString(),
     })
 
+    const setCookieHeader = res.headers.get('x-ficbook-set-cookie') || res.headers.get('set-cookie') || ''
     const data = await res.json()
 
     if (!data.result) {
@@ -32,10 +32,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Extract PHPSESSID and rme from Set-Cookie
     const cookies: Record<string, string> = {}
-    const setCookie = res.headers.get('set-cookie') || ''
-    for (const part of setCookie.split(',')) {
+    for (const part of setCookieHeader.split(',')) {
       const match = part.trim().match(/^(PHPSESSID|rme)=([^;]+)/)
       if (match) cookies[match[1]] = match[2]
     }

@@ -1,20 +1,18 @@
 import logging
 import urllib.parse
+import os
 import httpx
-import asyncio
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-FICBOOK_BASE = "https://ficbook.net"
-# AppleWebKit/605.1 — exact UA from B1ays/ficbook-reader, avoids Cloudflare 403
-HEADERS = {
+WORKER_URL = os.environ.get("FICBOOK_WORKER_URL", "https://ficbook-proxy.fanfic-ai-xelio.workers.dev")
+WORKER_HEADERS = {
     "User-Agent": "AppleWebKit/605.1",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
     "Accept-Language": "ru-RU,ru;q=0.9",
-    "Referer": "https://ficbook.net/",
 }
 
 
@@ -22,8 +20,8 @@ class CountsRequest(BaseModel):
     query: str
 
 
-def _card_to_dict(f, href_override: str = "") -> dict:
-    href = (f.href or href_override).split("?")[0]
+def _card_to_dict(f) -> dict:
+    href = (f.href or "").split("?")[0]
     ficbook_url = f"https://ficbook.net{href}" if href.startswith("/") else href
     return {
         "id": f.id, "title": f.title, "description": f.description,
@@ -43,28 +41,33 @@ def _card_to_dict(f, href_override: str = "") -> dict:
 
 @router.post("/counts")
 async def get_search_counts(data: CountsRequest):
-    """Get search result counts using ficbook's /get_multi_count JSON endpoint."""
+    """Get search counts via /get_multi_count through Cloudflare Worker."""
     if not data.query.strip():
         return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
     try:
         encoded = urllib.parse.urlencode({"query": data.query}).encode("utf-8")
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                f"{FICBOOK_BASE}/get_multi_count",
+                f"{WORKER_URL}/get_multi_count",
                 content=encoded,
-                headers={**HEADERS, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                         "Accept": "application/json, text/javascript, */*; q=0.01",
-                         "X-Requested-With": "XMLHttpRequest"},
+                headers={
+                    **WORKER_HEADERS,
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Accept": "application/json, */*; q=0.01",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
             )
             resp.raise_for_status()
             result = resp.json()
             if result.get("result") and result.get("data"):
                 d = result["data"]
-                return {"fanfics": d.get("fanfics", 0), "requests": d.get("requests", 0),
-                        "users": d.get("users", 0), "collections": d.get("collections", 0),
-                        "fandoms": d.get("fandoms", 0)}
+                return {
+                    "fanfics": d.get("fanfics", 0), "requests": d.get("requests", 0),
+                    "users": d.get("users", 0), "collections": d.get("collections", 0),
+                    "fandoms": d.get("fandoms", 0),
+                }
     except Exception as e:
-        logger.warning(f"get_multi_count failed: {e}")
+        logger.warning(f"get_multi_count via worker failed: {e}")
     return {"fanfics": 0, "requests": 0, "users": 0, "collections": 0, "fandoms": 0}
 
 
@@ -74,17 +77,26 @@ async def search_fanfics(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    """Search fanfics using find-fanfics-846555 path (correct obfuscated search slug)."""
+    """Search fanfics through Cloudflare Worker."""
     try:
-        from ficbook_parser.client import FicbookClient
+        from ficbook_parser.parsers.fanfic_list import FanficListParser
     except ImportError as e:
         raise HTTPException(status_code=503, detail=f"Parser not available: {e}")
 
+    search_path = f"find-fanfics-846555?title={urllib.parse.quote(q)}&p={page}"
     try:
-        async with FicbookClient() as client:
-            fanfics, has_next = await client.search.search(q, page=page)
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(f"{WORKER_URL}/{search_path}", headers=WORKER_HEADERS)
+            resp.raise_for_status()
+            raw = resp.content.decode("utf-8", errors="replace")
+            try:
+                import ftfy
+                html = ftfy.fix_text(raw)
+            except ImportError:
+                html = raw
+        fanfics, has_next = FanficListParser().parse(html)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch from ficbook.net: {e}")
+        raise HTTPException(status_code=502, detail=f"Search failed: {e}")
 
     items = [_card_to_dict(f) for f in fanfics if f.id]
     return {"items": items, "total": len(items), "page": page, "page_size": page_size, "has_next": has_next}

@@ -1,4 +1,5 @@
 import logging
+import os
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -7,23 +8,25 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+WORKER_URL = os.environ.get("FICBOOK_WORKER_URL", "https://ficbook-proxy.fanfic-ai-xelio.workers.dev")
+
 async def _fetch_html(url: str) -> str:
-    try:
-        from ficbook_parser.proxy import proxy_url
-        fetch_url = proxy_url(url) or url
-    except ImportError:
-        fetch_url = url
+    """Fetch ficbook.net HTML via Cloudflare Worker (bypasses datacenter IP blocking)."""
+    import httpx, re
+    # Convert ficbook.net URL to Worker URL
+    ficbook_path = re.sub(r'^https?://ficbook\.net/', '', url)
+    worker_url = f"{WORKER_URL}/{ficbook_path}"
 
     async with httpx.AsyncClient(
         headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
+            "User-Agent": "AppleWebKit/605.1",
+            "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+            "Accept-Language": "ru-RU,ru;q=0.9",
         },
         timeout=60.0,
         follow_redirects=True,
     ) as client:
-        resp = await client.get(fetch_url)
+        resp = await client.get(worker_url)
         resp.raise_for_status()
         raw = resp.content.decode("utf-8", errors="replace")
         try:
