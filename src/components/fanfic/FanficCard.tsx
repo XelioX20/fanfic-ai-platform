@@ -6,6 +6,7 @@ import { Heart, Trophy, BookOpen, MessageSquare, Clock, User } from 'lucide-reac
 import type { Fanfic } from '@/types'
 import { cn, formatWordCount, formatNumber } from '@/lib/utils'
 import { FanficActions } from './FanficActions'
+import { FanficStateBadges } from './FanficStateBadges'
 
 const DIRECTION_COLORS: Record<string, string> = {
   'Слэш':     'bg-blue-800/80 text-blue-200 border-blue-600/60',
@@ -117,10 +118,11 @@ export function FanficCard({ fanfic, className }: FanficCardProps) {
 
   return (
     <article className={cn(
-      'bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden',
+      'relative bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden',
       'hover:border-zinc-600/70 transition-colors duration-150',
       className
     )}>
+      <FanficStateBadges fanficId={fanfic.id} />
       <div className="flex">
         {hasCover && (
           <Link

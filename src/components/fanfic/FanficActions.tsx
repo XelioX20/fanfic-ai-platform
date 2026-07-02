@@ -17,20 +17,33 @@ interface State {
   is_followed: boolean
 }
 
+// Cache state per fanfic ID across component instances
+const stateCache = new Map<string, State>()
+
 export function FanficActions({ fanficId, compact = false }: FanficActionsProps) {
   const { accessToken } = useAuthStore()
-  const [state, setState] = useState<State>({ is_liked: false, is_read: false, is_followed: false })
+  const [state, setState] = useState<State>(() =>
+    stateCache.get(fanficId) ?? { is_liked: false, is_read: false, is_followed: false }
+  )
   const [loading, setLoading] = useState<string | null>(null)
-  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
     if (!accessToken || !fanficId) return
+    // Skip fetch if we already have cached state for this fanfic
+    if (stateCache.has(fanficId)) {
+      setState(stateCache.get(fanficId)!)
+      return
+    }
     fetch(`${API_URL}/api/v1/actions/state/${fanficId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then(r => r.json())
-      .then(d => { setState(d); setInitialized(true) })
-      .catch(() => setInitialized(true))
+      .then(d => {
+        const s = { is_liked: !!d.is_liked, is_read: !!d.is_read, is_followed: !!d.is_followed }
+        stateCache.set(fanficId, s)
+        setState(s)
+      })
+      .catch(() => {})
   }, [fanficId, accessToken])
 
   if (!accessToken) return null
@@ -45,80 +58,86 @@ export function FanficActions({ fanficId, compact = false }: FanficActionsProps)
       })
       const data = await resp.json()
       if (data.success) {
-        if (action === 'like') setState(s => ({ ...s, is_liked: true }))
-        if (action === 'unlike') setState(s => ({ ...s, is_liked: false }))
-        if (action === 'mark-read') setState(s => ({ ...s, is_read: true }))
-        if (action === 'mark-unread') setState(s => ({ ...s, is_read: false }))
-        if (action === 'follow') setState(s => ({ ...s, is_followed: true }))
-        if (action === 'unfollow') setState(s => ({ ...s, is_followed: false }))
+        const newState = { ...state }
+        if (action === 'like') newState.is_liked = true
+        if (action === 'unlike') newState.is_liked = false
+        if (action === 'mark-read') newState.is_read = true
+        if (action === 'mark-unread') newState.is_read = false
+        if (action === 'follow') newState.is_followed = true
+        if (action === 'unfollow') newState.is_followed = false
+        stateCache.set(fanficId, newState)
+        setState(newState)
       }
     } catch {}
     setLoading(null)
   }
 
-  if (!initialized) return null
+  const stopClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
 
   return (
-    <div className={cn('flex items-center gap-2', compact ? 'gap-1' : 'gap-2')}>
+    <div className={cn('flex items-center', compact ? 'gap-1' : 'gap-2')}>
       {/* Like */}
       <button
         type="button"
-        onClick={() => doAction(state.is_liked ? 'unlike' : 'like')}
+        onClick={(e) => { stopClick(e); doAction(state.is_liked ? 'unlike' : 'like') }}
         disabled={loading === 'like' || loading === 'unlike'}
         title={state.is_liked ? 'Убрать лайк' : 'Лайкнуть'}
         className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all',
+          'flex items-center gap-1.5 rounded-lg text-xs font-medium border transition-all',
           state.is_liked
-            ? 'bg-pink-900/60 text-pink-300 border-pink-700/60 hover:bg-pink-900/40'
-            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-pink-300 hover:border-pink-700/40',
-          compact && 'px-2 py-1'
+            ? 'bg-pink-900/70 text-pink-200 border-pink-600/70 shadow-sm shadow-pink-950/50'
+            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-pink-300 hover:border-pink-700/50',
+          compact ? 'px-2 py-1' : 'px-2.5 py-1.5'
         )}
       >
         {(loading === 'like' || loading === 'unlike')
           ? <Loader2 size={12} className="animate-spin" />
-          : <Heart size={12} className={state.is_liked ? 'fill-pink-400' : ''} />
+          : <Heart size={12} className={state.is_liked ? 'fill-pink-300 text-pink-300' : ''} />
         }
-        {!compact && <span>{state.is_liked ? 'Нравится' : 'Лайк'}</span>}
+        {!compact && <span>{state.is_liked ? 'В избранном' : 'В избранное'}</span>}
       </button>
 
       {/* Mark read */}
       <button
         type="button"
-        onClick={() => doAction(state.is_read ? 'mark-unread' : 'mark-read')}
+        onClick={(e) => { stopClick(e); doAction(state.is_read ? 'mark-unread' : 'mark-read') }}
         disabled={loading === 'mark-read' || loading === 'mark-unread'}
         title={state.is_read ? 'Отметить непрочитанным' : 'Отметить прочитанным'}
         className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all',
+          'flex items-center gap-1.5 rounded-lg text-xs font-medium border transition-all',
           state.is_read
-            ? 'bg-teal-900/60 text-teal-300 border-teal-700/60 hover:bg-teal-900/40'
-            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-teal-300 hover:border-teal-700/40',
-          compact && 'px-2 py-1'
+            ? 'bg-teal-900/70 text-teal-200 border-teal-600/70 shadow-sm shadow-teal-950/50'
+            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-teal-300 hover:border-teal-700/50',
+          compact ? 'px-2 py-1' : 'px-2.5 py-1.5'
         )}
       >
         {(loading === 'mark-read' || loading === 'mark-unread')
           ? <Loader2 size={12} className="animate-spin" />
-          : <BookCheck size={12} className={state.is_read ? 'text-teal-400' : ''} />
+          : <BookCheck size={12} className={state.is_read ? 'text-teal-300' : ''} />
         }
-        {!compact && <span>{state.is_read ? 'Прочитано' : 'Прочитано?'}</span>}
+        {!compact && <span>{state.is_read ? 'Прочитано' : 'Отметить прочитанным'}</span>}
       </button>
 
       {/* Follow */}
       <button
         type="button"
-        onClick={() => doAction(state.is_followed ? 'unfollow' : 'follow')}
+        onClick={(e) => { stopClick(e); doAction(state.is_followed ? 'unfollow' : 'follow') }}
         disabled={loading === 'follow' || loading === 'unfollow'}
         title={state.is_followed ? 'Отписаться' : 'Подписаться на обновления'}
         className={cn(
-          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all',
+          'flex items-center gap-1.5 rounded-lg text-xs font-medium border transition-all',
           state.is_followed
-            ? 'bg-purple-900/60 text-purple-300 border-purple-700/60 hover:bg-purple-900/40'
-            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-purple-300 hover:border-purple-700/40',
-          compact && 'px-2 py-1'
+            ? 'bg-purple-900/70 text-purple-200 border-purple-600/70 shadow-sm shadow-purple-950/50'
+            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-purple-300 hover:border-purple-700/50',
+          compact ? 'px-2 py-1' : 'px-2.5 py-1.5'
         )}
       >
         {(loading === 'follow' || loading === 'unfollow')
           ? <Loader2 size={12} className="animate-spin" />
-          : state.is_followed ? <BellOff size={12} /> : <Bell size={12} />
+          : state.is_followed ? <BellOff size={12} className="text-purple-300" /> : <Bell size={12} />
         }
         {!compact && <span>{state.is_followed ? 'Подписан' : 'Следить'}</span>}
       </button>

@@ -5,16 +5,19 @@ import { Suspense } from 'react'
 import { SearchBar } from '@/components/search/SearchBar'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
 function SearchResults() {
   const searchParams = useSearchParams()
   const query = searchParams.get('q') || ''
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['search-proxy', query],
+    queryKey: ['search-backend', query],
     queryFn: async () => {
       if (!query.trim()) return { items: [], has_next: false }
-      // Use Next.js proxy route — Vercel IP not blocked by ficbook
-      const res = await fetch(`/api/ficbook/search?q=${encodeURIComponent(query)}&p=1`)
+      // Use backend endpoint — it uses full BeautifulSoup parser with all metadata
+      const res = await fetch(`${API_URL}/api/v1/search/?q=${encodeURIComponent(query)}&page=1`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       return res.json()
     },
     enabled: !!query,
@@ -37,7 +40,7 @@ function SearchResults() {
         <div>
           {!isLoading && data?.items?.length > 0 && (
             <p className="text-zinc-400 text-sm mb-4">
-              Результаты по запросу «{query}»
+              Результаты по запросу «{query}» — {data.items.length}
             </p>
           )}
           <FanficGrid fanfics={data?.items ?? []} loading={isLoading} />
