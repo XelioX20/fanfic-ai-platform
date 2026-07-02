@@ -285,3 +285,31 @@ async def debug_env():
         "ficbook_parser_import_ok": import_ok,
         "ficbook_parser_import_error": import_error,
     }
+
+
+@router.get("/test-worker")
+async def test_worker():
+    """Test Cloudflare Worker from this server."""
+    import httpx
+    worker = "https://ficbook-proxy.fanfic-ai-xelio.workers.dev"
+    results = {}
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+        try:
+            r = await client.get(f"{worker}/health")
+            results["health"] = {"status": r.status_code, "body": r.text[:100]}
+        except Exception as e:
+            results["health"] = {"error": str(e)[:100]}
+        try:
+            r = await client.get(f"{worker}/fanfiction?p=1")
+            from ficbook_parser.parsers.fanfic_list import FanficListParser
+            raw = r.content.decode("utf-8", errors="replace")
+            try:
+                import ftfy
+                raw = ftfy.fix_text(raw)
+            except ImportError:
+                pass
+            fanfics, has_next = FanficListParser().parse(raw)
+            results["fanfiction"] = {"status": r.status_code, "fanfics": len([f for f in fanfics if f.id]), "has_next": has_next}
+        except Exception as e:
+            results["fanfiction"] = {"error": str(e)[:100]}
+    return results
