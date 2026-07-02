@@ -6,6 +6,19 @@ const FICBOOK = 'https://ficbook.net'
 // Cache parsed results briefly to reduce ficbook hits
 const cache = new Map<string, { data: unknown; expires: number }>()
 
+// Map section types to /fanfiction query params that work with static HTML
+const SECTION_PARAMS: Record<string, Record<string, string>> = {
+  'popular-fanfics-376846': {},
+  'popular-fanfics-376846/het': { direction: 'het' },
+  'popular-fanfics-376846/slash-fics-ngf3487tnsfb': { direction: 'slash' },
+  'popular-fanfics-376846/gen': { direction: 'gen' },
+  'popular-fanfics-376846/femslash-fanfics-kojhi9jhhmkhgi9t98': { direction: 'femslash' },
+  'home/favourites': { type: 'favourites' },  // requires auth cookie
+  'home/liked_fanfics': { type: 'liked' },
+  'home/readedList': { type: 'readed' },
+  'home/followList': { type: 'follow' },
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const path = searchParams.get('path') || 'popular-fanfics-376846'
@@ -19,7 +32,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const url = `${FICBOOK}/${path}?p=${page}`
+    // Map obfuscated paths to /fanfiction which returns static HTML
+    // Only /fanfiction works — popular-fanfics-376846 and category subpaths are Vue-rendered
+    let url: string
+    const extraParams = SECTION_PARAMS[path]
+    if (extraParams !== undefined && !path.startsWith('home/')) {
+      const qs = new URLSearchParams({ ...extraParams, p: page })
+      url = `${FICBOOK}/fanfiction?${qs}`
+    } else {
+      url = `${FICBOOK}/${path}?p=${page}`
+    }
+
     const headers: Record<string, string> = {
       'User-Agent': UA,
       'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
