@@ -995,3 +995,194 @@
 @keyframes ripple_pulse {
   100% { box-shadow: 0 0 0 40px transparent; }
 }
+
+/* ── 8bit: pixel character walks across, filling squares ── */
+.eightbit {
+  width: fit-content;
+  font-size: 17px;
+  font-family: monospace;
+  line-height: 1.4;
+  font-weight: bold;
+  color: transparent;
+  --c: no-repeat linear-gradient(currentColor 0 0);
+  background: var(--c), var(--c), var(--c), var(--c), var(--c), var(--c), var(--c);
+  background-size: calc(1ch + 1px) 100%;
+  border-bottom: 10px solid transparent;
+  position: relative;
+  animation: eightbit_squares 3s infinite linear;
+  clip-path: inset(-20px 0);
+}
+.eightbit::before {
+  content: 'Loading';
+  color: currentColor;
+}
+.eightbit::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  background: #25adda;
+  left: -10px;
+  bottom: 100%;
+  animation: eightbit_walk 3s infinite linear;
+}
+.eightbit { color: #7c3aed; }
+@keyframes eightbit_squares {
+  0%,12.5%   { background-position: calc(0*100%/6) 0,   calc(1*100%/6) 0,   calc(2*100%/6) 0,   calc(3*100%/6) 0,   calc(4*100%/6) 0,   calc(5*100%/6) 0,   calc(6*100%/6) 0; }
+  25%        { background-position: calc(0*100%/6) 40px, calc(1*100%/6) 0,  calc(2*100%/6) 0,   calc(3*100%/6) 0,   calc(4*100%/6) 0,   calc(5*100%/6) 0,   calc(6*100%/6) 0; }
+  37.5%      { background-position: calc(0*100%/6) 40px, calc(1*100%/6) 40px, calc(2*100%/6) 0, calc(3*100%/6) 0,   calc(4*100%/6) 0,   calc(5*100%/6) 0,   calc(6*100%/6) 0; }
+  50%        { background-position: calc(0*100%/6) 40px, calc(1*100%/6) 40px, calc(2*100%/6) 40px, calc(3*100%/6) 0, calc(4*100%/6) 0,  calc(5*100%/6) 0,   calc(6*100%/6) 0; }
+  62.5%      { background-position: calc(0*100%/6) 40px, calc(1*100%/6) 40px, calc(2*100%/6) 40px, calc(3*100%/6) 40px, calc(4*100%/6) 0, calc(5*100%/6) 0, calc(6*100%/6) 0; }
+  75%        { background-position: calc(0*100%/6) 40px, calc(1*100%/6) 40px, calc(2*100%/6) 40px, calc(3*100%/6) 40px, calc(4*100%/6) 40px, calc(5*100%/6) 0, calc(6*100%/6) 0; }
+  87.4%      { background-position: calc(0*100%/6) 40px, calc(1*100%/6) 40px, calc(2*100%/6) 40px, calc(3*100%/6) 40px, calc(4*100%/6) 40px, calc(5*100%/6) 40px, calc(6*100%/6) 0; }
+  100%       { background-position: calc(0*100%/6) 40px, calc(1*100%/6) 40px, calc(2*100%/6) 40px, calc(3*100%/6) 40px, calc(4*100%/6) 40px, calc(5*100%/6) 40px, calc(6*100%/6) 40px; }
+}
+@keyframes eightbit_walk {
+  100% { left: 115%; }
+}
+
+/* ── elevator: text with an elevator car moving up/down ── */
+.elevator {
+  width: fit-content;
+  font-size: 17px;
+  font-family: monospace;
+  line-height: 1.4;
+  font-weight: bold;
+  color: currentColor;
+  background:
+    linear-gradient(currentColor 0 0) left,
+    linear-gradient(currentColor 0 0) right;
+  background-repeat: no-repeat;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  background-origin: border-box;
+  position: relative;
+  animation: elevator_shafts 2s infinite;
+}
+.elevator::before {
+  content: 'Загрузка';
+}
+.elevator::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 22px;
+  height: 60px;
+  background:
+    linear-gradient(90deg, currentColor 4px, transparent 0 calc(100% - 4px), currentColor 0) bottom / 22px 20px,
+    linear-gradient(90deg, #ef4444 4px, transparent 0 calc(100% - 4px), #ef4444 0) bottom 10px left 0 / 22px 6px,
+    linear-gradient(currentColor 0 0) bottom 3px left 0  / 22px 8px,
+    linear-gradient(currentColor 0 0) bottom 0   left 50% / 8px  16px;
+  background-repeat: no-repeat;
+  animation: elevator_car 2s infinite;
+}
+.elevator { color: #52525b; }
+@keyframes elevator_shafts {
+  0%, 25%      { background-size: 50% 100%; }
+  25.1%, 75%   { background-size: 0 0, 50% 100%; }
+  75.1%, 100%  { background-size: 0 0, 0 0; }
+}
+@keyframes elevator_car {
+  25%   { background-position: bottom, bottom 54px left 0, bottom 3px left 0, bottom 0 left 50%; left: 0; }
+  25.1% { background-position: bottom, bottom 10px left 0, bottom 3px left 0, bottom 0 left 50%; left: 0; }
+  50%   { background-position: bottom, bottom 10px left 0, bottom 3px left 0, bottom 0 left 50%; left: calc(100% - 22px); }
+  75%   { background-position: bottom, bottom 54px left 0, bottom 3px left 0, bottom 0 left 50%; left: calc(100% - 22px); }
+  75.1% { background-position: bottom, bottom 10px left 0, bottom 3px left 0, bottom 0 left 50%; left: calc(100% - 22px); }
+}
+
+/* ── rings: three concentric rings rotating at different speeds ── */
+.rings {
+  width: 25px;
+  height: 50px;
+  display: grid;
+  color: currentColor;
+  background:
+    linear-gradient(currentColor 0 0) top / 100% 2px,
+    radial-gradient(farthest-side at top, transparent calc(100% - 2px), currentColor calc(100% - 1px), transparent) top,
+    linear-gradient(currentColor 0 0) bottom / 100% 2px,
+    radial-gradient(farthest-side at bottom, transparent calc(100% - 2px), currentColor calc(100% - 1px), transparent) bottom;
+  background-size: 100% 1px, 100% 50%;
+  background-repeat: no-repeat;
+  animation: rings_spin 4s infinite linear;
+}
+.rings::before,
+.rings::after {
+  content: '';
+  grid-area: 1 / 1;
+  background: inherit;
+  border: inherit;
+  animation: inherit;
+}
+.rings::after {
+  animation-duration: 2s;
+}
+.rings { color: #7c3aed; }
+@keyframes rings_spin {
+  100% { transform: rotate(1turn); }
+}
+
+/* ── pawprints: paw prints walking across ── */
+.pawprints {
+  width: calc(6 * 30px);
+  height: 50px;
+  display: flex;
+  color: #8d7958;
+  filter: drop-shadow(30px 25px 0 currentColor) drop-shadow(60px 0 0 currentColor) drop-shadow(120px 0 0 currentColor);
+  clip-path: inset(0 100% 0 0);
+  animation: pawprints_walk 2s infinite steps(7);
+}
+.pawprints::before {
+  content: '';
+  width: 30px;
+  height: 25px;
+  --c: no-repeat radial-gradient(farthest-side, currentColor 92%, transparent);
+  background:
+    var(--c) left / 70% 70%,
+    var(--c) right / 20% 20%,
+    var(--c) top 0 right 15% / 20% 20%,
+    var(--c) bottom 0 right 15% / 20% 20%;
+}
+@keyframes pawprints_walk {
+  100% { clip-path: inset(0 -30px 0 0); }
+}
+
+/* ── duck: little duck pecking motion ── */
+.duck {
+  width: 20px;
+  height: 80px;
+  background: #935936;
+  position: relative;
+}
+.duck::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: -22px;
+  width: 25px;
+  height: 60px;
+  background:
+    radial-gradient(farthest-side, #fff 92%, transparent) 60% 6px / 4px 4px,
+    radial-gradient(50% 60%, #53707b 92%, transparent) center / 70% 55%,
+    radial-gradient(farthest-side, #53707b 92%, transparent) 50% 3px / 14px 14px,
+    radial-gradient(142% 100% at bottom right, transparent 64%, #53707b 65%) bottom / 57% 40%,
+    conic-gradient(from -120deg at right, #53707b 36deg, transparent 0) 100% 3px / 51% 12px,
+    conic-gradient(from 120deg at top left, transparent, #ef524a 2deg 40deg, transparent 43deg) top / 100% 10px;
+  background-repeat: no-repeat;
+  transform: rotate(-26deg);
+  transform-origin: 100% 80%;
+  animation: duck_peck 0.25s infinite linear alternate;
+}
+.duck::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 12px;
+  left: -6px;
+  bottom: 15px;
+  border-radius: 100px 0 0 100px;
+  background: #53707b;
+}
+@keyframes duck_peck {
+  100% { transform: rotate(0); }
+}

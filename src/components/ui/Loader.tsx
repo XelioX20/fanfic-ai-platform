@@ -11,7 +11,8 @@ const SIMPLE_LOADERS = [
   'pong', 'tulip', 'bouncer', 'eyes', 'balance',
   'magnifier', 'pendulum', 'drop', 'book', 'face',
   'pan', 'bars', 'gear', 'stickball', 'treadmill',
-  'diamond',
+  'diamond', 'ripple', 'eightbit', 'elevator', 'rings',
+  'pawprints', 'duck',
 ] as const
 
 const COMPLEX_LOADERS = ['cauldron'] as const
