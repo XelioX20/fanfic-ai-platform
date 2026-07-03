@@ -3,10 +3,60 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, User, LogOut, ChevronDown, Heart, Clock, Users, Link2, X, ArrowRight } from 'lucide-react'
-import { useAuthStore } from '@/store'
+import { BookOpen, User, LogOut, ChevronDown, Heart, Clock, Users, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
+import { useAuthStore, useUIStore } from '@/store'
 import { authApi } from '@/lib/api'
 import { SearchBar } from '@/components/search/SearchBar'
+import { cn } from '@/lib/utils'
+
+const THEMES = [
+  { value: 'dark'   as const, label: 'Тёмная',  Icon: Moon },
+  { value: 'light'  as const, label: 'Светлая', Icon: Sun },
+  { value: 'amoled' as const, label: 'AMOLED',  Icon: Smartphone },
+]
+
+function ThemeToggle() {
+  const { theme, setTheme } = useUIStore()
+  const [open, setOpen] = useState(false)
+  const current = THEMES.find(t => t.value === theme) ?? THEMES[0]
+  const { Icon } = current
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        type="button"
+        title="Сменить тему"
+        onClick={() => setOpen(o => !o)}
+        className="p-2 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg transition-colors"
+      >
+        <Icon size={18} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 w-36 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50 py-1 overflow-hidden">
+            {THEMES.map(({ value, label, Icon: TIcon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => { setTheme(value); setOpen(false) }}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors',
+                  theme === value
+                    ? 'text-purple-400 bg-purple-950/30'
+                    : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
+                )}
+              >
+                <TIcon size={14} />
+                {label}
+                {theme === value && <span className="ml-auto text-purple-400 text-xs">✓</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 function parseFicbookUrl(input: string): string | null {
   try {
@@ -140,6 +190,9 @@ export function Header() {
           >
             <Link2 size={18} />
           </button>
+
+          {/* Theme toggle */}
+          <ThemeToggle />
 
           {/* Auth */}
           <div className="flex-shrink-0">

@@ -6,15 +6,90 @@
   --font-reading: Georgia, Cambria, 'Times New Roman', serif;
 }
 
+/* ── Dark (default) ─────────────────────────────────────── */
 .dark {
   color-scheme: dark;
 }
 
+/* ── AMOLED ─────────────────────────────────────────────── */
 .amoled {
   color-scheme: dark;
   background-color: #000000;
 }
 
+/* ── Light ──────────────────────────────────────────────── */
+.light {
+  color-scheme: light;
+}
+
+.light body {
+  background-color: #f4f4f5;
+  color: #18181b;
+}
+
+/* Backgrounds */
+.light .bg-zinc-950 { background-color: #f4f4f5 !important; }
+.light .bg-zinc-900 { background-color: #ffffff !important; }
+.light .bg-zinc-900\/95 { background-color: rgba(255,255,255,0.95) !important; }
+.light .bg-zinc-800 { background-color: #e4e4e7 !important; }
+.light .bg-zinc-800\/50 { background-color: rgba(228,228,231,0.5) !important; }
+.light .bg-zinc-800\/60 { background-color: rgba(228,228,231,0.6) !important; }
+.light .bg-zinc-700\/60 { background-color: rgba(212,212,216,0.6) !important; }
+.light .bg-zinc-700\/80 { background-color: rgba(212,212,216,0.8) !important; }
+
+/* Borders */
+.light .border-zinc-800 { border-color: #d4d4d8 !important; }
+.light .border-zinc-700 { border-color: #a1a1aa !important; }
+.light .border-zinc-600 { border-color: #71717a !important; }
+
+/* Text */
+.light .text-zinc-100 { color: #18181b !important; }
+.light .text-zinc-200 { color: #27272a !important; }
+.light .text-zinc-300 { color: #3f3f46 !important; }
+.light .text-zinc-400 { color: #52525b !important; }
+.light .text-zinc-500 { color: #71717a !important; }
+.light .text-zinc-600 { color: #a1a1aa !important; }
+
+/* Hover overrides */
+.light .hover\:bg-zinc-800:hover { background-color: #e4e4e7 !important; }
+.light .hover\:bg-zinc-800\/60:hover { background-color: rgba(228,228,231,0.6) !important; }
+
+/* Cards */
+.light article {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+.light article:hover { border-color: #71717a !important; }
+
+/* Header */
+.light header {
+  background-color: rgba(255,255,255,0.95) !important;
+  border-color: #d4d4d8 !important;
+}
+
+/* Inputs and search */
+.light input[type="text"],
+.light input[type="email"],
+.light input[type="password"],
+.light input:not([type]) {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+  border-color: #a1a1aa !important;
+}
+.light input::placeholder { color: #a1a1aa !important; }
+.light input:focus { border-color: #8b5cf6 !important; }
+
+/* Dropdowns and popups */
+.light .bg-zinc-900.border-zinc-700,
+.light .bg-zinc-900.border-zinc-800 {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+
+/* Chapter list and bordered divs */
+.light .border.border-zinc-800 { border-color: #d4d4d8 !important; }
+
+/* ── Global resets ──────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
