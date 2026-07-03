@@ -4,22 +4,166 @@
 
 :root {
   --font-reading: Georgia, Cambria, 'Times New Roman', serif;
+
+  /* Site design tokens — default to Dark (graphite) */
+  --bg-base: #0F0F11;
+  --bg-surface: #18181B;
+  --bg-elevated: #1F1F23;
+  --bg-input: #27272A;
+  --bg-hover: #27272A;
+  --border-subtle: #27272A;
+  --border-default: #3F3F46;
+  --text-primary: #FAFAFA;
+  --text-secondary: #D4D4D8;
+  --text-muted: #A1A1AA;
+  --text-disabled: #52525B;
+  --accent: #A78BFA;
+  --accent-hover: #8B5CF6;
+  --danger: #F87171;
+  --success: #4ADE80;
 }
 
-/* ── Dark (default) ─────────────────────────────────────── */
+/* ── Dark (softer graphite — distinct from AMOLED) ──────── */
 .dark {
   color-scheme: dark;
+  --bg-base: #0F0F11;
+  --bg-surface: #18181B;
+  --bg-elevated: #1F1F23;
+  --bg-input: #27272A;
+  --bg-hover: #27272A;
+  --border-subtle: #27272A;
+  --border-default: #3F3F46;
+  --text-primary: #FAFAFA;
+  --text-secondary: #D4D4D8;
+  --text-muted: #A1A1AA;
+  --text-disabled: #52525B;
+  --accent: #A78BFA;
+  --accent-hover: #8B5CF6;
+  --danger: #F87171;
+  --success: #4ADE80;
 }
 
-/* ── AMOLED ─────────────────────────────────────────────── */
+.dark body {
+  background-color: #0F0F11 !important;
+  color: #FAFAFA;
+}
+
+/* Dark theme: lift surfaces above the #0F0F11 page for visible fill-contrast */
+.dark .bg-zinc-950 { background-color: #0F0F11 !important; }
+.dark .bg-zinc-900 { background-color: #18181B !important; }
+.dark .bg-zinc-900\/95 { background-color: rgba(24,24,27,0.95) !important; }
+.dark .bg-zinc-800 { background-color: #1F1F23 !important; }
+.dark .bg-zinc-800\/50 { background-color: rgba(31,31,35,0.5) !important; }
+.dark .bg-zinc-800\/60 { background-color: rgba(31,31,35,0.6) !important; }
+.dark .bg-zinc-700\/60 { background-color: rgba(63,63,70,0.6) !important; }
+.dark .bg-zinc-700\/80 { background-color: rgba(63,63,70,0.8) !important; }
+
+.dark .border-zinc-800 { border-color: #27272A !important; }
+.dark .border-zinc-700 { border-color: #3F3F46 !important; }
+
+.dark article {
+  background-color: #18181B !important;
+  border-color: #27272A !important;
+}
+.dark article:hover { border-color: #3F3F46 !important; }
+
+.dark header {
+  background-color: rgba(24,24,27,0.95) !important;
+  border-color: #27272A !important;
+}
+
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input:not([type]) {
+  background-color: #27272A !important;
+  color: #FAFAFA !important;
+  border-color: #3F3F46 !important;
+}
+
+.dark .hover\:bg-zinc-800:hover { background-color: #27272A !important; }
+.dark .hover\:bg-zinc-800\/60:hover { background-color: rgba(39,39,42,0.6) !important; }
+
+/* ── AMOLED (true black canvas, hairline borders) ───────── */
 .amoled {
   color-scheme: dark;
-  background-color: #000000;
+  --bg-base: #000000;
+  --bg-surface: #0A0A0A;
+  --bg-elevated: #141416;
+  --bg-input: #161618;
+  --bg-hover: #1A1A1C;
+  --border-subtle: #1F1F1F;
+  --border-default: #2A2A2A;
+  --text-primary: #F4F4F5;
+  --text-secondary: #D4D4D8;
+  --text-muted: #8B8B92;
+  --text-disabled: #4A4A50;
+  --accent: #B197FC;
+  --accent-hover: #A78BFA;
+  --danger: #FCA5A5;
+  --success: #86EFAC;
 }
+
+.amoled body {
+  background-color: #000000 !important;
+  color: #F4F4F5;
+}
+
+.amoled .bg-zinc-950 { background-color: #000000 !important; }
+.amoled .bg-zinc-900 { background-color: #0A0A0A !important; }
+.amoled .bg-zinc-900\/95 { background-color: rgba(10,10,10,0.95) !important; }
+.amoled .bg-zinc-800 { background-color: #141416 !important; }
+.amoled .bg-zinc-800\/50 { background-color: rgba(20,20,22,0.5) !important; }
+.amoled .bg-zinc-800\/60 { background-color: rgba(20,20,22,0.6) !important; }
+.amoled .bg-zinc-700\/60 { background-color: rgba(26,26,28,0.6) !important; }
+.amoled .bg-zinc-700\/80 { background-color: rgba(26,26,28,0.8) !important; }
+
+/* Hairline borders are AMOLED's primary separator */
+.amoled .border-zinc-800 { border-color: #1F1F1F !important; }
+.amoled .border-zinc-700 { border-color: #2A2A2A !important; }
+.amoled .border-zinc-600 { border-color: #2A2A2A !important; }
+
+.amoled article {
+  background-color: #0A0A0A !important;
+  border-color: #1F1F1F !important;
+}
+.amoled article:hover { border-color: #2A2A2A !important; }
+
+.amoled header {
+  background-color: rgba(10,10,10,0.95) !important;
+  border-color: #1F1F1F !important;
+}
+
+.amoled input[type="text"],
+.amoled input[type="email"],
+.amoled input[type="password"],
+.amoled input:not([type]) {
+  background-color: #161618 !important;
+  color: #F4F4F5 !important;
+  border-color: #2A2A2A !important;
+}
+
+.amoled .hover\:bg-zinc-800:hover { background-color: #1A1A1C !important; }
+.amoled .hover\:bg-zinc-800\/60:hover { background-color: rgba(26,26,28,0.6) !important; }
 
 /* ── Light ──────────────────────────────────────────────── */
 .light {
   color-scheme: light;
+  --bg-base: #F4F4F5;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #FAFAFA;
+  --bg-input: #F4F4F5;
+  --bg-hover: #E4E4E7;
+  --border-subtle: #E4E4E7;
+  --border-default: #D4D4D8;
+  --text-primary: #18181B;
+  --text-secondary: #3F3F46;
+  --text-muted: #71717A;
+  --text-disabled: #A1A1AA;
+  --accent: #7C3AED;
+  --accent-hover: #6D28D9;
+  --danger: #DC2626;
+  --success: #16A34A;
 }
 
 .light body {
@@ -89,6 +233,122 @@
 /* Chapter list and bordered divs */
 .light .border.border-zinc-800 { border-color: #d4d4d8 !important; }
 
+/* ─────────────────────────────────────────────────────────
+   READER THEMES — scoped to .reader-content wrapper
+   Independent from site theme. Only affects reader chrome
+   and chapter text via --reader-* variables.
+   ───────────────────────────────────────────────────────── */
+
+/* Default reader vars (Paper) so .reader-content works even
+   without an explicit reader-* class. */
+.reader-content {
+  --reader-bg: #FAF9F6;
+  --reader-text: #2A2A2A;
+  --reader-text-secondary: #52525B;
+  --reader-title: #71717A;
+  --reader-accent: #6D28D9;
+  --reader-blockquote-border: #D4D4D8;
+  --reader-hr: #E4E4E7;
+
+  background-color: var(--reader-bg);
+  color: var(--reader-text);
+}
+
+.reader-content h1,
+.reader-content h2,
+.reader-content h3,
+.reader-content h4,
+.reader-content h5,
+.reader-content h6 {
+  color: var(--reader-title);
+}
+
+.reader-content a { color: var(--reader-accent); }
+
+.reader-content blockquote {
+  border-left: 3px solid var(--reader-blockquote-border);
+  color: var(--reader-text-secondary);
+  padding-left: 1em;
+}
+
+.reader-content hr {
+  border: 0;
+  border-top: 1px solid var(--reader-hr);
+}
+
+.reader-content .reader-secondary { color: var(--reader-text-secondary); }
+
+/* ── Paper (default day, off-white) ─────────────────────── */
+.reader-paper {
+  --reader-bg: #FAF9F6;
+  --reader-text: #2A2A2A;
+  --reader-text-secondary: #52525B;
+  --reader-title: #71717A;
+  --reader-accent: #6D28D9;
+  --reader-blockquote-border: #D4D4D8;
+  --reader-hr: #E4E4E7;
+}
+
+/* ── Sepia (cream/beige) ────────────────────────────────── */
+.reader-sepia {
+  --reader-bg: #FBF0D9;
+  --reader-text: #5B4636;
+  --reader-text-secondary: #7A5F48;
+  --reader-title: #8B6F55;
+  --reader-accent: #8B4513;
+  --reader-blockquote-border: #D4B896;
+  --reader-hr: #E8D5B0;
+}
+
+/* ── Gray (E-ink emulation, mid-gray) ───────────────────── */
+.reader-gray {
+  --reader-bg: #D6D3D0;
+  --reader-text: #1A1A1A;
+  --reader-text-secondary: #3F3F46;
+  --reader-title: #52525B;
+  --reader-accent: #4C1D95;
+  --reader-blockquote-border: #8B8985;
+  --reader-hr: #A8A6A2;
+}
+
+/* ── Dark / Console (classic dark night) ────────────────── */
+.reader-dark {
+  --reader-bg: #1A1A1A;
+  --reader-text: #D6D6D6;
+  --reader-text-secondary: #A1A1AA;
+  --reader-title: #8B8B92;
+  --reader-accent: #A78BFA;
+  --reader-blockquote-border: #3F3F46;
+  --reader-hr: #27272A;
+}
+
+/* ── AMOLED (true black reader) ─────────────────────────── */
+.reader-amoled {
+  --reader-bg: #000000;
+  --reader-text: #E5E5E5;
+  --reader-text-secondary: #A1A1AA;
+  --reader-title: #8B8B92;
+  --reader-accent: #B197FC;
+  --reader-blockquote-border: #1F1F1F;
+  --reader-hr: #141416;
+}
+
+/* Apply the vars whenever a reader-* class sits on or inside
+   the .reader-content wrapper (or the wrapper itself has both). */
+.reader-content.reader-paper,
+.reader-content .reader-paper,
+.reader-content.reader-sepia,
+.reader-content .reader-sepia,
+.reader-content.reader-gray,
+.reader-content .reader-gray,
+.reader-content.reader-dark,
+.reader-content .reader-dark,
+.reader-content.reader-amoled,
+.reader-content .reader-amoled {
+  background-color: var(--reader-bg);
+  color: var(--reader-text);
+}
+
 /* ── Global resets ──────────────────────────────────────── */
 * {
   box-sizing: border-box;
@@ -99,7 +359,9 @@ html {
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 antialiased;
+  @apply text-zinc-100 antialiased;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
 }
 
 .prose p {

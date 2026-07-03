@@ -81,10 +81,12 @@ export interface AuthTokens {
 
 export type Theme = 'light' | 'dark' | 'amoled'
 
+export type ReaderTheme = 'light' | 'dark' | 'amoled' | 'sepia' | 'paper'
+
 export interface ReaderSettings {
   font_size: number
   font_family: 'sans' | 'serif'
   line_height: number
   max_width: number
-  theme: Theme
+  theme: ReaderTheme
 }

@@ -10,9 +10,9 @@ import { SearchBar } from '@/components/search/SearchBar'
 import { cn } from '@/lib/utils'
 
 const THEMES = [
-  { value: 'dark'   as const, label: 'Тёмная',  Icon: Moon },
-  { value: 'light'  as const, label: 'Светлая', Icon: Sun },
-  { value: 'amoled' as const, label: 'AMOLED',  Icon: Smartphone },
+  { value: 'dark'   as const, label: 'Тёмная',  hint: 'мягкий тёмно-серый', Icon: Moon },
+  { value: 'light'  as const, label: 'Светлая', hint: 'светлый фон',        Icon: Sun },
+  { value: 'amoled' as const, label: 'AMOLED',  hint: 'чистый чёрный',      Icon: Smartphone },
 ]
 
 function ThemeToggle() {
@@ -33,22 +33,25 @@ function ThemeToggle() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-36 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50 py-1 overflow-hidden">
-            {THEMES.map(({ value, label, Icon: TIcon }) => (
+          <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50 py-1 overflow-hidden">
+            {THEMES.map(({ value, label, hint, Icon: TIcon }) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => { setTheme(value); setOpen(false) }}
                 className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors',
+                  'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left',
                   theme === value
                     ? 'text-purple-400 bg-purple-950/30'
                     : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'
                 )}
               >
-                <TIcon size={14} />
-                {label}
-                {theme === value && <span className="ml-auto text-purple-400 text-xs">✓</span>}
+                <TIcon size={14} className="flex-shrink-0" />
+                <span className="flex-1 flex flex-col leading-tight">
+                  <span>{label}</span>
+                  <span className="text-[10px] text-zinc-500">{hint}</span>
+                </span>
+                {theme === value && <span className="text-purple-400 text-xs">✓</span>}
               </button>
             ))}
           </div>

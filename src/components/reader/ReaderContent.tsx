@@ -47,25 +47,18 @@ export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
   const { settings } = useReaderStore()
   const contentRef = useRef<HTMLDivElement>(null)
 
-  const bgClass = settings.theme === 'amoled'
-    ? 'bg-black'
-    : settings.theme === 'dark'
-    ? 'bg-zinc-950'
-    : 'bg-amber-50'
-
-  const textClass = settings.theme === 'light' ? 'text-zinc-900' : 'text-zinc-100'
-
+  const theme = settings.theme
   const processedContent = formatChapterHtml(content)
 
   return (
-    <div className={cn('min-h-screen transition-colors duration-200', bgClass, textClass)}>
+    <div className={cn('reader-theme-root min-h-screen transition-colors duration-200', `reader-${theme}`)}>
       <div
         className="mx-auto px-4 sm:px-6 py-8"
         style={{ maxWidth: settings.max_width }}
       >
         {chapterTitle && (
           <h2
-            className={cn('font-semibold text-center mb-10', settings.theme === 'light' ? 'text-zinc-500' : 'text-zinc-500')}
+            className="reader-chapter-title font-semibold text-center mb-10"
             style={{ fontSize: settings.font_size * 1.2 }}
           >
             {chapterTitle}
@@ -85,27 +78,61 @@ export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
             '[&_b]:font-bold',
             '[&_strong]:font-bold',
             '[&_img]:mx-auto [&_img]:block [&_img]:rounded [&_img]:my-4',
-            '[&_a]:text-purple-400 [&_a:hover]:underline',
-            '[&_hr]:border-zinc-700 [&_hr]:my-6',
-            '[&_blockquote]:border-l-2 [&_blockquote]:border-zinc-600 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-zinc-400',
-            settings.theme !== 'light' ? '[&_p]:text-zinc-200' : '[&_p]:text-zinc-800',
           )}
           style={{
             fontSize: settings.font_size,
             lineHeight: settings.line_height,
           }}
         >
-          {/* Inject paragraph styles that Tailwind arbitrary variants can't cover */}
+          {/* Inject paragraph styles and theme colors that Tailwind arbitrary variants can't cover */}
           <style>{`
+            .reader-theme-root.reader-light { background-color: #ffffff; color: #18181b; }
+            .reader-theme-root.reader-light .reader-chapter-title { color: #71717a; }
+            .reader-theme-root.reader-light .reader-content p { color: #27272a; }
+            .reader-theme-root.reader-light .reader-content a { color: #7c3aed; }
+            .reader-theme-root.reader-light .reader-content hr { border-color: #d4d4d8; }
+            .reader-theme-root.reader-light .reader-content blockquote { border-left: 2px solid #a1a1aa; color: #52525b; }
+
+            .reader-theme-root.reader-dark { background-color: #1a1a1a; color: #d4d4d8; }
+            .reader-theme-root.reader-dark .reader-chapter-title { color: #71717a; }
+            .reader-theme-root.reader-dark .reader-content p { color: #d4d4d8; }
+            .reader-theme-root.reader-dark .reader-content a { color: #c4b5fd; }
+            .reader-theme-root.reader-dark .reader-content hr { border-color: #3f3f46; }
+            .reader-theme-root.reader-dark .reader-content blockquote { border-left: 2px solid #52525b; color: #a1a1aa; }
+
+            .reader-theme-root.reader-amoled { background-color: #000000; color: #e4e4e7; }
+            .reader-theme-root.reader-amoled .reader-chapter-title { color: #71717a; }
+            .reader-theme-root.reader-amoled .reader-content p { color: #e4e4e7; }
+            .reader-theme-root.reader-amoled .reader-content a { color: #c4b5fd; }
+            .reader-theme-root.reader-amoled .reader-content hr { border-color: #27272a; }
+            .reader-theme-root.reader-amoled .reader-content blockquote { border-left: 2px solid #3f3f46; color: #a1a1aa; }
+
+            .reader-theme-root.reader-sepia { background-color: #f4ecd8; color: #5b4636; }
+            .reader-theme-root.reader-sepia .reader-chapter-title { color: #8a7358; }
+            .reader-theme-root.reader-sepia .reader-content p { color: #5b4636; }
+            .reader-theme-root.reader-sepia .reader-content a { color: #7a4b1e; }
+            .reader-theme-root.reader-sepia .reader-content hr { border-color: #d8ceb5; }
+            .reader-theme-root.reader-sepia .reader-content blockquote { border-left: 2px solid #b8a586; color: #7a6a55; }
+
+            .reader-theme-root.reader-paper { background-color: #faf7f2; color: #2a2a2a; }
+            .reader-theme-root.reader-paper .reader-chapter-title { color: #6b6b6b; }
+            .reader-theme-root.reader-paper .reader-content p { color: #2a2a2a; }
+            .reader-theme-root.reader-paper .reader-content a { color: #5b21b6; }
+            .reader-theme-root.reader-paper .reader-content hr { border-color: #e5e2dc; }
+            .reader-theme-root.reader-paper .reader-content blockquote { border-left: 2px solid #c4c1bb; color: #5c5c5c; }
+
             .reader-content p {
               margin: 0;
               text-indent: 1.5em;
             }
             .reader-content p:empty { display: none; }
             .reader-content p + p { margin-top: 0; }
+            .reader-content a:hover { text-decoration: underline; }
+            .reader-content hr { margin: 1.5rem 0; }
+            .reader-content blockquote { padding-left: 1rem; font-style: italic; }
           `}</style>
           <div
-            className="reader-content"
+            className={`reader-content reader-${theme}`}
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         </div>

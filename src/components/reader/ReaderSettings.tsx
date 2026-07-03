@@ -1,9 +1,24 @@
 'use client'
-import { Settings, Sun, Moon, Smartphone, X } from 'lucide-react'
+import { Settings, X } from 'lucide-react'
 import { useState } from 'react'
 import { useReaderStore } from '@/store'
 import { Button } from '@/components/ui/button'
-import type { Theme } from '@/types'
+import type { ReaderTheme } from '@/types'
+
+interface ReaderThemeOption {
+  value: ReaderTheme
+  label: string
+  swatch: string
+  border?: string
+}
+
+const READER_THEMES: ReaderThemeOption[] = [
+  { value: 'light', label: 'Светлый', swatch: '#ffffff', border: '#d4d4d8' },
+  { value: 'dark', label: 'Тёмный', swatch: '#1a1a1a' },
+  { value: 'amoled', label: 'AMOLED', swatch: '#000000' },
+  { value: 'sepia', label: 'Сепия', swatch: '#f4ecd8' },
+  { value: 'paper', label: 'Бумага', swatch: '#faf7f2', border: '#e5e2dc' },
+]
 
 export function ReaderSettingsPanel() {
   const [open, setOpen] = useState(false)
@@ -28,20 +43,27 @@ export function ReaderSettingsPanel() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-zinc-500 block mb-2">Тема</label>
-              <div className="flex gap-1.5">
-                {(['light', 'dark', 'amoled'] as Theme[]).map((t) => (
+              <label className="text-xs text-zinc-500 block mb-2">Режим чтения</label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {READER_THEMES.map((t) => (
                   <button
-                    key={t}
-                    onClick={() => updateSettings({ theme: t })}
-                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs border transition-colors ${
-                      settings.theme === t
-                        ? 'bg-purple-600 border-purple-600 text-white'
-                        : 'border-zinc-600 text-zinc-400 hover:border-zinc-400 hover:text-zinc-200'
+                    key={t.value}
+                    onClick={() => updateSettings({ theme: t.value })}
+                    title={t.label}
+                    className={`flex flex-col items-center gap-1 px-1 py-1.5 rounded text-[10px] border transition-colors ${
+                      settings.theme === t.value
+                        ? 'bg-purple-600/20 border-purple-500 text-purple-200'
+                        : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
                     }`}
                   >
-                    {t === 'light' ? <Sun size={11} /> : t === 'dark' ? <Moon size={11} /> : <Smartphone size={11} />}
-                    <span>{t === 'amoled' ? 'AMOLED' : t === 'light' ? 'Светлая' : 'Тёмная'}</span>
+                    <span
+                      className="w-5 h-5 rounded-full border"
+                      style={{
+                        backgroundColor: t.swatch,
+                        borderColor: t.border ?? 'rgba(255,255,255,0.15)',
+                      }}
+                    />
+                    <span className="leading-tight">{t.label}</span>
                   </button>
                 ))}
               </div>
