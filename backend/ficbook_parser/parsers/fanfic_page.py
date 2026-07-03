@@ -80,7 +80,17 @@ class FanficPageParser:
         return safe_text(el)
 
     def _parse_cover(self, soup: BeautifulSoup) -> Optional[str]:
-        # New layout: picture.fanfic-hat-cover-picture img
+        # Preferred (2025 layout): <fanfic-cover src-original="..." src-desktop="..." src-mobile="..."/>
+        vue_cover = soup.select_one("fanfic-cover")
+        if vue_cover:
+            # Original is the raw uploaded image with natural aspect ratio — best for our layout
+            src = (vue_cover.get("src-original")
+                   or vue_cover.get("src-desktop")
+                   or vue_cover.get("src-mobile"))
+            if src:
+                return src if src.startswith("http") else absolute_url(src)
+
+        # Fallbacks for older layouts
         img = (soup.select_one("picture.fanfic-hat-cover-picture img")
                or soup.select_one("img.fanfic-main-cover")
                or soup.select_one("img[src*=fanfic-covers]"))
