@@ -37,6 +37,7 @@ class FanficCardParser:
         status = self._parse_status(article)
         words_count = self._parse_words_count(article)
         chapters_count = self._parse_chapters_count(article)
+        size_text = self._parse_size_text(article)
         update_date = self._parse_date(article)
 
         return FanficCardModel(
@@ -50,7 +51,7 @@ class FanficCardParser:
             description=description,
             cover_url=cover_url,
             status=status,
-            size=str(words_count),
+            size=size_text or str(words_count),
             update_date=update_date,
         )
 
@@ -250,7 +251,29 @@ class FanficCardParser:
                         return int(match.group(1))
         return 0
 
+    def _parse_size_text(self, article: Tag) -> str:
+        """Full size string from ficbook: '5 страниц, 25 328 слов, 13 частей'."""
+        for dl in article.select("dl.fanfic-inline-info"):
+            dt = dl.select_one("dt")
+            if dt and "Размер" in dt.get_text(strip=True):
+                dd = dl.select_one("dd")
+                if dd:
+                    # Collapse whitespace/newlines
+                    return " ".join(dd.get_text(strip=True).split())
+        return ""
+
     def _parse_date(self, article: Tag) -> str:
+        """Extract date from '<dt>Дата обновления/завершения/создания:</dt><dd>03.07.2026</dd>'."""
+        for dl in article.select("dl.fanfic-inline-info"):
+            dt = dl.select_one("dt")
+            if not dt:
+                continue
+            label = dt.get_text(strip=True)
+            if any(kw in label for kw in ("Дата обновления", "Дата завершения", "Дата создания")):
+                dd = dl.select_one("dd")
+                if dd:
+                    return " ".join(dd.get_text(strip=True).split())
+        # Fallback for older layout
         date_el = article.select_one("span.post-date, time[datetime]")
         if date_el:
             return date_el.get("datetime", "") or safe_text(date_el)
