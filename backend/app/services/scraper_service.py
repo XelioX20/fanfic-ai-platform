@@ -152,4 +152,6 @@ class ScraperService:
             "likes": card.status.likes, "trophies": card.status.trophies,
             "is_hot": card.status.is_hot, "cover_url": card.cover_url,
             "ficbook_url": ficbook_url,
+            "size": card.size or "",
+            "update_date": card.update_date or "",
         }

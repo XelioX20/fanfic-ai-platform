@@ -44,6 +44,8 @@ export interface Fanfic {
   ai_scores?: FanficAIScores
   published_at?: string
   updated_at?: string
+  size?: string
+  update_date?: string
 }
 
 export interface FanficListResponse {

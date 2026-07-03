@@ -130,6 +130,8 @@ async def discover_fanfics(
             "is_hot": f.status.is_hot,
             "cover_url": f.cover_url,
             "ficbook_url": ficbook_url,
+            "size": f.size or "",
+            "update_date": f.update_date or "",
             "words_count": 0, "chapters_count": 0, "comments_count": 0,
         })
 
