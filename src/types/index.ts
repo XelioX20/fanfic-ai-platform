@@ -79,7 +79,7 @@ export interface AuthTokens {
   token_type: string
 }
 
-export type Theme = 'light' | 'dark' | 'amoled' | 'sepia'
+export type Theme = 'light' | 'dark' | 'amoled'
 
 export type ReaderTheme = 'light' | 'dark' | 'amoled' | 'sepia' | 'paper'
 

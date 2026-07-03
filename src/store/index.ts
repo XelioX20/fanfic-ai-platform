@@ -68,7 +68,7 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      theme: 'sepia',
+      theme: 'dark',
       setTheme: (theme) => {
         set({ theme })
         document.documentElement.className = theme

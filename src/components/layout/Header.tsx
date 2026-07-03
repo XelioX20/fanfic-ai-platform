@@ -3,14 +3,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, User, LogOut, ChevronDown, Heart, Clock, Users, Link2, X, ArrowRight, Sun, Moon, Smartphone, Coffee } from 'lucide-react'
+import { BookOpen, User, LogOut, ChevronDown, Heart, Clock, Users, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/store'
 import { authApi } from '@/lib/api'
 import { SearchBar } from '@/components/search/SearchBar'
 import { cn } from '@/lib/utils'
 
 const THEMES = [
-  { value: 'sepia'  as const, label: 'Сепия',   hint: 'тёплый кремовый',    Icon: Coffee },
   { value: 'light'  as const, label: 'Светлая', hint: 'светлый фон',        Icon: Sun },
   { value: 'dark'   as const, label: 'Тёмная',  hint: 'мягкий тёмно-серый', Icon: Moon },
   { value: 'amoled' as const, label: 'AMOLED',  hint: 'чистый чёрный',      Icon: Smartphone },

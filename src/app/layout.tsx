@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`sepia ${allFontVariables}`}>
+    <html lang="ru" className={`dark ${allFontVariables}`}>
       <body>
         <Providers>
           <Header />
