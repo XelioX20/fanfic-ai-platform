@@ -272,14 +272,34 @@ class FanficPageParser:
         completion = FanficCompletionStatus.UNKNOWN
         is_hot = False
 
+        # Map ficbook direction class suffixes to enum values
+        DIR_CLASS_MAP = {
+            "direction-slash":    FanficDirection.SLASH,
+            "direction-het":      FanficDirection.HET,
+            "direction-gen":      FanficDirection.GEN,
+            "direction-femslash": FanficDirection.FEMSLASH,
+            "direction-mixed":    FanficDirection.MIXED,
+            "direction-other":    FanficDirection.OTHER,
+            "direction-article":  FanficDirection.OTHER,
+        }
+
         for badge in soup.select("div.ds-label, span.ds-label"):
             classes = " ".join(badge.get("class", []))
             text = badge.get_text(strip=True)
 
             if "direction-" in classes:
-                span = badge.select_one("span.hidden-xs")
-                dir_text = safe_text(span) if span else text
-                direction = FanficDirection.get_for_name(dir_text)
+                # First try mapping by class suffix (works when text is empty)
+                matched = None
+                for cls_name, dir_val in DIR_CLASS_MAP.items():
+                    if cls_name in classes:
+                        matched = dir_val
+                        break
+                if matched:
+                    direction = matched
+                else:
+                    span = badge.select_one("span.hidden-xs")
+                    dir_text = safe_text(span) if span else text
+                    direction = FanficDirection.get_for_name(dir_text)
 
             elif "ds-label-rating" in classes:
                 m = re.search(r"ds-label-rating-([A-Z0-9\-]+)", classes)
