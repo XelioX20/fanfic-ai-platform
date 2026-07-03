@@ -301,6 +301,18 @@ async def download_fanfic(
             raise HTTPException(status_code=502, detail=f"Failed to fetch download file: {e}")
 
         if dl_resp.status_code != 200:
+            # 429 = rate limit from ficbook (throttles downloads per session)
+            if dl_resp.status_code == 429:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Ficbook ограничил частоту скачиваний. Попробуй через 5–10 минут.",
+                )
+            # 403 usually means session lost or fanfic requires premium
+            if dl_resp.status_code == 403:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Скачивание недоступно (возможно нужна авторизация или премиум на ficbook).",
+                )
             raise HTTPException(
                 status_code=502,
                 detail=f"Ficbook returned {dl_resp.status_code} for download file",
