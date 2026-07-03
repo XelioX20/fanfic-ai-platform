@@ -1,11 +1,11 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked,
-  Bell, BellOff, FolderPlus, Download, Loader2, Flame, ExternalLink,
+  Bell, BellOff, FolderPlus, Download, Loader2, Flame, ChevronDown,
 } from 'lucide-react'
 import { useAuthStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
@@ -94,6 +94,21 @@ export default function FanficPage() {
     actionCache.get(id ?? '') ?? { is_liked: false, is_read: false, is_followed: false }
   )
   const [actLoading, setActLoading] = useState<string | null>(null)
+
+  const [downloadOpen, setDownloadOpen] = useState(false)
+  const [downloadingFmt, setDownloadingFmt] = useState<string | null>(null)
+  const downloadRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!downloadOpen) return
+    const onClick = (e: MouseEvent) => {
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) {
+        setDownloadOpen(false)
+      }
+    }
+    window.addEventListener('mousedown', onClick)
+    return () => window.removeEventListener('mousedown', onClick)
+  }, [downloadOpen])
 
   useEffect(() => {
     if (!id) return
@@ -450,17 +465,75 @@ export default function FanficPage() {
         )}
 
         {/* Download dropdown */}
-        <div className="mb-6 flex justify-center sm:justify-start">
-          <a
-            href={`https://ficbook.net/readfic/${id}/download`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 border border-zinc-700 hover:bg-zinc-800 text-zinc-300 rounded-lg text-sm transition-colors"
-          >
-            <Download size={16} /> Скачать
-            <ExternalLink size={12} className="opacity-60" />
-          </a>
-        </div>
+        {accessToken ? (
+          <div className="mb-6 flex justify-center sm:justify-start relative" ref={downloadRef}>
+            <button
+              type="button"
+              onClick={() => setDownloadOpen(v => !v)}
+              className="inline-flex items-center gap-2 px-4 py-2 border border-zinc-700 hover:bg-zinc-800 text-zinc-300 rounded-lg text-sm transition-colors"
+            >
+              <Download size={16} /> Скачать
+              <ChevronDown size={14} className={cn('transition-transform', downloadOpen && 'rotate-180')} />
+            </button>
+            {downloadOpen && (
+              <div className="absolute z-20 top-full mt-2 left-0 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl overflow-hidden min-w-[220px]">
+                {(['txt', 'epub', 'pdf', 'fb2'] as const).map(ext => (
+                  <button
+                    key={ext}
+                    type="button"
+                    disabled={downloadingFmt !== null}
+                    onClick={async () => {
+                      setDownloadingFmt(ext)
+                      try {
+                        const res = await fetch(`${API_URL}/api/v1/actions/download/${id}/${ext}`, {
+                          headers: { Authorization: `Bearer ${accessToken}` },
+                        })
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({ detail: 'Не удалось скачать' }))
+                          alert(err.detail || `Ошибка ${res.status}`)
+                          return
+                        }
+                        const blob = await res.blob()
+                        const disposition = res.headers.get('content-disposition') || ''
+                        const fnameMatch = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
+                        const filename = fnameMatch ? decodeURIComponent(fnameMatch[1]) : `${fanfic.title.replace(/[^\w\sа-яА-Я-]/g, '')}.${ext}`
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = filename
+                        document.body.appendChild(a)
+                        a.click()
+                        a.remove()
+                        URL.revokeObjectURL(url)
+                        setDownloadOpen(false)
+                      } catch (e) {
+                        alert(String(e))
+                      } finally {
+                        setDownloadingFmt(null)
+                      }
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors border-b border-zinc-800 last:border-b-0 disabled:opacity-50"
+                  >
+                    <span className="font-medium uppercase">{ext}</span>
+                    {downloadingFmt === ext ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} className="opacity-60" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mb-6 flex justify-center sm:justify-start">
+            <a
+              href={`https://ficbook.net/readfic/${id}/download`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-zinc-700 hover:bg-zinc-800 text-zinc-300 rounded-lg text-sm transition-colors opacity-60"
+              title="Войдите чтобы скачать напрямую"
+            >
+              <Download size={16} /> Скачать на ficbook.net
+            </a>
+          </div>
+        )}
 
         {/* Tags */}
         {fanfic.tags.length > 0 && (
