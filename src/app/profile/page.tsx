@@ -8,6 +8,7 @@ import { useAuthStore, useReaderStore } from '@/store'
 import { profileApi } from '@/lib/api'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
 import { cn } from '@/lib/utils'
+import { FONT_OPTIONS, getFontCssVar } from '@/lib/fonts'
 import type { Fanfic } from '@/types'
 
 type Tab = 'profile' | 'favourites' | 'history' | 'liked' | 'subscriptions' | 'settings'
@@ -98,13 +99,43 @@ function ReaderSettingsTab() {
       </div>
       <div>
         <label className="text-sm text-zinc-400 block mb-2">Шрифт</label>
-        <div className="flex gap-2">
-          {(['system-serif', 'system-sans'] as const).map(f => (
-            <button key={f} type="button" onClick={() => updateSettings({ font_family: f })}
-              className={cn('px-4 py-2 rounded-lg text-sm border transition-colors',
-                settings.font_family === f ? 'bg-purple-600 border-purple-600 text-white' : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
-              )}>
-              {f === 'system-serif' ? 'Serif' : 'Sans-serif'}
+
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">С засечками (для книг)</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-3">
+          {FONT_OPTIONS.filter(f => f.category === 'serif').map(f => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => updateSettings({ font_family: f.value })}
+              style={{ fontFamily: getFontCssVar(f.value) }}
+              className={cn(
+                'px-2 py-1.5 text-sm rounded border transition-all text-left',
+                settings.font_family === f.value
+                  ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
+                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Без засечек (современные)</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+          {FONT_OPTIONS.filter(f => f.category === 'sans').map(f => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => updateSettings({ font_family: f.value })}
+              style={{ fontFamily: getFontCssVar(f.value) }}
+              className={cn(
+                'px-2 py-1.5 text-sm rounded border transition-all text-left',
+                settings.font_family === f.value
+                  ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
+                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+              )}
+            >
+              {f.label}
             </button>
           ))}
         </div>
