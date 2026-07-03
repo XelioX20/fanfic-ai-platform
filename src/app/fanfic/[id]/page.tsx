@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked,
@@ -242,11 +241,17 @@ export default function FanficPage() {
           </div>
         </div>
 
-        {/* COVER — centered, ~3:4 ratio, rounded */}
+        {/* COVER — natural aspect ratio (like ficbook), centered, rounded */}
         {fanfic.cover_url && (
           <div className="mb-6 flex justify-center">
-            <div className="w-full max-w-xs sm:max-w-sm aspect-[3/4] relative rounded-xl overflow-hidden shadow-lg shadow-black/40 ring-1 ring-zinc-800">
-              <Image src={fanfic.cover_url} alt={fanfic.title} fill className="object-cover" unoptimized />
+            <div className="w-full max-w-sm sm:max-w-md relative rounded-xl overflow-hidden shadow-lg shadow-black/40 ring-1 ring-zinc-800">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fanfic.cover_url}
+                alt={fanfic.title}
+                className="w-full h-auto block"
+                loading="eager"
+              />
             </div>
           </div>
         )}

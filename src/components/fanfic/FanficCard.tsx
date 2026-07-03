@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Heart, Trophy } from 'lucide-react'
 import type { Fanfic } from '@/types'
 import { cn, formatNumber } from '@/lib/utils'
-import { FanficActions } from './FanficActions'
 import { FanficStateBadges } from './FanficStateBadges'
 
 const DIRECTION_COLORS: Record<string, string> = {
@@ -157,9 +156,6 @@ export function FanficCard({ fanfic, className }: FanficCardProps) {
                 🔥 Горячая работа
               </Chip>
             )}
-
-            {/* Action buttons inline with badges */}
-            <FanficActions fanficId={fanfic.id} compact />
           </div>
 
           {/* Metadata rows — ficbook style */}
