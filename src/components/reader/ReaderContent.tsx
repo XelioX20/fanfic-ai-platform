@@ -67,6 +67,7 @@ export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
         )}
         <div
           ref={contentRef}
+          data-reader-font
           className={cn(
             // Paragraph styles matching ficbook.net
             '[&_p]:mb-0 [&_p]:mt-0',
@@ -80,6 +81,9 @@ export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
             '[&_img]:mx-auto [&_img]:block [&_img]:rounded [&_img]:my-4',
           )}
           style={{
+            // CSS var so globals.css can force it into every descendant with !important,
+            // beating any inline `style="font-family:..."` ficbook injects into paragraphs.
+            ['--reader-font-family' as string]: getFontCssVar(settings.font_family),
             fontFamily: getFontCssVar(settings.font_family),
             fontSize: settings.font_size,
             lineHeight: settings.line_height,

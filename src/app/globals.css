@@ -371,3 +371,17 @@ body {
 .font-reading {
   font-family: var(--font-reading);
 }
+
+/* ─────────────────────────────────────────────────────────
+   READER FONT ENFORCEMENT
+   ficbook.net wraps chapter text in tags with inline
+   style="font-family: ..." — force our chosen font onto every
+   descendant of the reader content wrapper so user's font
+   selection actually applies.
+   ───────────────────────────────────────────────────────── */
+.reader-content,
+.reader-content *,
+[data-reader-font],
+[data-reader-font] * {
+  font-family: var(--reader-font-family, inherit) !important;
+}
