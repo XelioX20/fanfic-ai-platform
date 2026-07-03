@@ -4,7 +4,12 @@ import styles from './loaders.module.css'
 
 // Registry of available loader class names in loaders.module.css.
 // To add a new loader: add its CSS block to loaders.module.css and its class name here.
-const LOADERS = ['hourglass'] as const
+const LOADERS = [
+  'hourglass', 'planet', 'orbit', 'disc', 'pearl',
+  'pong', 'tulip', 'bouncer', 'eyes', 'balance',
+  'magnifier', 'pendulum', 'drop', 'book', 'face',
+  'pan', 'bars',
+] as const
 type LoaderName = typeof LOADERS[number]
 
 interface LoaderProps {
