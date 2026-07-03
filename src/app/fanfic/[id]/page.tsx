@@ -188,7 +188,7 @@ export default function FanficPage() {
   }
 
   const ficbookUrl = `https://ficbook.net/readfic/${id}`
-  const ficbookCommentsUrl = `${ficbookUrl}#comments`
+  const ficbookCommentsUrl = `${ficbookUrl}/comments#comments-list`
   const chapterIds = fanfic.chapters.map(c => c.id).join(',')
   const readHref = fanfic.is_single_chapter
     ? `/fanfic/${id}/read`

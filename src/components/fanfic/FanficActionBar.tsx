@@ -88,7 +88,7 @@ export function FanficActionBar({ fanficId, likesCount = 0, commentsCount = 0 }:
     <div className="flex flex-wrap gap-2 mb-4">
       {btn(state.is_liked, () => doAction(state.is_liked ? 'unlike' : 'like'), Heart, 'Нравится', likesCount, 'bg-pink-900/40 border-pink-600 text-pink-300')}
       {btn(state.is_followed, () => doAction(state.is_followed ? 'unfollow' : 'follow'), Bell, 'Подписаться', undefined, 'bg-purple-900/40 border-purple-600 text-purple-300')}
-      {btn(false, undefined, MessageSquare, 'Отзывы', commentsCount, undefined, `https://ficbook.net/readfic/${fanficId}#comments`)}
+      {btn(false, undefined, MessageSquare, 'Отзывы', commentsCount, undefined, `https://ficbook.net/readfic/${fanficId}/comments#comments-list`)}
       {btn(false, undefined, FolderPlus, 'В сборник', undefined, undefined, `https://ficbook.net/readfic/${fanficId}`)}
     </div>
   )

@@ -24,8 +24,13 @@ class FanficPageParser:
         pairings = self._parse_pairings(soup)
         tags = self._parse_tags(soup)
         description = self._parse_description(soup)
-        dedication = self._parse_block(soup, "посвящение") or safe_text(soup.select_one("div.fanfic-hat-dedication"))
-        author_notes = self._parse_block(soup, "от автора") or safe_text(soup.select_one("div.author-notes"))
+        dedication = (self._parse_meta_text(soup, "Посвящение")
+                      or self._parse_block(soup, "посвящение")
+                      or safe_text(soup.select_one("div.fanfic-hat-dedication")))
+        author_notes = (self._parse_meta_text(soup, "Примечания")
+                        or self._parse_meta_text(soup, "От автора")
+                        or self._parse_block(soup, "от автора")
+                        or safe_text(soup.select_one("div.author-notes")))
 
         direction, rating, completion, likes, trophies, is_hot = self._parse_status(soup)
 
@@ -86,7 +91,24 @@ class FanficPageParser:
 
     def _parse_authors(self, soup: BeautifulSoup) -> list[FanficAuthorModel]:
         authors = []
-        # New: dl.fanfic-inline-info where dt=Автор
+        # New 2025 layout: div.hat-creator-container with a.creator-username[itemprop=author]
+        for container in soup.select("div.hat-creator-container"):
+            a = (container.select_one("a.creator-username[itemprop=author]")
+                 or container.select_one("a.creator-username")
+                 or container.select_one("a[itemprop=author]"))
+            if not a:
+                continue
+            role_el = container.select_one("div.creator-info i.small-text") or container.select_one("i.small-text")
+            role = safe_text(role_el) or "автор"
+            user = UserModel(
+                id=extract_id_from_href(safe_attr(a, "href")),
+                name=safe_text(a),
+                href=safe_attr(a, "href"),
+            )
+            authors.append(FanficAuthorModel(user=user, role=role))
+        if authors:
+            return authors
+        # Old dl.fanfic-inline-info layout
         for dl in soup.select("dl.fanfic-inline-info"):
             dt = dl.select_one("dt")
             if dt and "Автор" in dt.get_text(strip=True):
@@ -108,7 +130,23 @@ class FanficPageParser:
                 authors.append(FanficAuthorModel(user=user, role="Автор"))
         return authors
 
+    def _find_meta_block(self, soup: BeautifulSoup, label: str) -> Optional[Tag]:
+        """Find a div.mb-10 whose <strong> label matches — new 2025 metadata blocks live in div.description."""
+        label_l = label.lower().rstrip(":")
+        for block in soup.select("div.description div.mb-10, section.chapter-info div.mb-10, div.mb-10"):
+            strong = block.select_one("strong")
+            if strong and label_l in strong.get_text(strip=True).lower().rstrip(":"):
+                return block
+        return None
+
     def _parse_fandoms(self, soup: BeautifulSoup) -> list[str]:
+        # New 2025: div.mb-10 with <strong>Фэндом:</strong> then sibling <div> containing <a>
+        block = self._find_meta_block(soup, "Фэндом")
+        if block:
+            names = [a.get_text(strip=True) for a in block.select("a") if a.get_text(strip=True)]
+            if names:
+                return names
+        # Old dl layout
         for dl in soup.select("dl.fanfic-inline-info"):
             dt = dl.select_one("dt")
             if dt and "Фэндом" in dt.get_text(strip=True):
@@ -116,6 +154,24 @@ class FanficPageParser:
         return [t.get_text(strip=True) for t in soup.select("span.fandom-name")]
 
     def _parse_pairings(self, soup: BeautifulSoup) -> list[PairingModel]:
+        # New 2025: div.mb-10 with <strong>Пэйринги и персонажи:</strong>
+        for label in ("Пэйринг", "Персонаж"):
+            block = self._find_meta_block(soup, label)
+            if block:
+                pairings = []
+                for a in block.select("a"):
+                    text = a.get_text(strip=True)
+                    if not text:
+                        continue
+                    is_highlight = "highlight" in " ".join(a.get("class", []))
+                    if "/" in text:
+                        chars = [c.strip() for c in text.split("/") if c.strip()]
+                        pairings.append(PairingModel(characters=chars, is_highlight=is_highlight))
+                    else:
+                        pairings.append(PairingModel(characters=[text], is_highlight=is_highlight))
+                if pairings:
+                    return pairings
+        # Old dl layout
         for dl in soup.select("dl.fanfic-inline-info"):
             dt = dl.select_one("dt")
             if dt and ("Пэйринг" in dt.get_text(strip=True) or "Персонаж" in dt.get_text(strip=True)):
@@ -137,6 +193,20 @@ class FanficPageParser:
         return pairings
 
     def _parse_tags(self, soup: BeautifulSoup) -> list[FanficTag]:
+        # New 2025: div.mb-10 with <strong>Метки:</strong>
+        block = self._find_meta_block(soup, "Метки")
+        if block:
+            tags = []
+            for a in block.select("a"):
+                name = a.get_text(strip=True)
+                if not name:
+                    continue
+                classes = " ".join(a.get("class", []))
+                is_adult = "adult" in classes or "18" in name
+                tags.append(FanficTag(name=name, href=a.get("href", ""), is_adult=is_adult))
+            if tags:
+                return tags
+        # Old dl layout
         for dl in soup.select("dl.fanfic-inline-info"):
             dt = dl.select_one("dt")
             if dt and "Метки" in dt.get_text(strip=True):
@@ -156,11 +226,37 @@ class FanficPageParser:
         return tags
 
     def _parse_description(self, soup: BeautifulSoup) -> str:
+        # New 2025: div.mb-10 with <strong>Описание:</strong>
+        block = self._find_meta_block(soup, "Описание")
+        if block:
+            # Prefer the sibling <div> after <strong>
+            inner = block.find("div")
+            target = inner if inner else block
+            text = target.get_text(separator="\n", strip=True)
+            if text:
+                # Strip the leading "Описание:" if it was included
+                if text.lower().startswith("описание"):
+                    text = text.split(":", 1)[-1].strip()
+                return text
         div = (soup.select_one("div[itemprop=description]")
                or soup.select_one("div.fanfic-description"))
         if div:
             return div.get_text(separator="\n", strip=True)
         return ""
+
+    def _parse_meta_text(self, soup: BeautifulSoup, label: str) -> str:
+        """Extract text content of a div.mb-10 metadata block by <strong> label."""
+        block = self._find_meta_block(soup, label)
+        if not block:
+            return ""
+        inner = block.find("div")
+        target = inner if inner else block
+        text = target.get_text(separator="\n", strip=True)
+        # Strip leading label prefix if it was included
+        label_clean = label.rstrip(":").lower()
+        if text.lower().startswith(label_clean):
+            text = text.split(":", 1)[-1].strip() if ":" in text else text[len(label_clean):].strip()
+        return text
 
     def _parse_block(self, soup: BeautifulSoup, keyword: str) -> str:
         """Find a section by keyword in its heading."""
@@ -195,7 +291,7 @@ class FanficPageParser:
             elif "ds-label-status" in classes:
                 if "in-progress" in classes or "В процессе" in text:
                     completion = FanficCompletionStatus.IN_PROGRESS
-                elif "complete" in classes or "Завершён" in text:
+                elif "finished" in classes or "complete" in classes or "Завершён" in text or "Закончен" in text:
                     completion = FanficCompletionStatus.COMPLETE
                 elif "frozen" in classes or "Заморожен" in text:
                     completion = FanficCompletionStatus.FROZEN
@@ -211,10 +307,33 @@ class FanficPageParser:
         if completion == FanficCompletionStatus.UNKNOWN:
             completion = FanficCompletionStatus.get_for_name(safe_text(soup.select_one("span.badge-status")))
 
-        likes_el = soup.select_one("span.js-like-count") or soup.select_one("span.badge-like")
+        likes_el = (soup.select_one("section.fanfic-badges span.js-marks-plus")
+                    or soup.select_one("span.js-marks-plus")
+                    or soup.select_one("span.js-like-count")
+                    or soup.select_one("span.badge-like"))
         likes = parse_int(safe_text(likes_el))
-        trophies_el = soup.select_one("span.js-reward-count") or soup.select_one("span.badge-reward")
-        trophies = parse_int(safe_text(trophies_el))
+
+        # Trophies: 2025 layout — div.ds-label-regular whose SVG uses ic_trophy,
+        # counter is a bare text node next to the SVG (not inside a span).
+        trophies = 0
+        for badge in soup.select("section.fanfic-badges div.ds-label-regular, div.ds-label-regular"):
+            svg = badge.select_one("svg")
+            classes = " ".join(svg.get("class", [])) if svg else ""
+            use_href = ""
+            use_el = badge.select_one("use")
+            if use_el:
+                use_href = use_el.get("href", "") or use_el.get("xlink:href", "")
+            if "ic_trophy" in classes or "ic_trophy" in use_href:
+                # Collect direct text (excluding svg content)
+                parts = [t for t in badge.find_all(string=True, recursive=True)
+                         if t.parent.name != "use"]
+                text_val = " ".join(s.strip() for s in parts if s.strip())
+                trophies = parse_int(text_val)
+                break
+        if trophies == 0:
+            trophies_el = (soup.select_one("span.js-reward-count")
+                           or soup.select_one("span.badge-reward"))
+            trophies = parse_int(safe_text(trophies_el))
 
         return direction, rating, completion, likes, trophies, is_hot
 
