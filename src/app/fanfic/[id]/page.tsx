@@ -1,11 +1,11 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked,
-  Bell, BellOff, FolderPlus, Download, Loader2, ChevronDown, Flame,
+  Bell, BellOff, FolderPlus, Download, Loader2, Flame, ExternalLink,
 } from 'lucide-react'
 import { useAuthStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
@@ -94,8 +94,6 @@ export default function FanficPage() {
     actionCache.get(id ?? '') ?? { is_liked: false, is_read: false, is_followed: false }
   )
   const [actLoading, setActLoading] = useState<string | null>(null)
-  const [downloadOpen, setDownloadOpen] = useState(false)
-  const downloadRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -126,17 +124,6 @@ export default function FanficPage() {
       })
       .catch(() => {})
   }, [id, accessToken])
-
-  useEffect(() => {
-    if (!downloadOpen) return
-    const onClick = (e: MouseEvent) => {
-      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) {
-        setDownloadOpen(false)
-      }
-    }
-    window.addEventListener('mousedown', onClick)
-    return () => window.removeEventListener('mousedown', onClick)
-  }, [downloadOpen])
 
   const doAction = async (action: string) => {
     if (!accessToken || !id) return
@@ -463,31 +450,16 @@ export default function FanficPage() {
         )}
 
         {/* Download dropdown */}
-        <div className="mb-6 flex justify-center sm:justify-start relative" ref={downloadRef}>
-          <button
-            type="button"
-            onClick={() => setDownloadOpen(v => !v)}
+        <div className="mb-6 flex justify-center sm:justify-start">
+          <a
+            href={`https://ficbook.net/readfic/${id}/download`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 border border-zinc-700 hover:bg-zinc-800 text-zinc-300 rounded-lg text-sm transition-colors"
           >
             <Download size={16} /> Скачать
-            <ChevronDown size={14} className={cn('transition-transform', downloadOpen && 'rotate-180')} />
-          </button>
-          {downloadOpen && (
-            <div className="absolute z-20 top-full mt-2 left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
-              {(['txt', 'epub', 'pdf', 'fb2'] as const).map(ext => (
-                <a
-                  key={ext}
-                  href={`https://ficbook.net/fanfic_download/${ext}?fanfic_id=${id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setDownloadOpen(false)}
-                  className="block px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors border-b border-zinc-800 last:border-b-0"
-                >
-                  {ext.toUpperCase()}
-                </a>
-              ))}
-            </div>
-          )}
+            <ExternalLink size={12} className="opacity-60" />
+          </a>
         </div>
 
         {/* Tags */}
