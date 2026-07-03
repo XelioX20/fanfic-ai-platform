@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked,
-  Bell, BellOff, FolderPlus, Download, Loader2, Flame, ChevronDown,
+  Bell, BellOff, FolderPlus, Download, Loader2, Flame, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { useAuthStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
@@ -80,6 +80,34 @@ interface ActionState {
   is_followed: boolean
 }
 const actionCache = new Map<string, ActionState>()
+
+function ScrollToTopButton({ offsetBottom = 'bottom-6' }: { offsetBottom?: string }) {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 400)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  if (!visible) return null
+
+  return (
+    <button
+      type="button"
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      title="Наверх"
+      className={cn(
+        'fixed right-6 z-30 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border transition-all',
+        'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-700 shadow-black/40',
+        offsetBottom,
+      )}
+    >
+      <ChevronUp size={22} />
+    </button>
+  )
+}
 
 export default function FanficPage() {
   const { id } = useParams<{ id: string }>()
@@ -241,10 +269,10 @@ export default function FanficPage() {
           </div>
         </div>
 
-        {/* COVER — natural aspect ratio (like ficbook), centered, rounded */}
+        {/* COVER — full container width on mobile (like ficbook), capped on desktop, natural aspect */}
         {fanfic.cover_url && (
-          <div className="mb-6 flex justify-center">
-            <div className="w-full max-w-sm sm:max-w-md relative rounded-xl overflow-hidden shadow-lg shadow-black/40 ring-1 ring-zinc-800">
+          <div className="mb-6">
+            <div className="w-full sm:max-w-md sm:mx-auto rounded-xl overflow-hidden shadow-lg shadow-black/40 ring-1 ring-zinc-800">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={fanfic.cover_url}
@@ -564,6 +592,9 @@ export default function FanficPage() {
           </div>
         )}
       </main>
+
+      {/* Scroll-to-top button (shows after scrolling 400px down) */}
+      <ScrollToTopButton offsetBottom={accessToken ? 'bottom-24' : 'bottom-6'} />
 
       {/* Fixed bottom-right bookmark (mark as read) */}
       {accessToken && (
