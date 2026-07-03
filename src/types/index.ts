@@ -79,13 +79,13 @@ export interface AuthTokens {
   token_type: string
 }
 
-export type Theme = 'light' | 'dark' | 'amoled'
+export type Theme = 'light' | 'dark' | 'amoled' | 'sepia'
 
 export type ReaderTheme = 'light' | 'dark' | 'amoled' | 'sepia' | 'paper'
 
 export interface ReaderSettings {
   font_size: number
-  font_family: 'sans' | 'serif'
+  font_family: 'system-serif' | 'system-sans' | 'merriweather' | 'lora' | 'pt-serif' | 'roboto-slab' | 'source-serif' | 'literata' | 'garamond' | 'inter' | 'roboto' | 'open-sans' | 'pt-sans' | 'nunito'
   line_height: number
   max_width: number
   theme: ReaderTheme

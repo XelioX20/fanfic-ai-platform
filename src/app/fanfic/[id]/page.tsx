@@ -121,9 +121,9 @@ export default function FanficPage() {
       </button>
 
       {/* Header */}
-      <div className="flex gap-6 mb-6">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-6">
         {fanfic.cover_url && (
-          <div className="flex-shrink-0 w-36 h-52 relative rounded-lg overflow-hidden">
+          <div className="flex-shrink-0 w-full max-w-[200px] sm:w-36 aspect-[3/4] sm:aspect-auto sm:h-52 relative rounded-lg overflow-hidden mx-auto sm:mx-0">
             <Image src={fanfic.cover_url} alt={fanfic.title} fill className="object-cover" unoptimized />
           </div>
         )}

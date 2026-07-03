@@ -99,12 +99,12 @@ function ReaderSettingsTab() {
       <div>
         <label className="text-sm text-zinc-400 block mb-2">Шрифт</label>
         <div className="flex gap-2">
-          {(['serif', 'sans'] as const).map(f => (
-            <button key={f} onClick={() => updateSettings({ font_family: f })}
+          {(['system-serif', 'system-sans'] as const).map(f => (
+            <button key={f} type="button" onClick={() => updateSettings({ font_family: f })}
               className={cn('px-4 py-2 rounded-lg text-sm border transition-colors',
                 settings.font_family === f ? 'bg-purple-600 border-purple-600 text-white' : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
               )}>
-              {f === 'serif' ? 'Serif' : 'Sans-serif'}
+              {f === 'system-serif' ? 'Serif' : 'Sans-serif'}
             </button>
           ))}
         </div>

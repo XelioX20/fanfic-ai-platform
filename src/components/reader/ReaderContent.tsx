@@ -2,6 +2,7 @@
 import { useRef } from 'react'
 import { useReaderStore } from '@/store'
 import { cn } from '@/lib/utils'
+import { getFontCssVar } from '@/lib/fonts'
 
 interface ReaderContentProps {
   content: string
@@ -67,7 +68,6 @@ export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
         <div
           ref={contentRef}
           className={cn(
-            settings.font_family === 'serif' ? 'font-reading' : 'font-sans',
             // Paragraph styles matching ficbook.net
             '[&_p]:mb-0 [&_p]:mt-0',
             '[&_p]:text-indent-[1.5em]',
@@ -80,6 +80,7 @@ export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
             '[&_img]:mx-auto [&_img]:block [&_img]:rounded [&_img]:my-4',
           )}
           style={{
+            fontFamily: getFontCssVar(settings.font_family),
             fontSize: settings.font_size,
             lineHeight: settings.line_height,
           }}

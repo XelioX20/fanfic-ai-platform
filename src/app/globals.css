@@ -233,6 +233,99 @@
 /* Chapter list and bordered divs */
 .light .border.border-zinc-800 { border-color: #d4d4d8 !important; }
 
+/* ── Sepia (site-wide warm cream) ──────────────────────── */
+.sepia {
+  color-scheme: light;
+  --bg-base: #F4EAD5;
+  --bg-surface: #FBF0D9;
+  --bg-elevated: #F7E7C4;
+  --bg-input: #F7E7C4;
+  --bg-hover: #EEDCB0;
+  --border-subtle: #E8D5B0;
+  --border-default: #D4B896;
+  --text-primary: #5B4636;
+  --text-secondary: #7A5F48;
+  --text-muted: #8B6F55;
+  --text-disabled: #A88C71;
+  --accent: #8B4513;
+  --accent-hover: #6D3410;
+  --danger: #B44A26;
+  --success: #556B2F;
+}
+
+.sepia body {
+  background-color: #F4EAD5 !important;
+  color: #5B4636 !important;
+}
+
+/* Backgrounds */
+.sepia .bg-zinc-950 { background-color: #F4EAD5 !important; }
+.sepia .bg-zinc-900 { background-color: #FBF0D9 !important; }
+.sepia .bg-zinc-900\/95 { background-color: rgba(251,240,217,0.95) !important; }
+.sepia .bg-zinc-800 { background-color: #F7E7C4 !important; }
+.sepia .bg-zinc-800\/50 { background-color: rgba(247,231,196,0.5) !important; }
+.sepia .bg-zinc-800\/60 { background-color: rgba(247,231,196,0.6) !important; }
+.sepia .bg-zinc-700\/60 { background-color: rgba(238,220,176,0.6) !important; }
+.sepia .bg-zinc-700\/80 { background-color: rgba(238,220,176,0.8) !important; }
+
+/* Borders */
+.sepia .border-zinc-800 { border-color: #E8D5B0 !important; }
+.sepia .border-zinc-700 { border-color: #D4B896 !important; }
+.sepia .border-zinc-600 { border-color: #B39972 !important; }
+.sepia .border.border-zinc-800 { border-color: #E8D5B0 !important; }
+
+/* Text */
+.sepia .text-zinc-100 { color: #5B4636 !important; }
+.sepia .text-zinc-200 { color: #6A5340 !important; }
+.sepia .text-zinc-300 { color: #7A5F48 !important; }
+.sepia .text-zinc-400 { color: #8B6F55 !important; }
+.sepia .text-zinc-500 { color: #A88C71 !important; }
+.sepia .text-zinc-600 { color: #B39972 !important; }
+
+/* Cards */
+.sepia article {
+  background-color: #FBF0D9 !important;
+  border-color: #E8D5B0 !important;
+}
+.sepia article:hover { border-color: #B39972 !important; }
+
+/* Header */
+.sepia header {
+  background-color: rgba(251,240,217,0.95) !important;
+  border-color: #E8D5B0 !important;
+}
+
+/* Inputs */
+.sepia input[type="text"],
+.sepia input[type="email"],
+.sepia input[type="password"],
+.sepia input:not([type]) {
+  background-color: #F7E7C4 !important;
+  color: #5B4636 !important;
+  border-color: #D4B896 !important;
+}
+.sepia input::placeholder { color: #A88C71 !important; }
+.sepia input:focus { border-color: #8B4513 !important; }
+
+/* Dropdowns */
+.sepia .bg-zinc-900.border-zinc-700,
+.sepia .bg-zinc-900.border-zinc-800 {
+  background-color: #FBF0D9 !important;
+  border-color: #D4B896 !important;
+}
+
+.sepia .hover\:bg-zinc-800:hover { background-color: #EEDCB0 !important; }
+.sepia .hover\:bg-zinc-800\/60:hover { background-color: rgba(238,220,176,0.6) !important; }
+
+/* Purple brand → warm saddle brown */
+.sepia .text-purple-500,
+.sepia .text-purple-400,
+.sepia .text-purple-300 { color: #8B4513 !important; }
+.sepia .bg-purple-600 { background-color: #8B4513 !important; }
+.sepia .bg-purple-600:hover,
+.sepia .hover\:bg-purple-700:hover { background-color: #6D3410 !important; }
+.sepia .bg-purple-950\/30 { background-color: rgba(139,69,19,0.10) !important; }
+
 /* ─────────────────────────────────────────────────────────
    READER THEMES — scoped to .reader-content wrapper
    Independent from site theme. Only affects reader chrome

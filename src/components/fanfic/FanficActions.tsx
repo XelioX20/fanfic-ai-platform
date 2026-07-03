@@ -78,7 +78,7 @@ export function FanficActions({ fanficId, compact = false }: FanficActionsProps)
   }
 
   return (
-    <div className={cn('flex items-center', compact ? 'gap-1' : 'gap-2')}>
+    <div className={cn('flex flex-wrap items-center', compact ? 'gap-1' : 'gap-2')}>
       {/* Like */}
       <button
         type="button"
@@ -97,7 +97,7 @@ export function FanficActions({ fanficId, compact = false }: FanficActionsProps)
           ? <Loader2 size={12} className="animate-spin" />
           : <Heart size={12} className={state.is_liked ? 'fill-pink-300 text-pink-300' : ''} />
         }
-        {!compact && <span>{state.is_liked ? 'В избранном' : 'В избранное'}</span>}
+        {!compact && <span className="hidden sm:inline">{state.is_liked ? 'В избранном' : 'В избранное'}</span>}
       </button>
 
       {/* Mark read */}
@@ -118,7 +118,7 @@ export function FanficActions({ fanficId, compact = false }: FanficActionsProps)
           ? <Loader2 size={12} className="animate-spin" />
           : <BookCheck size={12} className={state.is_read ? 'text-teal-300' : ''} />
         }
-        {!compact && <span>{state.is_read ? 'Прочитано' : 'Отметить прочитанным'}</span>}
+        {!compact && <span className="hidden sm:inline">{state.is_read ? 'Прочитано' : 'Отметить прочитанным'}</span>}
       </button>
 
       {/* Follow */}
@@ -139,7 +139,7 @@ export function FanficActions({ fanficId, compact = false }: FanficActionsProps)
           ? <Loader2 size={12} className="animate-spin" />
           : state.is_followed ? <BellOff size={12} className="text-purple-300" /> : <Bell size={12} />
         }
-        {!compact && <span>{state.is_followed ? 'Подписан' : 'Следить'}</span>}
+        {!compact && <span className="hidden sm:inline">{state.is_followed ? 'Подписан' : 'Следить'}</span>}
       </button>
     </div>
   )

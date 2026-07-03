@@ -3,6 +3,8 @@ import { Settings, X } from 'lucide-react'
 import { useState } from 'react'
 import { useReaderStore } from '@/store'
 import { Button } from '@/components/ui/button'
+import { FONT_OPTIONS, getFontCssVar } from '@/lib/fonts'
+import { cn } from '@/lib/utils'
 import type { ReaderTheme } from '@/types'
 
 interface ReaderThemeOption {
@@ -91,21 +93,45 @@ export function ReaderSettingsPanel() {
 
             <div>
               <label className="text-xs text-zinc-500 block mb-2">Шрифт</label>
-              <div className="flex gap-2">
-                <Button
-                  variant={settings.font_family === 'serif' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => updateSettings({ font_family: 'serif' })}
-                >
-                  Serif
-                </Button>
-                <Button
-                  variant={settings.font_family === 'sans' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => updateSettings({ font_family: 'sans' })}
-                >
-                  Sans
-                </Button>
+
+              <p className="text-[10px] uppercase tracking-wider text-zinc-600 mb-1 mt-1">С засечками (для книг)</p>
+              <div className="grid grid-cols-2 gap-1.5 mb-3">
+                {FONT_OPTIONS.filter(f => f.category === 'serif').map(f => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => updateSettings({ font_family: f.value })}
+                    style={{ fontFamily: getFontCssVar(f.value) }}
+                    className={cn(
+                      'px-2 py-1.5 text-sm rounded border transition-all text-left',
+                      settings.font_family === f.value
+                        ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
+                        : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-[10px] uppercase tracking-wider text-zinc-600 mb-1">Без засечек (современные)</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {FONT_OPTIONS.filter(f => f.category === 'sans').map(f => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => updateSettings({ font_family: f.value })}
+                    style={{ fontFamily: getFontCssVar(f.value) }}
+                    className={cn(
+                      'px-2 py-1.5 text-sm rounded border transition-all text-left',
+                      settings.font_family === f.value
+                        ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
+                        : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

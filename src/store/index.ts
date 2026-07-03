@@ -41,7 +41,7 @@ export const useReaderStore = create<ReaderState>()(
     (set) => ({
       settings: {
         font_size: 16,
-        font_family: 'serif',
+        font_family: 'system-serif',
         line_height: 1.8,
         max_width: 680,
         theme: 'dark' as Theme,
@@ -68,7 +68,7 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      theme: 'dark',
+      theme: 'sepia',
       setTheme: (theme) => {
         set({ theme })
         document.documentElement.className = theme
