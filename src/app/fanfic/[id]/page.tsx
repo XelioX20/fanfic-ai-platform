@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
+import { Loader } from '@/components/ui/Loader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -195,12 +196,7 @@ export default function FanficPage() {
   if (loading) {
     return (
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-3/4" />
-          <div className="h-4 bg-zinc-800 rounded w-1/2" />
-          <div className="h-32 bg-zinc-800 rounded" />
-        </div>
-        <p className="text-zinc-500 text-sm mt-4 text-center">Загружаем с ficbook.net...</p>
+        <Loader label="Загружаем с ficbook.net..." />
       </main>
     )
   }

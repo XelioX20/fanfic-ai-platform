@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, RotateCcw, Loader2, Sparkles } from 'lucide-react'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
+import { Loader } from '@/components/ui/Loader'
 import { cn } from '@/lib/utils'
 import type { Fanfic } from '@/types'
 
@@ -159,9 +160,8 @@ export default function DiscoverPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-zinc-950 flex items-center justify-center flex-col gap-4">
-        <div className="w-12 h-12 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-zinc-400 text-sm">Подбираем фанфики под твои предпочтения…</p>
+      <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader label="Подбираем фанфики под твои предпочтения…" />
       </main>
     )
   }

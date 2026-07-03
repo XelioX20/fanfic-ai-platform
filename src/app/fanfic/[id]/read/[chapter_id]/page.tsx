@@ -4,6 +4,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronLeft, ChevronRight, List } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
+import { Loader } from '@/components/ui/Loader'
 import { formatWordCount } from '@/lib/utils'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -54,10 +55,9 @@ export default function ChapterReaderPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center flex-col gap-2">
-      <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-      <p className="text-zinc-500 text-sm">Загружаем главу с ficbook.net...</p>
-    </div>
+    <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <Loader label="Загружаем главу с ficbook.net..." />
+    </main>
   )
 
   if (error) return (

@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
+import { Loader } from '@/components/ui/Loader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -28,9 +29,9 @@ export default function SingleChapterReaderPage() {
   }, [id])
 
   if (loading) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-      <p className="text-zinc-500">Загружаем с ficbook.net...</p>
-    </div>
+    <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <Loader label="Загружаем с ficbook.net..." />
+    </main>
   )
 
   if (error) return (
