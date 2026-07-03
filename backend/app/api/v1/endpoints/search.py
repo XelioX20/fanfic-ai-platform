@@ -104,6 +104,42 @@ async def search_fanfics(
     return {"items": items, "total": len(items), "page": page, "page_size": page_size, "has_next": has_next}
 
 
+@router.get("/list")
+async def list_fanfics(
+    path: str = Query("fanfiction", description="ficbook path, e.g. fanfiction, fanfiction?direction=slash"),
+    page: int = Query(1, ge=1),
+):
+    """
+    List fanfics from any ficbook section via the Worker.
+    Uses the full BeautifulSoup parser so cards include author, fandoms, pairings, tags, size, description.
+    """
+    try:
+        from ficbook_parser.parsers.fanfic_list import FanficListParser
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=f"Parser not available: {e}")
+
+    # Build path with page param, preserving any existing query string
+    sep = "&" if "?" in path else "?"
+    target_path = f"{path}{sep}p={page}"
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            resp = await client.get(f"{WORKER_URL}/{target_path}", headers=WORKER_HEADERS)
+            resp.raise_for_status()
+            raw = resp.content.decode("utf-8", errors="replace")
+            try:
+                import ftfy
+                html = ftfy.fix_text(raw)
+            except ImportError:
+                html = raw
+        fanfics, has_next = FanficListParser().parse(html)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"List fetch failed: {e}")
+
+    items = [_card_to_dict(f) for f in fanfics if f.id]
+    return {"items": items, "page": page, "has_next": has_next}
+
+
 @router.get("/suggest")
 async def search_suggest(q: str = Query(..., min_length=1)):
     return {"suggestions": [], "query": q}
