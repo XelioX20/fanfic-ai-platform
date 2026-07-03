@@ -152,16 +152,26 @@ class FanficCardParser:
         return ""
 
     def _parse_cover(self, article: Tag) -> Optional[str]:
-        # New layout: <picture class="fanfic-hat-cover-picture"><img src="..."/></picture>
-        img = article.select_one("picture.fanfic-hat-cover-picture img, picture img[src*=fanfic-covers]")
+        # New (2025) layout: <img class="fic-cover" src="https://.../d_XYZ.webp">
+        # Ficbook serves a portrait crop with `d_` prefix — strip it to get the natural
+        # aspect ratio original (as their own fanfic page does via src-original).
+        img = (article.select_one("img.fic-cover")
+               or article.select_one("picture.fanfic-hat-cover-picture img")
+               or article.select_one("picture img[src*=fanfic-covers]"))
         if img:
             src = img.get("src", "")
-            return src if src.startswith("http") else absolute_url(src)
+            if src:
+                # Convert /fanfic-covers/d_ABC.webp or m_ABC.webp → /fanfic-covers/ABC.webp
+                # This gives the original uploaded image with real aspect ratio.
+                src = re.sub(r"/fanfic-covers/[dm]_", "/fanfic-covers/", src)
+                return src if src.startswith("http") else absolute_url(src)
         # Fallback
         img = article.select_one("img.fanfic-main-cover, img[class*=cover]")
         if img:
             src = img.get("data-src") or img.get("src", "")
-            return absolute_url(src) if src else None
+            if src:
+                src = re.sub(r"/fanfic-covers/[dm]_", "/fanfic-covers/", src)
+                return absolute_url(src) if src else None
         return None
 
     def _parse_status(self, article: Tag) -> FanficStatus:

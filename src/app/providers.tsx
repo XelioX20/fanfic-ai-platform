@@ -5,9 +5,21 @@ import { useUIStore } from '@/store'
 
 function ThemeInitializer() {
   const theme = useUIStore(s => s.theme)
+  const themeUserSet = useUIStore(s => s.themeUserSet)
+
+  // On first mount, if user never touched the theme picker and the device is mobile-width,
+  // default to the light theme (looks better outdoors / on daylight).
   useEffect(() => {
+    if (!themeUserSet && typeof window !== 'undefined' && window.matchMedia) {
+      const isMobile = window.matchMedia('(max-width: 640px)').matches
+      if (isMobile && theme !== 'light') {
+        // Directly mutate DOM — don't persist as "user set" so it flips back on desktop
+        document.documentElement.className = 'light'
+        return
+      }
+    }
     document.documentElement.className = theme
-  }, [theme])
+  }, [theme, themeUserSet])
   return null
 }
 

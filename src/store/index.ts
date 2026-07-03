@@ -62,6 +62,7 @@ export const useReaderStore = create<ReaderState>()(
 
 interface UIState {
   theme: Theme
+  themeUserSet: boolean
   setTheme: (theme: Theme) => void
 }
 
@@ -69,8 +70,9 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       theme: 'dark',
+      themeUserSet: false,
       setTheme: (theme) => {
-        set({ theme })
+        set({ theme, themeUserSet: true })
         document.documentElement.className = theme
       },
     }),

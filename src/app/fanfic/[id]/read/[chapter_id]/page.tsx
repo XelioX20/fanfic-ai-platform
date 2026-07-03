@@ -46,8 +46,8 @@ export default function ChapterReaderPage() {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [id, chapter_id, allChapters])
 
-  // Scroll to top on chapter change
-  useEffect(() => { window.scrollTo(0, 0) }, [chapter_id])
+  // Scroll to top on chapter change is now handled inside ReaderContent via progressKey.
+  // If a saved position exists it will be restored; otherwise scrolls to top.
 
   const goToChapter = (chapId: string) => {
     router.push(`/fanfic/${id}/read/${chapId}?all=${allChapters}`)
@@ -127,7 +127,7 @@ export default function ChapterReaderPage() {
       </div>
 
       {/* Content */}
-      <ReaderContent content={chapter.html} chapterTitle={chapter.title} />
+      <ReaderContent content={chapter.html} chapterTitle={chapter.title} progressKey={`${id}:${chapter_id}`} />
 
       {/* Bottom navigation */}
       <div className="border-t border-zinc-800 py-6 px-4">

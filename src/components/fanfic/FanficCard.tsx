@@ -1,6 +1,5 @@
 'use client'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Heart, Trophy } from 'lucide-react'
 import type { Fanfic } from '@/types'
@@ -84,20 +83,19 @@ export function FanficCard({ fanfic, className }: FanficCardProps) {
       <FanficStateBadges fanficId={fanfic.id} />
 
       <div className="flex flex-col sm:flex-row-reverse gap-4 p-4">
-        {/* Cover on the RIGHT (ficbook style) */}
+        {/* Cover on the RIGHT (ficbook style) — natural aspect ratio */}
         {hasCover && (
           <Link
             href={`/fanfic/${fanfic.id}`}
             className="flex-shrink-0 w-full sm:w-[120px] block"
           >
-            <div className="relative w-full sm:w-[120px] aspect-[3/4] bg-zinc-800 rounded overflow-hidden">
-              <Image
+            <div className="relative w-full sm:w-[120px] sm:aspect-[3/4] bg-zinc-800 rounded overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={fanfic.cover_url!}
                 alt={fanfic.title}
-                fill
-                className="object-cover hover:opacity-90 transition-opacity"
-                sizes="(max-width: 640px) 100vw, 120px"
-                unoptimized
+                className="w-full h-auto sm:absolute sm:inset-0 sm:w-full sm:h-full sm:object-cover hover:opacity-90 transition-opacity block"
+                loading="lazy"
               />
             </div>
           </Link>

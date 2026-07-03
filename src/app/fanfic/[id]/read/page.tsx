@@ -49,7 +49,7 @@ export default function SingleChapterReaderPage() {
         </button>
         <ReaderSettingsPanel />
       </div>
-      <ReaderContent content={html || ''} />
+      <ReaderContent content={html || ''} progressKey={`${id}:single`} />
     </div>
   )
 }

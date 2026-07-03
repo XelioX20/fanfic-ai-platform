@@ -1,5 +1,5 @@
 'use client'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useReaderStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { getFontCssVar } from '@/lib/fonts'
@@ -7,6 +7,7 @@ import { getFontCssVar } from '@/lib/fonts'
 interface ReaderContentProps {
   content: string
   chapterTitle?: string
+  progressKey?: string  // e.g. `${fanficId}:${chapterId}` — enables position save/restore
 }
 
 function formatChapterHtml(html: string): string {
@@ -44,12 +45,50 @@ function formatChapterHtml(html: string): string {
   return result
 }
 
-export function ReaderContent({ content, chapterTitle }: ReaderContentProps) {
-  const { settings } = useReaderStore()
+export function ReaderContent({ content, chapterTitle, progressKey }: ReaderContentProps) {
+  const { settings, readingProgress, setReadingProgress } = useReaderStore()
   const contentRef = useRef<HTMLDivElement>(null)
 
   const theme = settings.theme
   const processedContent = formatChapterHtml(content)
+
+  // Restore scroll position when chapter loads
+  useEffect(() => {
+    if (!progressKey) return
+    const saved = readingProgress[progressKey]
+    if (typeof saved === 'number' && saved > 100) {
+      // Wait a tick for content to render into DOM
+      const t = setTimeout(() => window.scrollTo({ top: saved, behavior: 'auto' }), 50)
+      return () => clearTimeout(t)
+    } else {
+      window.scrollTo(0, 0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressKey])
+
+  // Save scroll position (throttled)
+  useEffect(() => {
+    if (!progressKey) return
+    let raf = 0
+    let lastSave = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const now = Date.now()
+        if (now - lastSave < 500) return
+        lastSave = now
+        setReadingProgress(progressKey, window.scrollY)
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+      // Final save on unmount
+      setReadingProgress(progressKey, window.scrollY)
+    }
+  }, [progressKey, setReadingProgress])
 
   return (
     <div className={cn('reader-theme-root min-h-screen transition-colors duration-200', `reader-${theme}`)}>
