@@ -58,8 +58,14 @@ export function ContinueReadingHero({
   return (
     <section
       className={cn(
-        'rounded-2xl bg-gradient-to-br from-indigo-950/40 via-zinc-900/80 to-zinc-900',
-        'border border-indigo-800/30 p-5 md:p-8 shadow-lg shadow-indigo-950/20',
+        // Match the anchor-card palette from the profile "Продолжить чтение"
+        // tab (border-indigo-900/40 bg-indigo-950/20). The previous
+        // near-black gradient made mobile text hard to read; a solid pastel
+        // indigo tint gives the same look-and-feel across the app.
+        'rounded-2xl border transition-all',
+        'border-indigo-900/40 bg-indigo-950/20',
+        'hover:border-indigo-700/50 hover:bg-indigo-950/30',
+        'p-5 md:p-8 shadow-lg shadow-indigo-950/20',
         className
       )}
     >
@@ -99,48 +105,48 @@ export function ContinueReadingHero({
           ) : fanfic ? (
             <>
               <Link href={tocHref}>
-                <h2 className="text-xl md:text-3xl font-bold text-zinc-100 leading-tight hover:text-purple-300 transition-colors line-clamp-2">
+                <h2 className="text-xl md:text-3xl font-bold text-white leading-tight hover:text-purple-300 transition-colors line-clamp-2">
                   {fanfic.title}
                 </h2>
               </Link>
 
-              <div className="text-sm text-zinc-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <div className="text-sm text-zinc-200 flex flex-wrap items-center gap-x-2 gap-y-1">
                 {fanfic.author_name && <span>{fanfic.author_name}</span>}
                 {fanfic.fandoms?.[0] && (
                   <>
-                    <span className="text-zinc-700">·</span>
+                    <span className="text-zinc-500">·</span>
                     <span className="truncate max-w-[200px]">{fanfic.fandoms[0]}</span>
                   </>
                 )}
                 {fanfic.rating && fanfic.rating !== 'Неизвестно' && (
                   <>
-                    <span className="text-zinc-700">·</span>
+                    <span className="text-zinc-500">·</span>
                     <span>{fanfic.rating}</span>
                   </>
                 )}
               </div>
 
               {(chapterTitle || (chapterIndex != null && chapterTotal != null)) && (
-                <p className="text-sm text-zinc-400 line-clamp-1">
+                <p className="text-sm text-zinc-300 line-clamp-1">
                   {chapterIndex != null && chapterTotal != null && chapterTotal > 1 && (
                     <>
                       Глава {chapterIndex} из {chapterTotal}
                       {chapterTitle ? ': ' : ''}
                     </>
                   )}
-                  {chapterTitle && <span className="text-zinc-300">{chapterTitle}</span>}
+                  {chapterTitle && <span className="text-white">{chapterTitle}</span>}
                 </p>
               )}
             </>
           ) : (
-            <p className="text-zinc-400 text-sm">Не удалось загрузить работу.</p>
+            <p className="text-zinc-300 text-sm">Не удалось загрузить работу.</p>
           )}
 
           {/* Progress bar */}
           {typeof percent === 'number' && (
-            <div className="mt-1 h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+            <div className="mt-1 h-1.5 w-full bg-zinc-800/70 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-indigo-400 to-violet-400 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-indigo-400 to-fuchsia-400 transition-all duration-500"
                 style={{ width: `${Math.max(2, Math.min(100, percent))}%` }}
               />
             </div>
@@ -150,21 +156,27 @@ export function ContinueReadingHero({
           <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-2">
             <Link
               href={readHref}
-              className="inline-flex items-center gap-1.5 px-4 py-2 md:px-5 md:py-2.5 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-indigo-900/30"
+              className={cn(
+                'inline-flex items-center gap-1.5 px-4 py-2 md:px-5 md:py-2.5 rounded-lg text-sm font-medium transition-all',
+                // Same button gradient as the anchor-card "Продолжить с якоря" CTA.
+                'bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white',
+                'hover:from-indigo-400 hover:to-fuchsia-400',
+                'shadow-md shadow-fuchsia-900/40',
+              )}
             >
               <Play size={14} className="fill-current" />
               Читать дальше
             </Link>
             <Link
               href={tocHref}
-              className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1"
+              className="text-sm text-zinc-300 hover:text-white transition-colors px-2 py-1"
             >
               К оглавлению
             </Link>
           </div>
 
           {fanfic?.updated_at && (
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-xs text-zinc-400 mt-0.5">
               Читали {relativeTime(fanfic.updated_at)}
             </p>
           )}
