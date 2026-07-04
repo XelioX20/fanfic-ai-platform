@@ -171,6 +171,7 @@ export default function HomePage() {
   const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
   const readingProgress = useReaderStore((s) => s.readingProgress ?? {})
+  const anchors = useReaderStore((s) => s.anchors ?? {})
 
   // Avoid hydration mismatches — persisted stores start empty on the server.
   const [hydrated, setHydrated] = useState(false)
@@ -183,7 +184,25 @@ export default function HomePage() {
     () => (hydrated ? extractRecentProgress(readingProgress, 5) : []),
     [hydrated, readingProgress],
   )
-  const primaryEntry = recentEntries[0] ?? null
+
+  // Prefer scroll-progress entry; fall back to the most recent anchor
+  // so the hero appears on desktop even when the user read on mobile
+  // (anchors sync via backend, readingProgress is local-only).
+  const primaryEntry = useMemo(() => {
+    if (recentEntries[0]) return recentEntries[0]
+    if (!hydrated) return null
+    const anchorArr = Object.values(anchors).sort(
+      (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0),
+    )
+    const top = anchorArr[0]
+    if (!top) return null
+    return {
+      fanficId: top.fanficId,
+      chapterId: top.chapterId,
+      scrollY: top.scrollY,
+      progressKey: `${top.fanficId}:${top.chapterId}`,
+    }
+  }, [recentEntries, anchors, hydrated])
 
   // -------- Continue Reading: fetch primary fanfic --------
   const primaryFicQuery = useQuery({
@@ -271,10 +290,10 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-10 md:space-y-14">
-        {/* 1 / 2 — Hero: Continue Reading (auth+progress) OR Welcome */}
+        {/* 1 / 2 — Hero: Continue Reading (any user with progress/anchor) OR Welcome */}
         {!hydrated ? (
           <div className="h-48 md:h-64 rounded-2xl bg-zinc-900 border border-zinc-800 animate-pulse" />
-        ) : isAuthed && primaryEntry ? (
+        ) : primaryEntry ? (
           <ContinueReadingHero
             entry={primaryEntry}
             fanfic={primaryFicQuery.data ?? null}
