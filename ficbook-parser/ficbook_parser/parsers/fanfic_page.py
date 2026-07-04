@@ -79,15 +79,58 @@ class FanficPageParser:
         return None
 
     def _parse_authors(self, soup: BeautifulSoup) -> list[FanficAuthorModel]:
-        authors = []
-        for a in soup.select("span.author a"):
+        """Parse author blocks. Each author entry on ficbook is a small card:
+
+            <span class="author">
+              <span class="role">Автор:</span>
+              <a href="/authors/{id}">
+                <img src="…assets.teinon.net/avatars/…" />  ← may be absent
+              </a>
+              <a href="/authors/{id}">Aurora Grey</a>
+            </span>
+
+        Some fics only have a text link (no cover picture) — we tolerate both.
+        We pick the FIRST link with a non-empty text content as the canonical
+        source of name+href+id, then look sideways for an <img> inside any
+        sibling link for the avatar.
+        """
+        authors: list[FanficAuthorModel] = []
+        for span in soup.select("span.author"):
+            # Preferred: text-carrying link (skip pure-image wrappers).
+            text_link = None
+            for a in span.select("a"):
+                if a.get_text(strip=True):
+                    text_link = a
+                    break
+            if not text_link:
+                # Fall back to any anchor
+                text_link = span.select_one("a")
+            if not text_link:
+                continue
+
+            # Avatar can live inside a sibling <a> that wraps just the <img>,
+            # or inside the text link itself. Look across the whole span.
+            img = span.select_one("img")
+            avatar_url: Optional[str] = None
+            if img is not None:
+                src = img.get("data-src") or img.get("src") or ""
+                if src:
+                    avatar_url = absolute_url(src)
+
             user = UserModel(
-                id=extract_id_from_href(safe_attr(a, "href")),
-                name=safe_text(a),
-                href=safe_attr(a, "href"),
+                id=extract_id_from_href(safe_attr(text_link, "href")),
+                name=text_link.get_text(strip=True),
+                href=safe_attr(text_link, "href"),
+                avatar_url=avatar_url,
             )
-            role_span = a.find_parent("span")
-            role = role_span.get_text(strip=True).split(":")[0] if role_span else "Автор"
+            # Role label is usually the first text node inside the span,
+            # rendered as "Автор:" or "Переводчик:" — strip trailing colon.
+            role_text = ""
+            for node in span.stripped_strings:
+                if ":" in node:
+                    role_text = node.split(":")[0].strip()
+                    break
+            role = role_text or "Автор"
             authors.append(FanficAuthorModel(user=user, role=role))
         return authors
 
