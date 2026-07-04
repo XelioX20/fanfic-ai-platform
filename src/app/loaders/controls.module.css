@@ -1,0 +1,171 @@
+/* ── 3D off/on switch ── */
+.switch {
+  font-size: 12px;
+  position: relative;
+  display: inline-block;
+  width: 4.5em;
+  height: 2em;
+  user-select: none;
+}
+
+.switch .cb {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle {
+  position: absolute;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  background-color: #373737;
+  border-radius: 0.1em;
+  transition: 0.4s;
+  text-transform: uppercase;
+  font-weight: 700;
+  overflow: hidden;
+  box-shadow:
+    -0.3em 0 0 0 #373737,
+    -0.3em 0.3em 0 0 #373737,
+    0.3em 0 0 0 #373737,
+    0.3em 0.3em 0 0 #373737,
+    0 0.3em 0 0 #373737;
+}
+
+.toggle > .left,
+.toggle > .right {
+  position: absolute;
+  display: flex;
+  width: 50%;
+  height: 88%;
+  background-color: #f3f3f3;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  transition: all 150ms;
+}
+
+.toggle > .left {
+  color: #373737;
+  left: 0;
+  bottom: 0;
+  transform-origin: right;
+  transform: rotateX(10deg);
+}
+.left::before {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  background-color: rgb(206, 206, 206);
+  transform-origin: center left;
+  transform: rotateY(90deg);
+}
+.left::after {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  background-color: rgb(112, 112, 112);
+  transform-origin: center bottom;
+  transform: rotateX(90deg);
+}
+
+.toggle > .right {
+  color: rgb(206, 206, 206);
+  right: 1px;
+  bottom: 0;
+  transform-origin: left;
+  transform: rotateX(10deg) rotateY(-45deg);
+}
+.right::before {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  background-color: rgb(206, 206, 206);
+  transform-origin: center right;
+  transform: rotateY(-90deg);
+}
+.right::after {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  background-color: rgb(112, 112, 112);
+  transform-origin: center bottom;
+  transform: rotateX(90deg);
+}
+
+.switch .cb:checked + .toggle > .left {
+  transform: rotateX(10deg) rotateY(45deg);
+  color: rgb(206, 206, 206);
+}
+.switch .cb:checked + .toggle > .right {
+  transform: rotateX(10deg) rotateY(0deg);
+  color: #487bdb;
+}
+
+/* ── Segmented tabs (All / Light / Dark) ── */
+.tabs {
+  display: flex;
+  position: relative;
+  background-color: #fff;
+  box-shadow:
+    0 0 1px 0 rgba(24, 94, 224, 0.15),
+    0 6px 12px 0 rgba(24, 94, 224, 0.15);
+  padding: 0.4rem;
+  border-radius: 99px;
+}
+
+.tabs * {
+  z-index: 2;
+}
+
+.tabs input[type='radio'] {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  min-width: 46px;
+  padding: 0 0.5rem;
+  font-size: 0.72rem;
+  color: black;
+  font-weight: 500;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: color 0.15s ease-in;
+}
+
+.tab.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tabs input[type='radio']:checked + label {
+  color: #185ee0;
+}
+
+/* Glider position keyed off the checked radio index via data-selected on parent */
+.glider {
+  position: absolute;
+  display: flex;
+  height: 26px;
+  width: calc(33.333% - 0.267rem);
+  top: 0.4rem;
+  left: 0.4rem;
+  background-color: #e6eef9;
+  z-index: 1;
+  border-radius: 99px;
+  transition: 0.25s ease-out;
+}
+
+.tabs[data-selected='0'] .glider { transform: translateX(0%); }
+.tabs[data-selected='1'] .glider { transform: translateX(100%); }
+.tabs[data-selected='2'] .glider { transform: translateX(200%); }
