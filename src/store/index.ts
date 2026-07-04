@@ -224,10 +224,11 @@ export const useReaderStore = create<ReaderState>()(
     (set) => ({
       settings: {
         font_size: 16,
-        font_family: 'system-serif',
+        font_family: 'pt-serif',
         line_height: 1.8,
         max_width: 680,
         theme: 'dark' as Theme,
+        custom_text_color: null,
       },
       updateSettings: (partial) =>
         set((state) => ({ settings: { ...state.settings, ...partial } })),

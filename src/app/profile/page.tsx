@@ -13,13 +13,13 @@ import { cn } from '@/lib/utils'
 import { FONT_OPTIONS, getFontCssVar } from '@/lib/fonts'
 import type { Fanfic } from '@/types'
 
-type Tab = 'profile' | 'favourites' | 'history' | 'continue' | 'settings'
+type Tab = 'profile' | 'favourites' | 'continue' | 'history' | 'settings'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile',    label: 'Профиль',            icon: <User size={15} /> },
   { id: 'favourites', label: 'Избранное',          icon: <Heart size={15} /> },
-  { id: 'history',    label: 'История',            icon: <Clock size={15} /> },
   { id: 'continue',   label: 'Продолжить чтение',  icon: <Anchor size={15} /> },
+  { id: 'history',    label: 'История',            icon: <Clock size={15} /> },
   { id: 'settings',   label: 'Читалка',            icon: <Settings size={15} /> },
 ]
 
@@ -441,28 +441,121 @@ function ContinueReadingTab() {
 
 function ReaderSettingsTab() {
   const { settings, updateSettings } = useReaderStore()
+
+  // Preset text colours: null = theme default, others are custom overrides.
+  const TEXT_COLOR_PRESETS = [
+    { label: 'По теме',   value: null,      swatch: null },
+    { label: 'Белый',     value: '#f4f4f5', swatch: '#f4f4f5' },
+    { label: 'Светло-серый', value: '#d4d4d8', swatch: '#d4d4d8' },
+    { label: 'Жёлтый',   value: '#fef3c7', swatch: '#fef3c7' },
+    { label: 'Кремовый',  value: '#fdf4e3', swatch: '#fdf4e3' },
+    { label: 'Тёмный',    value: '#1a1a1a', swatch: '#1a1a1a' },
+  ] as const
+
+  const activeColor = settings.custom_text_color ?? null
+
   return (
-    <div className="max-w-sm space-y-5">
+    <div className="max-w-md space-y-6">
+      {/* Font size */}
       <div>
-        <label className="text-sm text-zinc-400 block mb-2">Размер шрифта: {settings.font_size}px</label>
-        <input type="range" min="12" max="24" step="1" value={settings.font_size}
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm text-zinc-400">Размер шрифта</label>
+          <span className="text-sm font-medium text-zinc-200 tabular-nums">{settings.font_size}px</span>
+        </div>
+        <input type="range" min="12" max="26" step="1" value={settings.font_size}
           onChange={e => updateSettings({ font_size: Number(e.target.value) })} className="w-full" />
+        <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+          <span>12px</span><span>26px</span>
+        </div>
       </div>
+
+      {/* Line height */}
       <div>
-        <label className="text-sm text-zinc-400 block mb-2">Межстрочный интервал: {settings.line_height}</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm text-zinc-400">Межстрочный интервал</label>
+          <span className="text-sm font-medium text-zinc-200 tabular-nums">{settings.line_height.toFixed(1)}</span>
+        </div>
         <input type="range" min="1.2" max="2.5" step="0.1" value={settings.line_height}
           onChange={e => updateSettings({ line_height: Number(e.target.value) })} className="w-full" />
+        <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+          <span>тесно</span><span>просторно</span>
+        </div>
       </div>
-      <div>
-        <label className="text-sm text-zinc-400 block mb-2">Ширина колонки: {settings.max_width}px</label>
-        <input type="range" min="500" max="900" step="20" value={settings.max_width}
-          onChange={e => updateSettings({ max_width: Number(e.target.value) })} className="w-full" />
-      </div>
-      <div>
-        <label className="text-sm text-zinc-400 block mb-2">Шрифт</label>
 
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">С засечками (для книг)</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-3">
+      {/* Column width */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm text-zinc-400">Ширина колонки</label>
+          <span className="text-sm font-medium text-zinc-200 tabular-nums">{settings.max_width}px</span>
+        </div>
+        <input type="range" min="480" max="900" step="20" value={settings.max_width}
+          onChange={e => updateSettings({ max_width: Number(e.target.value) })} className="w-full" />
+        <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+          <span>узкая</span><span>широкая</span>
+        </div>
+      </div>
+
+      {/* Text colour */}
+      <div>
+        <label className="text-sm text-zinc-400 block mb-2">Цвет текста</label>
+        <div className="flex flex-wrap gap-2">
+          {TEXT_COLOR_PRESETS.map(preset => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => updateSettings({ custom_text_color: preset.value as string | null })}
+              title={preset.label}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                activeColor === preset.value
+                  ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
+                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
+              )}
+            >
+              {preset.swatch ? (
+                <span
+                  className="inline-block w-3 h-3 rounded-full border border-zinc-600 shrink-0"
+                  style={{ backgroundColor: preset.swatch }}
+                />
+              ) : (
+                <span className="inline-block w-3 h-3 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shrink-0" />
+              )}
+              {preset.label}
+            </button>
+          ))}
+          {/* Custom hex input */}
+          <label className={cn(
+            'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all',
+            activeColor && !TEXT_COLOR_PRESETS.some(p => p.value === activeColor)
+              ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
+              : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
+          )}>
+            <span>Свой цвет</span>
+            <input
+              type="color"
+              value={activeColor ?? '#d4d4d8'}
+              onChange={e => updateSettings({ custom_text_color: e.target.value })}
+              className="sr-only"
+            />
+          </label>
+        </div>
+        {activeColor && (
+          <button
+            type="button"
+            onClick={() => updateSettings({ custom_text_color: null })}
+            className="mt-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            ↩ Сбросить к цвету темы
+          </button>
+        )}
+      </div>
+
+      {/* Font picker */}
+      <div>
+        <label className="text-sm text-zinc-400 block mb-3">Шрифт</label>
+
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">С засечками — для художественного чтения</p>
+        <div className="grid grid-cols-2 gap-1.5 mb-4">
           {FONT_OPTIONS.filter(f => f.category === 'serif').map(f => (
             <button
               key={f.value}
@@ -470,19 +563,22 @@ function ReaderSettingsTab() {
               onClick={() => updateSettings({ font_family: f.value })}
               style={{ fontFamily: getFontCssVar(f.value) }}
               className={cn(
-                'px-2 py-1.5 text-sm rounded border transition-all text-left',
+                'px-3 py-2 rounded-lg border transition-all text-left group',
                 settings.font_family === f.value
-                  ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
-                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                  ? 'border-purple-500 bg-purple-500/10'
+                  : 'border-zinc-700 hover:border-zinc-500',
               )}
             >
-              {f.label}
+              <span className={cn('text-sm block', settings.font_family === f.value ? 'text-zinc-100' : 'text-zinc-300')}>
+                {f.label}
+              </span>
+              <span className="text-[10px] text-zinc-600">{f.hint}</span>
             </button>
           ))}
         </div>
 
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Без засечек (современные)</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Без засечек — современный стиль</p>
+        <div className="grid grid-cols-2 gap-1.5">
           {FONT_OPTIONS.filter(f => f.category === 'sans').map(f => (
             <button
               key={f.value}
@@ -490,13 +586,16 @@ function ReaderSettingsTab() {
               onClick={() => updateSettings({ font_family: f.value })}
               style={{ fontFamily: getFontCssVar(f.value) }}
               className={cn(
-                'px-2 py-1.5 text-sm rounded border transition-all text-left',
+                'px-3 py-2 rounded-lg border transition-all text-left',
                 settings.font_family === f.value
-                  ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
-                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                  ? 'border-purple-500 bg-purple-500/10'
+                  : 'border-zinc-700 hover:border-zinc-500',
               )}
             >
-              {f.label}
+              <span className={cn('text-sm block', settings.font_family === f.value ? 'text-zinc-100' : 'text-zinc-300')}>
+                {f.label}
+              </span>
+              <span className="text-[10px] text-zinc-600">{f.hint}</span>
             </button>
           ))}
         </div>

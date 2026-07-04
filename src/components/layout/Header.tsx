@@ -257,9 +257,6 @@ export function Header() {
                       <Link href="/profile?tab=history" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
                         <Clock size={14} /> История
                       </Link>
-                      <Link href="/profile?tab=subscriptions" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-                        <Users size={14} /> Подписки
-                      </Link>
                       <div className="border-t border-zinc-800 my-1" />
                       <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-zinc-800 transition-colors">
                         <LogOut size={14} /> Выйти

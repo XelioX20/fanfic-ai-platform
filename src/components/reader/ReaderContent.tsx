@@ -55,6 +55,7 @@ function formatChapterHtml(html: string): string {
 
 export function ReaderContent({ content, chapterTitle, progressKey, restoreFromAnchor, anchorFanficId, anchorChapterId }: ReaderContentProps) {
   const { settings, readingProgress, setReadingProgress, anchors } = useReaderStore()
+  const customTextColor = settings.custom_text_color ?? null
   const contentRef = useRef<HTMLDivElement>(null)
 
   const theme = settings.theme
@@ -203,6 +204,7 @@ export function ReaderContent({ content, chapterTitle, progressKey, restoreFromA
           `}</style>
           <div
             className={`reader-content reader-${theme}`}
+            style={customTextColor ? { color: customTextColor } : undefined}
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         </div>

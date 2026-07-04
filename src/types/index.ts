@@ -87,8 +87,10 @@ export type ReaderTheme = 'light' | 'dark' | 'amoled' | 'sepia' | 'paper'
 
 export interface ReaderSettings {
   font_size: number
-  font_family: 'system-serif' | 'system-sans' | 'merriweather' | 'lora' | 'pt-serif' | 'roboto-slab' | 'source-serif' | 'literata' | 'garamond' | 'inter' | 'roboto' | 'open-sans' | 'pt-sans' | 'nunito'
+  font_family: 'system-serif' | 'system-sans' | 'merriweather' | 'lora' | 'pt-serif' | 'roboto-slab' | 'literata' | 'inter' | 'roboto' | 'pt-sans'
   line_height: number
   max_width: number
   theme: ReaderTheme
+  /** Optional hex colour override for body text. null = use theme default. */
+  custom_text_color?: string | null
 }
