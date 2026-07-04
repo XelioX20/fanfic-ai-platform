@@ -187,7 +187,7 @@ function LocalBookmarksTab() {
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeBookmark(entry.fanficId) }}
               title="Убрать из избранного"
               className={cn(
-                'absolute top-2 right-2 p-1.5 rounded-md bg-zinc-900/80 text-zinc-500',
+                'absolute top-2 right-2 p-1.5 rounded-md bg-white/10 text-white/60',
                 'hover:text-red-400 hover:bg-red-900/40 transition-all',
                 'sm:opacity-0 sm:group-hover:opacity-100',
               )}
@@ -299,7 +299,7 @@ function LocalHistoryTab() {
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); clearHistoryEntry(entry.fanficId) }}
               title="Убрать из истории"
               className={cn(
-                'absolute top-2 right-2 p-1.5 rounded-md bg-zinc-900/80 text-zinc-500',
+                'absolute top-2 right-2 p-1.5 rounded-md bg-white/10 text-white/60',
                 'hover:text-red-400 hover:bg-red-900/40 transition-all',
                 'sm:opacity-0 sm:group-hover:opacity-100',
               )}
@@ -378,24 +378,24 @@ function ContinueReadingTab() {
                       <Anchor size={16} className="text-purple-500/50" />
                     </div>
                   )}
-                  <div className="flex-1 min-w-0 pr-6">
+                  <div className="flex-1 min-w-0 pr-7">
                     <Link
                       href={`/fanfic/${anchor.fanficId}`}
-                      className="text-sm sm:text-base font-semibold text-zinc-100 line-clamp-2 leading-snug hover:text-purple-300 transition-colors"
+                      className="text-base font-semibold text-zinc-50 line-clamp-2 leading-snug hover:text-purple-300 transition-colors"
                     >
                       {histEntry?.title || `Фанфик ${anchor.fanficId.slice(0, 8)}…`}
                     </Link>
                     {histEntry?.author_name && (
-                      <p className="text-xs sm:text-sm text-zinc-500 mt-1 truncate">{histEntry.author_name}</p>
+                      <p className="text-sm text-zinc-300 mt-1 truncate">{histEntry.author_name}</p>
                     )}
                     {anchor.chapterTitle && (
-                      <p className="text-xs text-purple-300 mt-1.5 flex items-center gap-1">
-                        <Anchor size={10} className="fill-purple-400/40" />
+                      <p className="text-xs text-purple-200 mt-1.5 flex items-center gap-1">
+                        <Anchor size={10} className="fill-purple-300/60" />
                         <span className="truncate">{anchor.chapterTitle}</span>
                       </p>
                     )}
-                    <p className="text-[11px] text-zinc-600 mt-1 flex items-center gap-1">
-                      <Clock size={10} /> {relativeTime(anchor.updatedAt)}
+                    <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
+                      <Clock size={11} /> {relativeTime(anchor.updatedAt)}
                     </p>
                   </div>
                 </div>
@@ -422,12 +422,12 @@ function ContinueReadingTab() {
                 }}
                 title="Убрать якорь"
                 className={cn(
-                  'absolute top-2 right-2 p-1.5 rounded-md bg-zinc-900/80 text-zinc-400',
-                  'hover:text-red-400 hover:bg-red-900/40 transition-all',
-                  'sm:opacity-0 sm:group-hover:opacity-100',
+                  'absolute top-2 right-2 p-1.5 rounded-md transition-all',
+                  'bg-white/10 text-white/70',
+                  'hover:text-red-300 hover:bg-red-900/50',
                 )}
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             </li>
           )
