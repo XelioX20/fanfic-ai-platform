@@ -110,10 +110,18 @@ class FanficPageParser:
                 continue
             role_el = container.select_one("div.creator-info i.small-text") or container.select_one("i.small-text")
             role = safe_text(role_el) or "автор"
+            # Avatar: <img> inside div.avatar-decoration-holder anywhere in the card.
+            img = container.select_one("img")
+            avatar_url: Optional[str] = None
+            if img is not None:
+                src = img.get("data-src") or img.get("src") or ""
+                if src:
+                    avatar_url = absolute_url(src)
             user = UserModel(
                 id=extract_id_from_href(safe_attr(a, "href")),
                 name=safe_text(a),
                 href=safe_attr(a, "href"),
+                avatar_url=avatar_url,
             )
             authors.append(FanficAuthorModel(user=user, role=role))
         if authors:
