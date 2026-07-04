@@ -4,10 +4,10 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X, Bookmark,
+  User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X, Bookmark, LogOut,
 } from 'lucide-react'
 import { useAuthStore, useReaderStore, type HistoryEntry, type ReadingAnchor, type BookmarkEntry } from '@/store'
-import { profileApi } from '@/lib/api'
+import { profileApi, authApi } from '@/lib/api'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
 import { cn } from '@/lib/utils'
 import { FONT_OPTIONS, getFontCssVar } from '@/lib/fonts'
@@ -140,8 +140,9 @@ function LocalBookmarksTab() {
             <Link
               href={`/fanfic/${entry.fanficId}`}
               className={cn(
-                'flex gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-900/50',
-                'hover:border-zinc-600 hover:bg-zinc-900 transition-all',
+                'flex gap-3 p-3 rounded-xl border',
+                'border-rose-900/40 bg-rose-950/20',
+                'hover:border-rose-700/50 hover:bg-rose-950/30 transition-all',
               )}
             >
               {entry.cover_url ? (
@@ -248,8 +249,8 @@ function LocalHistoryTab() {
             <Link
               href={`/fanfic/${entry.fanficId}`}
               className={cn(
-                'flex gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-900/60',
-                'hover:border-purple-700/50 hover:bg-zinc-900 transition-all',
+                'flex gap-3 p-3 rounded-xl border border-amber-900/35 bg-amber-950/15',
+                'hover:border-amber-700/50 hover:bg-amber-950/25 transition-all',
               )}
             >
               {entry.cover_url ? (
@@ -359,8 +360,8 @@ function ContinueReadingTab() {
             <li key={anchor.fanficId} className="relative group">
               <div className={cn(
                 'flex flex-col gap-3 p-3 rounded-xl border transition-all',
-                'border-zinc-800 bg-zinc-900/50',
-                'hover:border-zinc-600 hover:bg-zinc-900',
+                'border-indigo-900/40 bg-indigo-950/20',
+                'hover:border-indigo-700/50 hover:bg-indigo-950/30',
               )}>
                 <div className="flex gap-3">
                   {histEntry?.cover_url ? (
@@ -611,8 +612,14 @@ function ReaderSettingsTab() {
 function ProfileContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, accessToken } = useAuthStore()
+  const { user, accessToken, clearAuth } = useAuthStore()
   const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'continue')
+
+  const handleLogout = async () => {
+    try { await authApi.logout() } catch {}
+    clearAuth()
+    router.push('/')
+  }
   const [profileData, setProfileData] = useState<{
     ficbook_username?: string
     ficbook_avatar_url?: string
@@ -717,6 +724,13 @@ function ProfileContent() {
                 Удалить своё фото
               </button>
             )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 mt-3 text-xs text-zinc-500 hover:text-red-400 transition-colors"
+            >
+              <LogOut size={13} /> Выйти
+            </button>
           </div>
 
           {/* Nav items */}
@@ -775,7 +789,7 @@ function ProfileContent() {
                 {avatarUploading ? <Loader2 size={14} className="text-white animate-spin" /> : <span className="text-[8px] text-white">✏</span>}
               </div>
             </label>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-semibold text-zinc-100 text-sm truncate">{displayName}</p>
               {profileData?.ficbook_profile_url && (
                 <a href={profileData.ficbook_profile_url} target="_blank" rel="noopener noreferrer"
@@ -784,6 +798,16 @@ function ProfileContent() {
                 </a>
               )}
             </div>
+            {/* Logout — top-right of mobile header */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Выйти"
+              aria-label="Выйти"
+              className="shrink-0 p-2 text-zinc-500 hover:text-red-400 transition-colors"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
 
           {/* Tab content */}

@@ -3,9 +3,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, User, LogOut, Heart, Clock, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
+import { BookOpen, User, Heart, Clock, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/store'
-import { authApi } from '@/lib/api'
 import { SearchBar } from '@/components/search/SearchBar'
 import { cn } from '@/lib/utils'
 
@@ -160,14 +159,9 @@ function OpenByLinkModal({ onClose }: { onClose: () => void }) {
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, accessToken, clearAuth } = useAuthStore()
+  const { user, accessToken } = useAuthStore()
   const [linkModalOpen, setLinkModalOpen] = useState(false)
 
-  const handleLogout = async () => {
-    try { await authApi.logout() } catch {}
-    clearAuth()
-    router.push('/')
-  }
 
   // Hide the global header in reader routes — they have their own
   // in-page top bar (chapter title, chapter list, reader settings) which
@@ -241,17 +235,6 @@ export function Header() {
                     {user?.ficbook_username || 'Профиль'}
                   </span>
                 </Link>
-
-                {/* Logout button — inline, no dropdown */}
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  title="Выйти"
-                  aria-label="Выйти"
-                  className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors rounded-md hover:bg-zinc-800"
-                >
-                  <LogOut size={16} />
-                </button>
               </div>
             )}
           </div>
