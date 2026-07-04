@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Search } from 'lucide-react'
+import { useReaderStore } from '@/store'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
@@ -9,6 +10,17 @@ import { ReaderSearchBar } from '@/components/reader/ReaderSearchBar'
 import { Loader } from '@/components/ui/Loader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+/** Map reader theme → topbar background + border CSS values that match the text canvas. */
+function topbarStyle(theme: string): { bg: string; border: string; text: string } {
+  switch (theme) {
+    case 'light':  return { bg: 'rgba(255,255,255,0.95)', border: '#e4e4e7', text: '#18181b' }
+    case 'sepia':  return { bg: 'rgba(244,236,216,0.95)', border: '#d8ceb5', text: '#5b4636' }
+    case 'paper':  return { bg: 'rgba(250,247,242,0.95)', border: '#e5e2dc', text: '#2a2a2a' }
+    case 'amoled': return { bg: 'rgba(0,0,0,0.97)',       border: '#1f1f1f', text: '#e4e4e7' }
+    default:       return { bg: 'rgba(26,26,26,0.95)',    border: '#27272a', text: '#d4d4d8' } // dark
+  }
+}
 
 export default function SingleChapterReaderPage() {
   const { id } = useParams<{ id: string }>()
@@ -20,6 +32,8 @@ export default function SingleChapterReaderPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  const readerTheme = useReaderStore(s => s.settings.theme)
+  const tb = topbarStyle(readerTheme)
 
   useEffect(() => {
     if (!id) return
@@ -48,18 +62,21 @@ export default function SingleChapterReaderPage() {
   return (
     <div className="min-h-screen">
       {/* Top bar: [←] [title (centre)] [🔍 · настройки] */}
-      <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center gap-2">
+      <div
+        className="sticky top-0 z-40 backdrop-blur border-b px-4 py-3 flex items-center gap-2 transition-colors duration-200"
+        style={{ backgroundColor: tb.bg, borderColor: tb.border, color: tb.text }}
+      >
         <button type="button" onClick={() => router.push(`/fanfic/${id}`)}
-          className="shrink-0 p-1 text-zinc-400 hover:text-zinc-200 transition-colors" title="Назад" aria-label="Назад">
+          className="shrink-0 p-1 transition-colors hover:opacity-70" title="Назад" aria-label="Назад">
           <ArrowLeft size={16} />
         </button>
         <div className="flex-1 min-w-0 text-center">
-          <p className="text-zinc-300 text-sm font-medium truncate">{title}</p>
+          <p className="text-sm font-medium truncate opacity-90">{title}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button type="button" onClick={() => setSearchOpen(v => !v)}
             title="Поиск по тексту (Ctrl+F)" aria-label="Поиск по тексту"
-            className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors">
+            className="p-2 transition-colors hover:opacity-70">
             <Search size={16} />
           </button>
           <ReaderSettingsPanel />

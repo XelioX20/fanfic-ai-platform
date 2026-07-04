@@ -12,6 +12,17 @@ import { formatWordCount } from '@/lib/utils'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+/** Reader top-bar bg/border/text matching the current reader canvas colour. */
+function topbarStyle(theme: string): { bg: string; border: string; text: string } {
+  switch (theme) {
+    case 'light':  return { bg: 'rgba(255,255,255,0.95)', border: '#e4e4e7', text: '#18181b' }
+    case 'sepia':  return { bg: 'rgba(244,236,216,0.95)', border: '#d8ceb5', text: '#5b4636' }
+    case 'paper':  return { bg: 'rgba(250,247,242,0.95)', border: '#e5e2dc', text: '#2a2a2a' }
+    case 'amoled': return { bg: 'rgba(0,0,0,0.97)',       border: '#1f1f1f', text: '#e4e4e7' }
+    default:       return { bg: 'rgba(26,26,26,0.95)',    border: '#27272a', text: '#d4d4d8' }
+  }
+}
+
 interface Chapter {
   id: string
   fanfic_id: string
@@ -35,6 +46,8 @@ export default function ChapterReaderPage() {
   const [error, setError] = useState<string | null>(null)
   const [showChapterList, setShowChapterList] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const readerTheme = useReaderStore(s => s.settings.theme)
+  const tb = topbarStyle(readerTheme)
 
   const chapterIds = allChapters ? allChapters.split(',') : []
   const currentIdx = chapterIds.indexOf(chapter_id)
@@ -76,23 +89,25 @@ export default function ChapterReaderPage() {
   return (
     <div className="min-h-screen">
       {/* Top bar */}
-      <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+      <div
+        className="sticky top-0 z-40 backdrop-blur border-b px-4 py-3 transition-colors duration-200"
+        style={{ backgroundColor: tb.bg, borderColor: tb.border, color: tb.text }}
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={() => router.push(`/fanfic/${id}`)}
             title="Назад к описанию"
             aria-label="Назад к описанию"
-            className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-sm flex-shrink-0"
+            className="flex items-center gap-2 transition-opacity hover:opacity-60 text-sm flex-shrink-0"
           >
             <ArrowLeft size={16} />
           </button>
 
           <div className="flex-1 min-w-0 text-center">
-            <p className="text-zinc-300 text-sm font-medium truncate">{chapter.title}</p>
+            <p className="text-sm font-medium truncate opacity-90">{chapter.title}</p>
             {currentIdx >= 0 && (
-              <p className="text-zinc-600 text-xs">{currentIdx + 1} / {chapterIds.length}</p>
+              <p className="text-xs opacity-40">{currentIdx + 1} / {chapterIds.length}</p>
             )}
           </div>
 
@@ -103,7 +118,7 @@ export default function ChapterReaderPage() {
                 onClick={() => { setShowChapterList(!showChapterList); setSearchOpen(false) }}
                 title="Содержание"
                 aria-label="Содержание"
-                className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="p-2 transition-opacity hover:opacity-60"
               >
                 <List size={16} />
               </button>
@@ -113,26 +128,29 @@ export default function ChapterReaderPage() {
               onClick={() => { setSearchOpen(v => !v); setShowChapterList(false) }}
               title="Поиск по тексту (Ctrl+F)"
               aria-label="Поиск по тексту"
-              className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="p-2 transition-opacity hover:opacity-60"
             >
               <Search size={16} />
             </button>
             <ReaderSettingsPanel />
           </div>
         </div>
-        </div>
       </div>
 
-      {/* Chapter list dropdown */}
+      {/* Chapter list dropdown — same colour as topbar */}
       {showChapterList && chapterIds.length > 0 && (
-        <div className="sticky top-14 z-30 bg-zinc-900 border-b border-zinc-800 max-h-64 overflow-y-auto">
+        <div
+          className="sticky top-14 z-30 border-b max-h-64 overflow-y-auto transition-colors"
+          style={{ backgroundColor: tb.bg, borderColor: tb.border }}
+        >
           <div className="max-w-4xl mx-auto py-2">
             {chapterIds.map((chapId, idx) => (
               <button
                 key={chapId}
                 type="button"
                 onClick={() => { goToChapter(chapId); setShowChapterList(false) }}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${chapId === chapter_id ? 'text-purple-400 bg-purple-900/20' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
+                style={{ color: chapId === chapter_id ? undefined : tb.text }}
+                className={`w-full text-left px-4 py-2 text-sm transition-colors ${chapId === chapter_id ? 'text-purple-400 bg-purple-900/20' : 'hover:bg-black/10'}`}
               >
                 {idx + 1}. Глава {idx + 1}
               </button>
