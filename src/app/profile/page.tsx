@@ -171,11 +171,7 @@ function LocalBookmarksTab() {
                   className="rounded-md object-cover shrink-0 bg-zinc-800 shadow-sm shadow-black/40"
                   unoptimized
                 />
-              ) : (
-                <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0 flex items-center justify-center">
-                  <Bookmark size={16} className="text-pink-500/50" />
-                </div>
-              )}
+              ) : null}
               <div className="flex-1 min-w-0 pr-6">
                 <h3 className="text-base font-semibold text-white line-clamp-2 leading-snug">
                   {entry.title || `Фанфик ${entry.fanficId.slice(0, 8)}…`}
@@ -279,9 +275,7 @@ function LocalHistoryTab() {
                   className="rounded-md object-cover shrink-0 bg-zinc-800 shadow-sm shadow-black/40"
                   unoptimized
                 />
-              ) : (
-                <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0" />
-              )}
+              ) : null}
               <div className="flex-1 min-w-0 pr-6">
                 <h3 className="text-base font-semibold text-white line-clamp-2 leading-snug">
                   {entry.title}
@@ -390,11 +384,7 @@ function ContinueReadingTab() {
                       className="rounded-md object-cover shrink-0 bg-zinc-800 shadow-sm shadow-black/40"
                       unoptimized
                     />
-                  ) : (
-                    <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0 flex items-center justify-center">
-                      <Anchor size={16} className="text-purple-500/50" />
-                    </div>
-                  )}
+                  ) : null}
                   <div className="flex-1 min-w-0 pr-7">
                     <Link
                       href={`/fanfic/${anchor.fanficId}`}

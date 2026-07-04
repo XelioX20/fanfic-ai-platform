@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { Play, BookOpen } from 'lucide-react'
+import { Play } from 'lucide-react'
 import type { Fanfic } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -73,27 +73,32 @@ export function ContinueReadingHero({
         className
       )}
     >
-      <div className="grid grid-cols-[100px_1fr] md:grid-cols-[200px_1fr] gap-5 md:gap-6 items-start">
-        {/* Cover */}
-        <Link href={tocHref} className="block">
-          <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-800 shadow-xl">
-            {loading ? (
-              <div className="absolute inset-0 bg-zinc-800 animate-pulse" />
-            ) : fanfic?.cover_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={fanfic.cover_url}
-                alt={fanfic.title}
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="eager"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-zinc-800">
-                <BookOpen size={28} className="text-zinc-600" />
-              </div>
-            )}
-          </div>
-        </Link>
+      {/* When there's no cover we skip the left column entirely and let the
+          content span the full width — no placeholder silhouette. */}
+      <div className={cn(
+        'grid gap-5 md:gap-6 items-start',
+        fanfic?.cover_url || loading
+          ? 'grid-cols-[100px_1fr] md:grid-cols-[200px_1fr]'
+          : 'grid-cols-1',
+      )}>
+        {/* Cover — only rendered when there IS a cover (or during loading) */}
+        {(loading || fanfic?.cover_url) && (
+          <Link href={tocHref} className="block">
+            <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-zinc-800 shadow-xl">
+              {loading ? (
+                <div className="absolute inset-0 bg-zinc-800 animate-pulse" />
+              ) : fanfic?.cover_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={fanfic.cover_url}
+                  alt={fanfic.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading="eager"
+                />
+              ) : null}
+            </div>
+          </Link>
+        )}
 
         {/* Right column */}
         <div className="min-w-0 flex flex-col gap-3">
