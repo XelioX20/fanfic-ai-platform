@@ -34,6 +34,30 @@ function combineMode(on: boolean, scope: ScopeMode): LoaderMode {
   return scope
 }
 
+// Effective scope shown in UI: if the loader has a built-in restriction, the
+// user's persisted "all" collapses to the actual theme where it works (light-only
+// → 'light'). This makes the tab highlight match reality.
+function effectiveScope(scope: ScopeMode, forcedThemes: LoaderEntry['themes']): ScopeMode {
+  if (scope !== 'all') return scope
+  if (!forcedThemes || forcedThemes.length === 3) return 'all'
+  const hasLight = forcedThemes.includes('light')
+  const hasDark  = forcedThemes.includes('dark') || forcedThemes.includes('amoled')
+  if (hasLight && !hasDark) return 'light'
+  if (!hasLight && hasDark) return 'dark'
+  return 'all'
+}
+
+// Which tabs to show for a given loader. Restricted loaders drop "All" and
+// disable the theme they don't support, so the tab row can't lie.
+function visibleScopes(forcedThemes: LoaderEntry['themes']): ScopeMode[] {
+  if (!forcedThemes || forcedThemes.length === 3) return ['all', 'light', 'dark']
+  const hasLight = forcedThemes.includes('light')
+  const hasDark  = forcedThemes.includes('dark') || forcedThemes.includes('amoled')
+  if (hasLight && !hasDark) return ['light', 'dark']  // light-only: show both, disable dark
+  if (!hasLight && hasDark) return ['light', 'dark']  // dark-only: show both, disable light
+  return ['all', 'light', 'dark']
+}
+
 // A user-selectable scope 'X' can conflict with the loader's built-in themes allow-list.
 function scopeConflicts(scope: ScopeMode, forcedThemes: LoaderEntry['themes']) {
   if (!forcedThemes || forcedThemes.length === 3) return false
@@ -80,7 +104,10 @@ export default function LoadersPage() {
         {REGISTRY.map((entry, i) => {
           const { on, scope } = splitMode(modes[entry.name])
           const forcedThemes = entry.themes
-          const selectedIndex = SCOPE_OPTIONS.findIndex(o => o.value === scope)
+          const uiScope = effectiveScope(scope, forcedThemes)
+          const tabsToShow = visibleScopes(forcedThemes)
+          const shownOptions = SCOPE_OPTIONS.filter(o => tabsToShow.includes(o.value))
+          const selectedIndex = shownOptions.findIndex(o => o.value === uiScope)
 
           return (
             <div
@@ -127,10 +154,11 @@ export default function LoadersPage() {
 
                 <div
                   className={ctl.tabs}
+                  data-tabs={shownOptions.length}
                   data-selected={selectedIndex}
                   {...(on ? {} : { 'aria-disabled': 'true' as const })}
                 >
-                {SCOPE_OPTIONS.map((opt, idx) => {
+                {shownOptions.map((opt, idx) => {
                   const conflict = scopeConflicts(opt.value, forcedThemes)
                   const inputId = `scope-${entry.name}-${opt.value}`
                   const isDisabled = !on || conflict
@@ -141,7 +169,7 @@ export default function LoadersPage() {
                         id={inputId}
                         type="radio"
                         name={`scope-${entry.name}`}
-                        checked={scope === opt.value}
+                        checked={uiScope === opt.value}
                         disabled={isDisabled}
                         onChange={() => setMode(entry.name, combineMode(true, opt.value))}
                       />
@@ -161,7 +189,7 @@ export default function LoadersPage() {
                       >
                         {opt.label}
                       </label>
-                      {idx === SCOPE_OPTIONS.length - 1 && <span key={`${inputId}-gl`} className={ctl.glider} />}
+                      {idx === shownOptions.length - 1 && <span key={`${inputId}-gl`} className={ctl.glider} />}
                     </>
                   )
                 })}
