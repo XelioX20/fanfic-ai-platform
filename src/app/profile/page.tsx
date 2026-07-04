@@ -16,10 +16,10 @@ import type { Fanfic } from '@/types'
 type Tab = 'continue' | 'favourites' | 'history' | 'settings'
 
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
-  { id: 'continue',   label: 'Продолжить чтение', shortLabel: 'Читаю',    icon: <Anchor size={20} /> },
-  { id: 'favourites', label: 'Избранное',         shortLabel: 'Избранное', icon: <Heart size={20} /> },
-  { id: 'history',    label: 'История',           shortLabel: 'История',   icon: <Clock size={20} /> },
-  { id: 'settings',   label: 'Читалка',           shortLabel: 'Читалка',   icon: <Settings size={20} /> },
+  { id: 'continue',   label: 'Продолжить чтение', shortLabel: 'Читаю',    icon: <Anchor size={22} /> },
+  { id: 'favourites', label: 'Избранное',         shortLabel: 'Избранное', icon: <Heart size={22} /> },
+  { id: 'history',    label: 'История',           shortLabel: 'История',   icon: <Clock size={22} /> },
+  { id: 'settings',   label: 'Читалка',           shortLabel: 'Читалка',   icon: <Settings size={22} /> },
 ]
 
 /* ─── ficbook-backed sections (Избранное) ────────────────────────────── */
@@ -109,8 +109,8 @@ function LocalBookmarksTab() {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-14 px-6 text-center">
         <Bookmark size={28} className="mx-auto text-zinc-700 mb-3" />
-        <p className="text-zinc-300 text-sm font-medium">В избранном пока пусто</p>
-        <p className="text-xs text-zinc-500 mt-2 max-w-sm mx-auto">
+        <p className="text-zinc-300 text-base font-medium">В избранном пока пусто</p>
+        <p className="text-sm text-zinc-500 mt-2 max-w-sm mx-auto">
           Открой фанфик и нажми{' '}
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-pink-950/50 text-pink-300 border border-pink-800/50 text-[10px] font-medium">
             <Bookmark size={10} /> В избранное
@@ -127,7 +127,7 @@ function LocalBookmarksTab() {
 
   return (
     <div>
-      <p className="text-sm text-zinc-500 mb-4">
+      <p className="text-sm sm:text-base text-zinc-500 mb-4">
         <span className="text-zinc-300 font-medium">{entries.length}</span>{' '}
         {entries.length === 1 ? 'фанфик в избранном' : 'фанфиков в избранном'}
         {' · '}
@@ -159,24 +159,24 @@ function LocalBookmarksTab() {
                 </div>
               )}
               <div className="flex-1 min-w-0 pr-6">
-                <h3 className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug">
+                <h3 className="text-sm sm:text-base font-semibold text-zinc-100 line-clamp-2 leading-snug">
                   {entry.title || `Фанфик ${entry.fanficId.slice(0, 8)}…`}
                 </h3>
-                <p className="text-xs text-zinc-500 mt-1 truncate">
+                <p className="text-xs sm:text-sm text-zinc-500 mt-1 truncate">
                   {entry.author_name || 'Автор неизвестен'}
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   {entry.direction && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.direction}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.direction}</span>
                   )}
                   {entry.rating && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.rating}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.rating}</span>
                   )}
                   {entry.completion_status && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.completion_status}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.completion_status}</span>
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-600 mt-2 flex items-center gap-1">
+                <p className="text-xs text-zinc-600 mt-2 flex items-center gap-1">
                   <Bookmark size={10} /> добавлено {relativeTime(entry.addedAt)}
                 </p>
               </div>
@@ -215,8 +215,8 @@ function LocalHistoryTab() {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-14 px-6 text-center">
         <Clock size={28} className="mx-auto text-zinc-700 mb-3" />
-        <p className="text-zinc-300 text-sm font-medium">История пока пуста</p>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-zinc-300 text-base font-medium">История пока пуста</p>
+        <p className="text-xs sm:text-sm text-zinc-500 mt-1">
           Открытые фанфики появляются здесь автоматически. Синхронизируется между устройствами.
         </p>
       </div>
@@ -236,7 +236,7 @@ function LocalHistoryTab() {
               clearAllHistory()
             }
           }}
-          className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+          className="text-sm text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
         >
           <Trash2 size={12} /> Очистить историю
         </button>
@@ -265,30 +265,30 @@ function LocalHistoryTab() {
                 <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0" />
               )}
               <div className="flex-1 min-w-0 pr-6">
-                <h3 className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug">
+                <h3 className="text-sm sm:text-base font-semibold text-zinc-100 line-clamp-2 leading-snug">
                   {entry.title}
                 </h3>
-                <p className="text-xs text-zinc-500 mt-1 truncate">
+                <p className="text-xs sm:text-sm text-zinc-500 mt-1 truncate">
                   {entry.author_name || 'Автор неизвестен'}
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   {entry.direction && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
                       {entry.direction}
                     </span>
                   )}
                   {entry.rating && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
                       {entry.rating}
                     </span>
                   )}
                   {entry.completion_status && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
                       {entry.completion_status}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-600 mt-2 flex items-center gap-1">
+                <p className="text-xs text-zinc-600 mt-2 flex items-center gap-1">
                   <Clock size={10} /> {relativeTime(entry.openedAt)}
                 </p>
               </div>
@@ -329,8 +329,8 @@ function ContinueReadingTab() {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-14 px-6 text-center">
         <Anchor size={28} className="mx-auto text-zinc-700 mb-3" />
-        <p className="text-zinc-300 text-sm font-medium">Ещё нет активных якорей</p>
-        <p className="text-xs text-zinc-500 mt-2 max-w-sm mx-auto">
+        <p className="text-zinc-300 text-base font-medium">Ещё нет активных якорей</p>
+        <p className="text-sm text-zinc-500 mt-2 max-w-sm mx-auto">
           Открой фанфик, нажми кнопку{' '}
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/50 text-purple-300 border border-purple-800/50 text-[10px] font-medium">
             <Anchor size={10} /> Поставить якорь
@@ -343,7 +343,7 @@ function ContinueReadingTab() {
 
   return (
     <div>
-      <p className="text-sm text-zinc-500 mb-4">
+      <p className="text-sm sm:text-base text-zinc-500 mb-4">
         <span className="text-zinc-300 font-medium">{entries.length}</span> {entries.length === 1 ? 'фанфик с якорем' : 'фанфиков с якорями'}
         {' · '}
         <span className="text-zinc-600">синхронизировано между устройствами</span>
@@ -380,12 +380,12 @@ function ContinueReadingTab() {
                   <div className="flex-1 min-w-0 pr-6">
                     <Link
                       href={`/fanfic/${anchor.fanficId}`}
-                      className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug hover:text-purple-300 transition-colors"
+                      className="text-sm sm:text-base font-semibold text-zinc-100 line-clamp-2 leading-snug hover:text-purple-300 transition-colors"
                     >
                       {histEntry?.title || `Фанфик ${anchor.fanficId.slice(0, 8)}…`}
                     </Link>
                     {histEntry?.author_name && (
-                      <p className="text-xs text-zinc-500 mt-1 truncate">{histEntry.author_name}</p>
+                      <p className="text-xs sm:text-sm text-zinc-500 mt-1 truncate">{histEntry.author_name}</p>
                     )}
                     {anchor.chapterTitle && (
                       <p className="text-xs text-purple-300 mt-1.5 flex items-center gap-1">
@@ -823,7 +823,7 @@ function ProfileContent() {
                 <span className={cn('transition-transform', active && 'scale-110')}>
                   {tab.icon}
                 </span>
-                <span className="text-[10px] font-medium leading-tight">{tab.shortLabel}</span>
+                <span className="text-[11px] xs:text-xs sm:text-xs font-medium leading-tight">{tab.shortLabel}</span>
                 {active && (
                   <span className="absolute top-0 inset-x-0 h-0.5 bg-purple-500 rounded-b" />
                 )}
