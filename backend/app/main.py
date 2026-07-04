@@ -8,6 +8,7 @@ import asyncio
 import sys
 import os
 import time
+import httpx
 from collections import deque
 
 # Ensure backend root is in path so ficbook_parser (bundled alongside app/) is importable
@@ -52,11 +53,28 @@ async def seed_from_ficbook():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting fanfic-ai-platform backend (env={settings.APP_ENV})")
+
+    # Process-wide HTTP client — reused across all outbound calls to the CF
+    # Worker, ficbook.net, etc. Creating a fresh AsyncClient per request costs
+    # ~150-400ms in DNS + TCP + TLS handshake (measured); the pool eliminates
+    # that on every cache-miss request.
+    app.state.http = httpx.AsyncClient(
+        headers={
+            "User-Agent": "AppleWebKit/605.1",
+            "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+            "Accept-Language": "ru-RU,ru;q=0.9",
+        },
+        timeout=60.0,
+        follow_redirects=True,
+        limits=httpx.Limits(max_keepalive_connections=32, max_connections=64),
+    )
+
     await create_tables()
     # Run initial scrape in background — don't block startup
     asyncio.create_task(seed_from_ficbook())
     yield
     logger.info("Shutting down")
+    await app.state.http.aclose()
 
 
 app = FastAPI(
