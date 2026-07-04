@@ -31,6 +31,11 @@ export function AnchorButton({ fanficId, chapterId, chapterTitle }: AnchorButton
   const setAnchor = useReaderStore(s => s.setAnchor)
   const clearAnchor = useReaderStore(s => s.clearAnchor)
   const anchor = useReaderStore(s => (s.anchors ?? {})[fanficId])
+  // Reader theme drives the popover/button colour scheme so text stays
+  // readable on both light (light/sepia/paper) and dark (dark/amoled)
+  // reading backgrounds. See ReaderContent's reader-{theme} palette.
+  const readerTheme = useReaderStore(s => s.settings.theme)
+  const isLightTheme = readerTheme === 'light' || readerTheme === 'sepia' || readerTheme === 'paper'
   const [flashSaved, setFlashSaved] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -88,28 +93,67 @@ export function AnchorButton({ fanficId, chapterId, chapterTitle }: AnchorButton
         <div
           className={cn(
             'absolute right-0 bottom-full mb-2 min-w-[240px]',
-            'rounded-xl bg-zinc-900/95 backdrop-blur',
-            'border border-purple-800/50 shadow-2xl shadow-black/70 overflow-hidden',
+            'rounded-xl backdrop-blur',
+            'shadow-2xl overflow-hidden border',
+            isLightTheme
+              ? 'bg-white/95 border-purple-300 shadow-black/20'
+              : 'bg-zinc-900/95 border-purple-800/50 shadow-black/70',
           )}
         >
-          <div className="px-3 py-2 border-b border-zinc-800 bg-purple-950/30">
-            <p className="text-[11px] uppercase tracking-wider text-purple-300 font-medium">Якорь здесь</p>
+          <div
+            className={cn(
+              'px-3 py-2 border-b',
+              isLightTheme
+                ? 'bg-purple-100 border-purple-200'
+                : 'bg-purple-950/40 border-zinc-800',
+            )}
+          >
+            <p
+              className={cn(
+                'text-[11px] uppercase tracking-wider font-semibold',
+                isLightTheme ? 'text-purple-800' : 'text-purple-200',
+              )}
+            >
+              Якорь здесь
+            </p>
             {anchor?.chapterTitle && (
-              <p className="text-xs text-zinc-400 mt-0.5 truncate">{anchor.chapterTitle}</p>
+              <p
+                className={cn(
+                  'text-xs mt-0.5 truncate',
+                  isLightTheme ? 'text-zinc-700' : 'text-zinc-300',
+                )}
+              >
+                {anchor.chapterTitle}
+              </p>
             )}
           </div>
           <button
             type="button"
             onClick={doSave}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-zinc-100 hover:bg-purple-900/30 transition-colors"
+            className={cn(
+              'w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors',
+              isLightTheme
+                ? 'text-zinc-900 hover:bg-purple-50'
+                : 'text-zinc-100 hover:bg-purple-900/30',
+            )}
           >
-            <Anchor size={14} className="text-purple-400 fill-purple-400/30" />
+            <Anchor
+              size={14}
+              className={cn(
+                isLightTheme ? 'text-purple-700 fill-purple-400/30' : 'text-purple-400 fill-purple-400/30',
+              )}
+            />
             <span>Обновить положение</span>
           </button>
           <button
             type="button"
             onClick={doRemove}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-300 hover:bg-red-900/30 transition-colors border-t border-zinc-800"
+            className={cn(
+              'w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors border-t',
+              isLightTheme
+                ? 'text-red-700 hover:bg-red-50 border-zinc-200'
+                : 'text-red-300 hover:bg-red-900/30 border-zinc-800',
+            )}
           >
             <X size={14} />
             <span>Убрать якорь</span>
@@ -130,13 +174,16 @@ export function AnchorButton({ fanficId, chapterId, chapterTitle }: AnchorButton
                 : 'Поставить якорь на этом месте'
         }
         className={cn(
-          'group flex items-center gap-2 rounded-full shadow-lg shadow-black/50 border transition-all',
+          'group flex items-center gap-2 rounded-full shadow-lg border transition-all',
           'px-4 py-3 text-sm font-medium',
+          isLightTheme ? 'shadow-black/20' : 'shadow-black/50',
           flashSaved
             ? 'bg-emerald-600 text-white border-emerald-500'
             : hasAnchorHere
               ? 'bg-purple-600 text-white border-purple-500 hover:bg-purple-500'
-              : 'bg-zinc-900 text-zinc-200 border-zinc-700 hover:border-purple-500 hover:text-purple-200',
+              : isLightTheme
+                ? 'bg-white text-zinc-800 border-zinc-300 hover:border-purple-500 hover:text-purple-700'
+                : 'bg-zinc-900 text-zinc-100 border-zinc-700 hover:border-purple-500 hover:text-purple-200',
         )}
       >
         {flashSaved
