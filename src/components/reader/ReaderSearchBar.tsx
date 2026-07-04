@@ -26,6 +26,18 @@ export function ReaderSearchBar({ contentSelector = '.reader-content', open, onC
   const readerTheme = useReaderStore(s => s.settings.theme)
   const isLightReader = readerTheme === 'light' || readerTheme === 'sepia' || readerTheme === 'paper'
 
+  // Match search-bar background to the reader theme so there's no bright
+  // stripe between the sticky topbar and the reader content on sepia/paper.
+  const searchBarBg = (() => {
+    switch (readerTheme) {
+      case 'light':  return { bg: 'rgba(255,255,255,0.95)', border: '#e4e4e7' }
+      case 'sepia':  return { bg: 'rgba(244,236,216,0.95)', border: '#d8ceb5' }
+      case 'paper':  return { bg: 'rgba(250,247,242,0.95)', border: '#e5e2dc' }
+      case 'amoled': return { bg: 'rgba(0,0,0,0.97)',       border: '#1f1f1f' }
+      default:       return { bg: 'rgba(26,26,26,0.95)',    border: '#27272a' }
+    }
+  })()
+
   const closeBar = useCallback(() => {
     setQuery('')
     setHits([])
@@ -138,10 +150,10 @@ export function ReaderSearchBar({ contentSelector = '.reader-content', open, onC
         mark.${CURRENT_CLASS} { background-color: rgba(249,115,22,0.85); color: #fff; outline: 2px solid rgba(249,115,22,0.9); outline-offset: 1px; }
       `}</style>
       {/* Search bar directly below the sticky topbar */}
-      <div className={cn(
-        'sticky top-[52px] z-30 w-full backdrop-blur border-b',
-        isLightReader ? 'bg-white/95 border-purple-200' : 'bg-zinc-900/95 border-zinc-800',
-      )}>
+      <div
+        className="sticky top-[52px] z-30 w-full backdrop-blur border-b"
+        style={{ backgroundColor: searchBarBg.bg, borderColor: searchBarBg.border }}
+      >
         <div className="max-w-4xl mx-auto flex items-center gap-2 px-3 py-2">
           <input
             ref={inputRef}

@@ -60,7 +60,9 @@ export default function SingleChapterReaderPage() {
   )
 
   return (
-    <div className="min-h-screen">
+    // Paint the whole page background with the reader theme so the site
+    // body doesn't bleed through between the sticky topbar and .reader-content.
+    <div className="min-h-screen" style={{ backgroundColor: tb.bg }}>
       {/* Top bar: [←] [title (centre)] [🔍 · настройки] */}
       <div
         className="sticky top-0 z-40 backdrop-blur border-b px-4 py-3 flex items-center gap-2 transition-colors duration-200"

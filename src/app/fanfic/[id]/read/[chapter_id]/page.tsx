@@ -87,7 +87,11 @@ export default function ChapterReaderPage() {
   if (!chapter) return null
 
   return (
-    <div className="min-h-screen">
+    // Paint the whole page background with the reader theme so the site
+    // body (which may be light-grey or another site theme colour) doesn't
+    // bleed through between the sticky topbar and the .reader-content wrapper
+    // — that gap used to appear as a bright white stripe on sepia/paper.
+    <div className="min-h-screen" style={{ backgroundColor: tb.bg }}>
       {/* Top bar */}
       <div
         className="sticky top-0 z-40 backdrop-blur border-b px-4 py-3 transition-colors duration-200"
