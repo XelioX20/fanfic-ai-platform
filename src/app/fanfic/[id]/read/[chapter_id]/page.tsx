@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, List } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
+import { FloatingBookmark } from '@/components/fanfic/FloatingBookmark'
 import { Loader } from '@/components/ui/Loader'
 import { formatWordCount } from '@/lib/utils'
 
@@ -76,7 +77,10 @@ export default function ChapterReaderPage() {
       <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <button
+            type="button"
             onClick={() => router.push(`/fanfic/${id}`)}
+            title="Назад к описанию"
+            aria-label="Назад к описанию"
             className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-sm flex-shrink-0"
           >
             <ArrowLeft size={16} />
@@ -92,7 +96,10 @@ export default function ChapterReaderPage() {
           <div className="flex items-center gap-2 flex-shrink-0">
             {chapterIds.length > 0 && (
               <button
+                type="button"
                 onClick={() => setShowChapterList(!showChapterList)}
+                title="Содержание"
+                aria-label="Содержание"
                 className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors"
               >
                 <List size={16} />
@@ -141,6 +148,8 @@ export default function ChapterReaderPage() {
 
       {/* Anchor FAB — floats bottom-right, sits above content and bottom nav */}
       <AnchorButton fanficId={id} chapterId={chapter_id} chapterTitle={chapter.title} />
+      {/* Bookmark FAB — stacks above the anchor FAB */}
+      <FloatingBookmark fanficId={id} meta={{ title: chapter.title }} />
 
       {/* Bottom navigation */}
       <div className="border-t border-zinc-800 py-6 px-4">

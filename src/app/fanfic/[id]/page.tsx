@@ -9,7 +9,6 @@ import {
 import { useAuthStore, useReaderStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
 import { Loader } from '@/components/ui/Loader'
-import { FloatingBookmark } from '@/components/fanfic/FloatingBookmark'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -557,15 +556,25 @@ export default function FanficPage() {
           </a>
         </div>
 
-        {/* Fandoms & Pairings */}
-        <div className="mb-6 space-y-2">
+        {/* Fandoms · Pairings · Tags — each item is a real link into the
+            corresponding ficbook.net search surface (same as the source
+            site's own behaviour: click a pairing → filter by that pairing).
+            We open in a new tab so users don't lose our page. */}
+        <div className="mb-6 space-y-3">
           {fanfic.fandoms.length > 0 && (
             <div className="text-sm">
               <span className="text-zinc-600">Фэндом: </span>
               {fanfic.fandoms.map((f, i) => (
                 <span key={i}>
                   {i > 0 && <span className="text-zinc-600">, </span>}
-                  <Link href={`/search?q=${encodeURIComponent(f)}`} className="text-zinc-400 hover:text-purple-400 transition-colors">{f}</Link>
+                  <a
+                    href={`https://ficbook.net/search?fandom=${encodeURIComponent(f)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-zinc-400 hover:text-purple-400 hover:underline transition-colors"
+                  >
+                    {f}
+                  </a>
                 </span>
               ))}
             </div>
@@ -574,12 +583,54 @@ export default function FanficPage() {
           {fanfic.pairings.length > 0 && (
             <div className="text-sm">
               <span className="text-zinc-600">Пэйринг и персонажи: </span>
-              {fanfic.pairings.map((p, i) => (
-                <span key={i}>
-                  {i > 0 && <span className="text-zinc-600">, </span>}
-                  <span className={p.is_highlight ? 'text-purple-400' : 'text-zinc-400'}>{p.characters.join('/')}</span>
-                </span>
-              ))}
+              {fanfic.pairings.map((p, i) => {
+                const label = p.characters.join('/')
+                const href = `https://ficbook.net/pairings/${encodeURIComponent(p.characters.join('---'))}`
+                return (
+                  <span key={i}>
+                    {i > 0 && <span className="text-zinc-600">, </span>}
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        'hover:underline transition-colors',
+                        p.is_highlight ? 'text-purple-400 hover:text-purple-300' : 'text-zinc-400 hover:text-purple-300',
+                      )}
+                    >
+                      {label}
+                    </a>
+                  </span>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Tags (метки) — moved to sit directly under pairings, matching
+              ficbook's own layout. Each tag chip is a link to the ficbook
+              tag page (real filtered search on the source). */}
+          {fanfic.tags.length > 0 && (
+            <div className="text-sm">
+              <span className="text-zinc-600">Метки: </span>
+              <span className="inline-flex flex-wrap gap-1.5 align-top">
+                {fanfic.tags.map((tag, i) => (
+                  <a
+                    key={i}
+                    href={`https://ficbook.net/tags?tags_search=${encodeURIComponent(tag.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      'inline-flex items-center px-2 py-0.5 rounded text-xs border transition-all',
+                      tag.is_adult
+                        ? 'bg-red-950/40 text-red-400 border-red-800/40 hover:bg-red-900/50 hover:text-red-300'
+                        : 'bg-zinc-800 text-zinc-400 border-zinc-700/40 hover:border-purple-500/60 hover:text-purple-300',
+                    )}
+                  >
+                    {tag.name}
+                    {tag.is_adult && <span className="ml-1 text-red-500 font-bold text-[10px]">18+</span>}
+                  </a>
+                ))}
+              </span>
             </div>
           )}
         </div>
@@ -732,53 +783,13 @@ export default function FanficPage() {
           </div>
         )}
 
-        {/* Tags */}
-        {fanfic.tags.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Метки</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {fanfic.tags.map((tag, i) => (
-                <Link
-                  key={i}
-                  href={`/search?q=${encodeURIComponent(tag.name)}`}
-                  className={cn(
-                    'inline-flex items-center px-2 py-0.5 rounded text-xs border transition-all',
-                    tag.is_adult
-                      ? 'bg-red-950/40 text-red-400 border-red-800/40 hover:bg-red-900/50'
-                      : 'bg-zinc-800 text-zinc-400 border-zinc-700/40 hover:border-zinc-500/60 hover:text-zinc-200'
-                  )}
-                >
-                  {tag.name}
-                  {tag.is_adult && <span className="ml-1 text-red-500 font-bold text-[10px]">18+</span>}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Tags block was here — moved directly under Pairings, matching
+            ficbook's own layout. See the Fandoms · Pairings · Tags stack
+            above. */}
       </main>
 
       {/* Scroll-to-top button (shows after scrolling 400px down) */}
-      <ScrollToTopButton offsetBottom={accessToken ? 'bottom-24' : 'bottom-6'} />
-
-      {/* Fixed bottom-right favourites toggle. Writes the local bookmark
-          (useReaderStore.bookmarks) which syncs to /api/v1/profile/bookmarks
-          — so hitting the button here surfaces the fic in /profile → Избранное
-          on every device the user is signed into. */}
-      {accessToken && (
-        <FloatingBookmark
-          fanficId={id}
-          meta={{
-            title: fanfic.title,
-            author_name: fanfic.authors?.[0]?.name,
-            author_id: fanfic.authors?.[0]?.id,
-            cover_url: fanfic.cover_url ?? null,
-            direction: fanfic.direction,
-            rating: fanfic.rating,
-            completion_status: fanfic.completion_status,
-            fandoms: fanfic.fandoms,
-          }}
-        />
-      )}
+      <ScrollToTopButton offsetBottom={'bottom-6'} />
     </>
   )
 }
