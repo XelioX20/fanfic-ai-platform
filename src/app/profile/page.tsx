@@ -151,13 +151,13 @@ function LocalBookmarksTab() {
         <span className="text-zinc-600">синхронизировано между устройствами</span>
       </p>
 
-      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2 items-stretch">
         {entries.map(entry => (
-          <li key={entry.fanficId} className="relative group">
+          <li key={entry.fanficId} className="relative group h-full">
             <Link
               href={`/fanfic/${entry.fanficId}`}
               className={cn(
-                'flex gap-3 p-3 rounded-xl border min-h-[104px]',
+                'h-full flex gap-3 p-3 rounded-xl border min-h-[104px]',
                 'border-rose-900/40 bg-rose-950/20',
                 'hover:border-rose-700/50 hover:bg-rose-950/30 transition-all',
               )}
@@ -256,13 +256,13 @@ function LocalHistoryTab() {
         </button>
       </div>
 
-      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2 items-stretch">
         {entries.map(entry => (
-          <li key={entry.fanficId} className="relative group">
+          <li key={entry.fanficId} className="relative group h-full">
             <Link
               href={`/fanfic/${entry.fanficId}`}
               className={cn(
-                'flex gap-3 p-3 rounded-xl border border-amber-900/35 bg-amber-950/15 min-h-[104px]',
+                'h-full flex gap-3 p-3 rounded-xl border border-amber-900/35 bg-amber-950/15 min-h-[104px]',
                 'hover:border-amber-700/50 hover:bg-amber-950/25 transition-all',
               )}
             >
@@ -361,20 +361,20 @@ function ContinueReadingTab() {
         <span className="text-zinc-600">синхронизировано между устройствами</span>
       </p>
 
-      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2 items-stretch">
         {entries.map(anchor => {
           const histEntry = history[anchor.fanficId]
           const continueHref = anchor.chapterId === 'single'
             ? `/fanfic/${anchor.fanficId}/read?anchor=1`
             : `/fanfic/${anchor.fanficId}/read/${anchor.chapterId}?anchor=1`
           return (
-            <li key={anchor.fanficId} className="relative group">
+            <li key={anchor.fanficId} className="relative group h-full">
               <div data-hero="continue-reading" className={cn(
-                'flex flex-col gap-3 p-3 rounded-xl border transition-all',
+                'h-full flex flex-col gap-3 p-3 rounded-xl border transition-all',
                 'border-indigo-900/40 bg-indigo-950/20',
                 'hover:border-indigo-700/50 hover:bg-indigo-950/30',
               )}>
-                <div className="flex gap-3 min-h-[80px]">
+                <div className="flex-1 flex gap-3 min-h-[80px]">
                   {histEntry?.cover_url ? (
                     <Image
                       src={histEntry.cover_url}
