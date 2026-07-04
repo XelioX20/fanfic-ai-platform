@@ -108,6 +108,10 @@ EXPECTED_ROUTES = [
     ("PUT",    "/api/v1/profile/local-history/{fanfic_id}"),
     ("DELETE", "/api/v1/profile/local-history/{fanfic_id}"),
     ("DELETE", "/api/v1/profile/local-history"),
+    # Bookmarks (Избранное) — cross-device, no ficbook link required
+    ("GET",    "/api/v1/profile/bookmarks"),
+    ("PUT",    "/api/v1/profile/bookmarks/{fanfic_id}"),
+    ("DELETE", "/api/v1/profile/bookmarks/{fanfic_id}"),
 ]
 
 
@@ -292,4 +296,62 @@ def test_local_history_round_trip(client, auth_user):
 
 def test_local_history_requires_auth(client):
     r = client.get("/api/v1/profile/local-history")
+    assert r.status_code == 401
+
+
+# ── Bookmarks (favourites) — same shape ────────────────────────
+def test_bookmarks_round_trip(client, auth_user):
+    _uid, token = auth_user
+    h = {"Authorization": f"Bearer {token}"}
+
+    # Empty initially
+    r = client.get("/api/v1/profile/bookmarks", headers=h)
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+    # Add
+    r = client.put(
+        "/api/v1/profile/bookmarks/fic-book",
+        headers=h,
+        json={
+            "title": "Избранный фанфик",
+            "author_name": "Автор",
+            "cover_url": "https://example/cover.jpg",
+            "direction": "Гет",
+            "rating": "PG-13",
+            "completion_status": "В процессе",
+            "fandoms": ["Marvel"],
+        },
+    )
+    assert r.status_code == 200
+    assert r.json()["fanfic_id"] == "fic-book"
+    assert r.json()["fandoms"] == ["Marvel"]
+
+    # Shows in list
+    r = client.get("/api/v1/profile/bookmarks", headers=h)
+    assert any(row["fanfic_id"] == "fic-book" for row in r.json())
+
+    # Idempotent upsert — no duplicate
+    r = client.put(
+        "/api/v1/profile/bookmarks/fic-book",
+        headers=h,
+        json={"title": "Новое имя"},
+    )
+    assert r.status_code == 200
+    r = client.get("/api/v1/profile/bookmarks", headers=h)
+    matching = [row for row in r.json() if row["fanfic_id"] == "fic-book"]
+    assert len(matching) == 1
+    assert matching[0]["title"] == "Новое имя"
+
+    # Delete
+    r = client.delete("/api/v1/profile/bookmarks/fic-book", headers=h)
+    assert r.status_code == 204
+    r = client.get("/api/v1/profile/bookmarks", headers=h)
+    assert not any(row["fanfic_id"] == "fic-book" for row in r.json())
+
+
+def test_bookmarks_require_auth(client):
+    r = client.get("/api/v1/profile/bookmarks")
+    assert r.status_code == 401
+    r = client.put("/api/v1/profile/bookmarks/x", json={"title": "t"})
     assert r.status_code == 401

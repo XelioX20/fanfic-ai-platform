@@ -9,6 +9,7 @@ import {
 import { useAuthStore, useReaderStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
 import { Loader } from '@/components/ui/Loader'
+import { FloatingBookmark } from '@/components/fanfic/FloatingBookmark'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -115,6 +116,8 @@ export default function FanficPage() {
   const router = useRouter()
   const { accessToken } = useAuthStore()
   const recordHistory = useReaderStore(s => s.recordHistory)
+  const setBookmark = useReaderStore(s => s.setBookmark)
+  const removeBookmark = useReaderStore(s => s.removeBookmark)
   // Anchor selector must be at top-level of the component (Rules of Hooks) —
   // NOT after any early return below. React error #310 fires the moment a
   // hook count differs between renders. See fanfic detail page load = 2
@@ -182,12 +185,29 @@ export default function FanficPage() {
       setActState(actionCache.get(id)!)
       return
     }
+    // Seed is_liked from the local bookmark state immediately — this is our
+    // source of truth for "в избранном?" and works even for users without a
+    // linked ficbook account.
+    const localLiked = !!(useReaderStore.getState().bookmarks ?? {})[id]
+    if (localLiked) {
+      const s = { is_liked: true, is_read: false, is_followed: false }
+      actionCache.set(id, s)
+      setActState(s)
+    }
+    // Best-effort fetch of ficbook-side state (only useful if the user has
+    // linked a ficbook account — 403 otherwise, which we silently ignore).
     fetch(`${API_URL}/api/v1/actions/state/${id}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(d => {
-        const s = { is_liked: !!d.is_liked, is_read: !!d.is_read, is_followed: !!d.is_followed }
+        if (!d) return
+        // Merge local ⋁ ficbook — bookmark is "liked" if EITHER says so.
+        const s = {
+          is_liked: !!d.is_liked || localLiked,
+          is_read: !!d.is_read,
+          is_followed: !!d.is_followed,
+        }
         actionCache.set(id, s)
         setActState(s)
       })
@@ -210,6 +230,25 @@ export default function FanficPage() {
     setActState(optimistic)
     actionCache.set(id, optimistic)
 
+    // Like/unlike ALSO toggles the local bookmark — this is the "в избранное"
+    // action from the user's POV, and local bookmarks survive without a
+    // linked ficbook account and sync across devices via /profile/bookmarks.
+    if (action === 'like' && fanfic) {
+      setBookmark({
+        fanficId: id,
+        title: fanfic.title,
+        author_name: fanfic.authors?.[0]?.name ?? '',
+        author_id: fanfic.authors?.[0]?.id,
+        cover_url: fanfic.cover_url ?? null,
+        direction: fanfic.direction,
+        rating: fanfic.rating,
+        completion_status: fanfic.completion_status,
+        fandoms: fanfic.fandoms,
+      })
+    } else if (action === 'unlike') {
+      removeBookmark(id)
+    }
+
     try {
       const resp = await fetch(`${API_URL}/api/v1/actions/${action}`, {
         method: 'POST',
@@ -217,7 +256,10 @@ export default function FanficPage() {
         body: JSON.stringify({ fanfic_id: id }),
       })
       if (!resp.ok) {
-        // Roll back on HTTP error (403 = no ficbook cookies, 429 = throttled, …)
+        // Roll back the action-bar state on HTTP error, but KEEP the local
+        // bookmark change — the local bookmark works regardless of whether
+        // the ficbook mirror succeeded. 403 here = no ficbook cookies, and
+        // that's OK: the user's local favourites are still stored.
         setActState(prev)
         actionCache.set(id, prev)
         const err = await resp.json().catch(() => ({ detail: '' }))
@@ -718,25 +760,24 @@ export default function FanficPage() {
       {/* Scroll-to-top button (shows after scrolling 400px down) */}
       <ScrollToTopButton offsetBottom={accessToken ? 'bottom-24' : 'bottom-6'} />
 
-      {/* Fixed bottom-right bookmark (mark as read) */}
+      {/* Fixed bottom-right favourites toggle. Writes the local bookmark
+          (useReaderStore.bookmarks) which syncs to /api/v1/profile/bookmarks
+          — so hitting the button here surfaces the fic in /profile → Избранное
+          on every device the user is signed into. */}
       {accessToken && (
-        <button
-          type="button"
-          onClick={() => doAction(actState.is_read ? 'mark-unread' : 'mark-read')}
-          disabled={actLoading === 'mark-read' || actLoading === 'mark-unread'}
-          title={actState.is_read ? 'Отметить непрочитанным' : 'Отметить прочитанным'}
-          className={cn(
-            'fixed bottom-6 right-6 z-30 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border transition-all',
-            actState.is_read
-              ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-500 shadow-teal-950/50'
-              : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-700 shadow-black/40'
-          )}
-        >
-          {(actLoading === 'mark-read' || actLoading === 'mark-unread')
-            ? <Loader2 size={20} className="animate-spin" />
-            : <BookMarked size={20} className={actState.is_read ? 'fill-white/20' : ''} />
-          }
-        </button>
+        <FloatingBookmark
+          fanficId={id}
+          meta={{
+            title: fanfic.title,
+            author_name: fanfic.authors?.[0]?.name,
+            author_id: fanfic.authors?.[0]?.id,
+            cover_url: fanfic.cover_url ?? null,
+            direction: fanfic.direction,
+            rating: fanfic.rating,
+            completion_status: fanfic.completion_status,
+            fandoms: fanfic.fandoms,
+          }}
+        />
       )}
     </>
   )

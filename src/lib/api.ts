@@ -138,6 +138,19 @@ export interface ServerHistoryEntry {
   opened_at: string
 }
 
+export interface ServerBookmark {
+  fanfic_id: string
+  title: string
+  author_name: string
+  author_id: string | null
+  cover_url: string | null
+  direction: string | null
+  rating: string | null
+  completion_status: string | null
+  fandoms: string[] | null
+  added_at: string
+}
+
 export const readingStateApi = {
   listAnchors: () => api.get<ServerAnchor[]>('/profile/anchors'),
   upsertAnchor: (fanficId: string, body: { chapter_id: string; scroll_y: number; chapter_title?: string | null }) =>
@@ -160,4 +173,19 @@ export const readingStateApi = {
   deleteHistoryEntry: (fanficId: string) =>
     api.delete(`/profile/local-history/${encodeURIComponent(fanficId)}`),
   clearHistory: () => api.delete('/profile/local-history'),
+
+  listBookmarks: (limit = 500) =>
+    api.get<ServerBookmark[]>('/profile/bookmarks', { params: { limit } }),
+  upsertBookmark: (fanficId: string, body: {
+    title: string
+    author_name?: string
+    author_id?: string | null
+    cover_url?: string | null
+    direction?: string | null
+    rating?: string | null
+    completion_status?: string | null
+    fandoms?: string[] | null
+  }) => api.put<ServerBookmark>(`/profile/bookmarks/${encodeURIComponent(fanficId)}`, body),
+  deleteBookmark: (fanficId: string) =>
+    api.delete(`/profile/bookmarks/${encodeURIComponent(fanficId)}`),
 }

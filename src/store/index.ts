@@ -71,6 +71,25 @@ export interface HistoryEntry {
   openedAt: number
 }
 
+/**
+ * "В избранное" toggle target. Written by the heart / bookmark buttons on
+ * the fanfic detail page, mirrors cross-device via the /profile/bookmarks
+ * backend endpoints. This is OUR notion of favourites — independent of
+ * whether the user has linked a ficbook account.
+ */
+export interface BookmarkEntry {
+  fanficId: string
+  title: string
+  author_name: string
+  author_id?: string
+  cover_url?: string | null
+  direction?: string
+  rating?: string
+  completion_status?: string
+  fandoms?: string[]
+  addedAt: number
+}
+
 interface ReaderState {
   settings: ReaderSettings
   updateSettings: (partial: Partial<ReaderSettings>) => void
@@ -96,10 +115,15 @@ interface ReaderState {
   recordHistory: (entry: Omit<HistoryEntry, 'openedAt'>) => void
   clearHistoryEntry: (fanficId: string) => void
   clearAllHistory: () => void
+  // Local bookmarks — the ⭐/♥ 'в избранное' state. Same sync policy.
+  bookmarks: Record<string, BookmarkEntry>
+  setBookmark: (entry: Omit<BookmarkEntry, 'addedAt'>) => void
+  removeBookmark: (fanficId: string) => void
   // Bulk import from server after login. Merges the server snapshot into the
   // local map: server rows override same-key local rows.
   hydrateAnchorsFromServer: (rows: ReadingAnchor[]) => void
   hydrateHistoryFromServer: (rows: HistoryEntry[]) => void
+  hydrateBookmarksFromServer: (rows: BookmarkEntry[]) => void
 }
 
 /* ─── Sync helpers ────────────────────────────────────────────────────
@@ -167,6 +191,33 @@ async function syncClearHistory() {
   } catch { /* ignore */ }
 }
 
+async function syncPutBookmark(entry: BookmarkEntry) {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem('access_token')) return
+  try {
+    const { readingStateApi } = await import('@/lib/api')
+    await readingStateApi.upsertBookmark(entry.fanficId, {
+      title: entry.title,
+      author_name: entry.author_name ?? '',
+      author_id: entry.author_id ?? null,
+      cover_url: entry.cover_url ?? null,
+      direction: entry.direction ?? null,
+      rating: entry.rating ?? null,
+      completion_status: entry.completion_status ?? null,
+      fandoms: entry.fandoms ?? null,
+    })
+  } catch { /* ignore */ }
+}
+
+async function syncDeleteBookmark(fanficId: string) {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem('access_token')) return
+  try {
+    const { readingStateApi } = await import('@/lib/api')
+    await readingStateApi.deleteBookmark(fanficId)
+  } catch { /* ignore */ }
+}
+
 
 export const useReaderStore = create<ReaderState>()(
   persist(
@@ -230,6 +281,22 @@ export const useReaderStore = create<ReaderState>()(
         set({ history: {} })
         void syncClearHistory()
       },
+      bookmarks: {},
+      setBookmark: (entry) => {
+        const stamped: BookmarkEntry = { ...entry, addedAt: Date.now() }
+        set((state) => ({
+          bookmarks: { ...(state.bookmarks ?? {}), [entry.fanficId]: stamped },
+        }))
+        void syncPutBookmark(stamped)
+      },
+      removeBookmark: (fanficId) => {
+        set((state) => {
+          const next = { ...(state.bookmarks ?? {}) }
+          delete next[fanficId]
+          return { bookmarks: next }
+        })
+        void syncDeleteBookmark(fanficId)
+      },
       hydrateAnchorsFromServer: (rows) => {
         set((state) => {
           const map = { ...(state.anchors ?? {}) }
@@ -242,6 +309,13 @@ export const useReaderStore = create<ReaderState>()(
           const map = { ...(state.history ?? {}) }
           for (const r of rows) map[r.fanficId] = r
           return { history: map }
+        })
+      },
+      hydrateBookmarksFromServer: (rows) => {
+        set((state) => {
+          const map = { ...(state.bookmarks ?? {}) }
+          for (const r of rows) map[r.fanficId] = r
+          return { bookmarks: map }
         })
       },
     }),
@@ -267,6 +341,7 @@ export const useReaderStore = create<ReaderState>()(
           readingProgress: persisted.readingProgress ?? {},
           anchors: persisted.anchors ?? {},
           history: persisted.history ?? {},
+          bookmarks: persisted.bookmarks ?? {},
         }
       },
     }

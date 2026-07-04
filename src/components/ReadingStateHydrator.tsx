@@ -17,6 +17,7 @@ export function ReadingStateHydrator() {
   const accessToken = useAuthStore(s => s.accessToken)
   const hydrateAnchors = useReaderStore(s => s.hydrateAnchorsFromServer)
   const hydrateHistory = useReaderStore(s => s.hydrateHistoryFromServer)
+  const hydrateBookmarks = useReaderStore(s => s.hydrateBookmarksFromServer)
 
   useEffect(() => {
     if (!accessToken) return
@@ -24,9 +25,10 @@ export function ReadingStateHydrator() {
 
     ;(async () => {
       try {
-        const [anchors, history] = await Promise.all([
+        const [anchors, history, bookmarks] = await Promise.all([
           readingStateApi.listAnchors(),
           readingStateApi.listHistory(200),
+          readingStateApi.listBookmarks(500),
         ])
         if (!alive) return
         hydrateAnchors(
@@ -52,6 +54,20 @@ export function ReadingStateHydrator() {
             openedAt: new Date(r.opened_at).getTime(),
           })),
         )
+        hydrateBookmarks(
+          bookmarks.data.map(r => ({
+            fanficId: r.fanfic_id,
+            title: r.title,
+            author_name: r.author_name || '',
+            author_id: r.author_id ?? undefined,
+            cover_url: r.cover_url ?? null,
+            direction: r.direction ?? undefined,
+            rating: r.rating ?? undefined,
+            completion_status: r.completion_status ?? undefined,
+            fandoms: r.fandoms ?? [],
+            addedAt: new Date(r.added_at).getTime(),
+          })),
+        )
       } catch {
         // Silent — backend may be waking up on Render free-tier, or the
         // user's JWT might be stale (interceptor in api.ts handles 401).
@@ -61,7 +77,7 @@ export function ReadingStateHydrator() {
     return () => {
       alive = false
     }
-  }, [accessToken, hydrateAnchors, hydrateHistory])
+  }, [accessToken, hydrateAnchors, hydrateHistory, hydrateBookmarks])
 
   return null
 }

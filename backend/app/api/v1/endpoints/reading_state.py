@@ -1,6 +1,6 @@
 """
-Reading-state endpoints — anchors and local history, both user-scoped and
-cross-device.
+Reading-state endpoints — anchors, local history, and bookmarks. All three
+are user-scoped and cross-device.
 
   GET  /profile/anchors                       → list of ReadingAnchor rows
   PUT  /profile/anchors/{fanfic_id}           → upsert an anchor (one per fic)
@@ -10,6 +10,10 @@ cross-device.
   PUT  /profile/local-history/{fanfic_id}     → record/refresh an open
   DELETE /profile/local-history/{fanfic_id}   → drop a single entry
   DELETE /profile/local-history                → clear all
+
+  GET  /profile/bookmarks                     → list of bookmarked fics
+  PUT  /profile/bookmarks/{fanfic_id}         → add / update a bookmark
+  DELETE /profile/bookmarks/{fanfic_id}       → un-bookmark
 
 All routes require our JWT. The client Zustand store still holds the same
 data locally so the UI is instant; a small hydrator syncs from the server
@@ -29,7 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import verify_token
 from app.db.session import AsyncSessionLocal
-from app.db.models.reading_state import UserAnchor, UserLocalHistory
+from app.db.models.reading_state import UserAnchor, UserLocalHistory, UserBookmark
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -268,5 +272,132 @@ async def delete_local_history_entry(fanfic_id: str, user_id: str = Depends(_get
 async def clear_local_history(user_id: str = Depends(_get_current_user_id)):
     async with AsyncSessionLocal() as db:
         await db.execute(delete(UserLocalHistory).where(UserLocalHistory.user_id == user_id))
+        await db.commit()
+    return None
+
+
+# ─── Bookmarks (in-favourites) ─────────────────────────────────────────
+#
+# Local "в избранное" toggle. Distinct from ficbook.net's own like list —
+# these are stored in our DB, so they work for any authenticated user
+# whether they've linked a ficbook account or not, and they sync across
+# devices identically to anchors + history.
+
+class BookmarkPayload(BaseModel):
+    title: str
+    author_name: Optional[str] = ""
+    author_id: Optional[str] = None
+    cover_url: Optional[str] = None
+    direction: Optional[str] = None
+    rating: Optional[str] = None
+    completion_status: Optional[str] = None
+    fandoms: Optional[list[str]] = None
+
+
+class BookmarkRead(BaseModel):
+    fanfic_id: str
+    title: str
+    author_name: Optional[str] = ""
+    author_id: Optional[str] = None
+    cover_url: Optional[str] = None
+    direction: Optional[str] = None
+    rating: Optional[str] = None
+    completion_status: Optional[str] = None
+    fandoms: Optional[list[str]] = None
+    added_at: datetime
+
+
+def _bookmark_to_read(row: UserBookmark) -> BookmarkRead:
+    fandoms: Optional[list[str]] = None
+    if row.fandoms:
+        try:
+            parsed = json.loads(row.fandoms)
+            fandoms = parsed if isinstance(parsed, list) else None
+        except json.JSONDecodeError:
+            fandoms = None
+    return BookmarkRead(
+        fanfic_id=row.fanfic_id,
+        title=row.title,
+        author_name=row.author_name or "",
+        author_id=row.author_id,
+        cover_url=row.cover_url,
+        direction=row.direction,
+        rating=row.rating,
+        completion_status=row.completion_status,
+        fandoms=fandoms,
+        added_at=row.added_at,
+    )
+
+
+@router.get("/bookmarks", response_model=list[BookmarkRead])
+async def list_bookmarks(
+    limit: int = Query(500, ge=1, le=1000),
+    user_id: str = Depends(_get_current_user_id),
+):
+    async with AsyncSessionLocal() as db:
+        rows = (
+            await db.execute(
+                select(UserBookmark)
+                .where(UserBookmark.user_id == user_id)
+                .order_by(UserBookmark.added_at.desc())
+                .limit(limit)
+            )
+        ).scalars().all()
+        return [_bookmark_to_read(r) for r in rows]
+
+
+@router.put("/bookmarks/{fanfic_id}", response_model=BookmarkRead)
+async def upsert_bookmark(
+    fanfic_id: str,
+    payload: BookmarkPayload,
+    user_id: str = Depends(_get_current_user_id),
+):
+    async with AsyncSessionLocal() as db:
+        row = (
+            await db.execute(
+                select(UserBookmark).where(
+                    UserBookmark.user_id == user_id,
+                    UserBookmark.fanfic_id == fanfic_id,
+                )
+            )
+        ).scalar_one_or_none()
+        fandoms_str = json.dumps(payload.fandoms, ensure_ascii=False) if payload.fandoms else None
+        if row is None:
+            row = UserBookmark(
+                user_id=user_id,
+                fanfic_id=fanfic_id,
+                title=payload.title,
+                author_name=payload.author_name,
+                author_id=payload.author_id,
+                cover_url=payload.cover_url,
+                direction=payload.direction,
+                rating=payload.rating,
+                completion_status=payload.completion_status,
+                fandoms=fandoms_str,
+            )
+            db.add(row)
+        else:
+            row.title = payload.title
+            row.author_name = payload.author_name
+            row.author_id = payload.author_id
+            row.cover_url = payload.cover_url
+            row.direction = payload.direction
+            row.rating = payload.rating
+            row.completion_status = payload.completion_status
+            row.fandoms = fandoms_str
+        await db.commit()
+        await db.refresh(row)
+        return _bookmark_to_read(row)
+
+
+@router.delete("/bookmarks/{fanfic_id}", status_code=204)
+async def delete_bookmark(fanfic_id: str, user_id: str = Depends(_get_current_user_id)):
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            delete(UserBookmark).where(
+                UserBookmark.user_id == user_id,
+                UserBookmark.fanfic_id == fanfic_id,
+            )
+        )
         await db.commit()
     return None

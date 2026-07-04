@@ -1,9 +1,10 @@
 """
-Cross-device reading state — anchors and local history.
+Cross-device reading state — anchors, local history, and bookmarks.
 
-Both models are user-scoped so a user's PC anchors show up on their phone.
+All three models are user-scoped so a user's PC state shows up on their phone.
 Anchors are pinpoint positions the user explicitly marked with the ⚓ button;
-history is auto-recorded on every fanfic detail page open.
+history is auto-recorded on every fanfic detail page open; bookmarks are
+"in favourites" toggled by the heart / bookmark buttons.
 """
 from __future__ import annotations
 from datetime import datetime
@@ -52,3 +53,35 @@ class UserLocalHistory(Base):
     completion_status: Mapped[Optional[str]] = mapped_column(String(50))
     fandoms: Mapped[Optional[str]] = mapped_column(Text)  # JSON-encoded list of strings
     opened_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+
+
+class UserBookmark(Base):
+    """
+    Local 'in favourites' toggle — the heart / bookmark button target.
+
+    Distinct from ficbook.net's own like list, which requires linking a
+    ficbook account and issuing AJAX requests to their /ajax/mark endpoint.
+    Local bookmarks work for any authenticated user (JWT is enough), sync
+    across devices, and populate /profile → Избранное. If the user has
+    also linked ficbook we do a best-effort mirror to their ficbook list
+    on top; the local record is the source of truth for our UI.
+    """
+
+    __tablename__ = "user_bookmarks"
+    __table_args__ = (UniqueConstraint("user_id", "fanfic_id", name="uq_user_bookmark_fanfic"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("platform_users.id", ondelete="CASCADE"), index=True)
+    fanfic_id: Mapped[str] = mapped_column(String(64), index=True)
+    # Denormalised card fields — same shape as UserLocalHistory so the
+    # /profile → Избранное tab renders card metadata without a ficbook fetch.
+    title: Mapped[str] = mapped_column(String(500))
+    author_name: Mapped[Optional[str]] = mapped_column(String(200))
+    author_id: Mapped[Optional[str]] = mapped_column(String(50))
+    cover_url: Mapped[Optional[str]] = mapped_column(String(500))
+    direction: Mapped[Optional[str]] = mapped_column(String(50))
+    rating: Mapped[Optional[str]] = mapped_column(String(20))
+    completion_status: Mapped[Optional[str]] = mapped_column(String(50))
+    fandoms: Mapped[Optional[str]] = mapped_column(Text)  # JSON-encoded list of strings
+    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+

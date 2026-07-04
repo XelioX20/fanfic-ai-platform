@@ -4,9 +4,9 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X,
+  User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X, Bookmark,
 } from 'lucide-react'
-import { useAuthStore, useReaderStore, type HistoryEntry, type ReadingAnchor } from '@/store'
+import { useAuthStore, useReaderStore, type HistoryEntry, type ReadingAnchor, type BookmarkEntry } from '@/store'
 import { profileApi } from '@/lib/api'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
 import { cn } from '@/lib/utils'
@@ -92,6 +92,113 @@ function relativeTime(ts: number): string {
   const days = Math.floor(diff / 86400_000)
   if (days < 30) return `${days} дн назад`
   return new Date(ts).toLocaleDateString('ru-RU')
+}
+
+/* ─── Local bookmarks (heart / bookmark FAB target) ───────────────────── */
+
+function LocalBookmarksTab() {
+  const bookmarks = useReaderStore(s => s.bookmarks ?? {})
+  const removeBookmark = useReaderStore(s => s.removeBookmark)
+
+  const entries = useMemo(() => {
+    const arr = Object.values(bookmarks) as BookmarkEntry[]
+    arr.sort((a, b) => b.addedAt - a.addedAt)
+    return arr
+  }, [bookmarks])
+
+  if (entries.length === 0) {
+    return (
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-14 px-6 text-center">
+        <Bookmark size={28} className="mx-auto text-zinc-700 mb-3" />
+        <p className="text-zinc-300 text-sm font-medium">В избранном пока пусто</p>
+        <p className="text-xs text-zinc-500 mt-2 max-w-sm mx-auto">
+          Открой фанфик и нажми{' '}
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-pink-950/50 text-pink-300 border border-pink-800/50 text-[10px] font-medium">
+            <Bookmark size={10} /> В избранное
+          </span>
+          {' '}или{' '}
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-pink-950/50 text-pink-300 border border-pink-800/50 text-[10px] font-medium">
+            <Heart size={10} /> ♥
+          </span>
+          {' '}— он появится здесь и синхронизируется между устройствами.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-zinc-500 mb-4">
+        <span className="text-zinc-300 font-medium">{entries.length}</span>{' '}
+        {entries.length === 1 ? 'фанфик в избранном' : 'фанфиков в избранном'}
+        {' · '}
+        <span className="text-zinc-600">синхронизировано между устройствами</span>
+      </p>
+
+      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+        {entries.map(entry => (
+          <li key={entry.fanficId} className="relative group">
+            <Link
+              href={`/fanfic/${entry.fanficId}`}
+              className={cn(
+                'flex gap-3 p-3 rounded-xl border border-pink-900/40 bg-gradient-to-br from-pink-950/25 via-zinc-900/70 to-zinc-900/60',
+                'hover:border-pink-700/60 hover:from-pink-900/30 transition-all',
+              )}
+            >
+              {entry.cover_url ? (
+                <Image
+                  src={entry.cover_url}
+                  alt=""
+                  width={56}
+                  height={80}
+                  className="rounded-md object-cover shrink-0 bg-zinc-800 shadow-sm shadow-black/40"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0 flex items-center justify-center">
+                  <Bookmark size={16} className="text-pink-500/50" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0 pr-6">
+                <h3 className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug">
+                  {entry.title || `Фанфик ${entry.fanficId.slice(0, 8)}…`}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1 truncate">
+                  {entry.author_name || 'Автор неизвестен'}
+                </p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {entry.direction && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.direction}</span>
+                  )}
+                  {entry.rating && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.rating}</span>
+                  )}
+                  {entry.completion_status && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.completion_status}</span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-600 mt-2 flex items-center gap-1">
+                  <Bookmark size={10} /> добавлено {relativeTime(entry.addedAt)}
+                </p>
+              </div>
+            </Link>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeBookmark(entry.fanficId) }}
+              title="Убрать из избранного"
+              className={cn(
+                'absolute top-2 right-2 p-1.5 rounded-md bg-zinc-900/80 text-zinc-500',
+                'hover:text-red-400 hover:bg-red-900/40 transition-all',
+                'sm:opacity-0 sm:group-hover:opacity-100',
+              )}
+            >
+              <X size={14} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 function LocalHistoryTab() {
@@ -472,7 +579,7 @@ function ProfileContent() {
           )}
         </div>
       )}
-      {activeTab === 'favourites' && <FanficSection fetcher={profileApi.favourites} />}
+      {activeTab === 'favourites' && <LocalBookmarksTab />}
       {activeTab === 'history' && <LocalHistoryTab />}
       {activeTab === 'continue' && <ContinueReadingTab />}
       {activeTab === 'settings' && <ReaderSettingsTab />}
