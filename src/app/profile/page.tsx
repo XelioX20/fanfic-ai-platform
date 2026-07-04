@@ -157,7 +157,7 @@ function LocalBookmarksTab() {
             <Link
               href={`/fanfic/${entry.fanficId}`}
               className={cn(
-                'flex gap-3 p-3 rounded-xl border',
+                'flex gap-3 p-3 rounded-xl border min-h-[104px]',
                 'border-rose-900/40 bg-rose-950/20',
                 'hover:border-rose-700/50 hover:bg-rose-950/30 transition-all',
               )}
@@ -262,7 +262,7 @@ function LocalHistoryTab() {
             <Link
               href={`/fanfic/${entry.fanficId}`}
               className={cn(
-                'flex gap-3 p-3 rounded-xl border border-amber-900/35 bg-amber-950/15',
+                'flex gap-3 p-3 rounded-xl border border-amber-900/35 bg-amber-950/15 min-h-[104px]',
                 'hover:border-amber-700/50 hover:bg-amber-950/25 transition-all',
               )}
             >
@@ -374,7 +374,7 @@ function ContinueReadingTab() {
                 'border-indigo-900/40 bg-indigo-950/20',
                 'hover:border-indigo-700/50 hover:bg-indigo-950/30',
               )}>
-                <div className="flex gap-3">
+                <div className="flex gap-3 min-h-[80px]">
                   {histEntry?.cover_url ? (
                     <Image
                       src={histEntry.cover_url}
