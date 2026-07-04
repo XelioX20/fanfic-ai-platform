@@ -395,12 +395,20 @@ function ContinueReadingTab() {
                     {histEntry?.author_name && (
                       <p className="text-sm text-zinc-200 mt-1 truncate">{histEntry.author_name}</p>
                     )}
-                    {anchor.chapterTitle && (
-                      <p className="text-xs text-purple-300 mt-1.5 flex items-center gap-1 font-medium">
-                        <Anchor size={10} className="text-indigo-300 shrink-0" />
-                        <span className="truncate">{anchor.chapterTitle}</span>
-                      </p>
-                    )}
+                    {/* Anchor status line — always rendered so cards line up.
+                        Uses the saved chapter title when we have it, otherwise
+                        the chapter id (for multi-chapter fics) or "На отмеченном
+                        месте" for single-chapter fics. */}
+                    <p className="text-xs text-purple-300 mt-1.5 flex items-center gap-1 font-medium">
+                      <Anchor size={10} className="text-indigo-300 shrink-0" />
+                      <span className="truncate">
+                        {anchor.chapterTitle
+                          ? anchor.chapterTitle
+                          : anchor.chapterId === 'single'
+                            ? 'На отмеченном месте'
+                            : `Глава ${anchor.chapterId.slice(0, 8)}…`}
+                      </span>
+                    </p>
                     <p className="text-xs text-zinc-300 mt-1 flex items-center gap-1">
                       <Clock size={11} /> {relativeTime(anchor.updatedAt)}
                     </p>
