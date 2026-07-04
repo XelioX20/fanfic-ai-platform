@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
@@ -19,6 +19,7 @@ export default function SingleChapterReaderPage() {
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -46,18 +47,26 @@ export default function SingleChapterReaderPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Top bar */}
-      <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between gap-2">
-        <button type="button" onClick={() => router.push(`/fanfic/${id}`)} className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-sm min-w-0">
+      {/* Top bar: [←] [title (centre)] [🔍 · настройки] */}
+      <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center gap-2">
+        <button type="button" onClick={() => router.push(`/fanfic/${id}`)}
+          className="shrink-0 p-1 text-zinc-400 hover:text-zinc-200 transition-colors" title="Назад" aria-label="Назад">
           <ArrowLeft size={16} />
-          <span className="hidden sm:inline truncate max-w-xs">{title}</span>
         </button>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex-1 min-w-0 text-center">
+          <p className="text-zinc-300 text-sm font-medium truncate">{title}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button type="button" onClick={() => setSearchOpen(v => !v)}
+            title="Поиск по тексту (Ctrl+F)" aria-label="Поиск по тексту"
+            className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors">
+            <Search size={16} />
+          </button>
           <ReaderSettingsPanel />
         </div>
       </div>
-      {/* Full-text search bar — collapses to a FAB when not in use */}
-      <ReaderSearchBar />
+      {/* Search bar — appears below topbar when open */}
+      <ReaderSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
       <ReaderContent
         content={html || ''}
         progressKey={`${id}:single`}
@@ -65,7 +74,7 @@ export default function SingleChapterReaderPage() {
         anchorFanficId={id}
         anchorChapterId="single"
       />
-      {/* Anchor FAB — floats bottom-right, sits above content */}
+      {/* Anchor FAB */}
       <AnchorButton fanficId={id} chapterId="single" chapterTitle={title} />
     </div>
   )

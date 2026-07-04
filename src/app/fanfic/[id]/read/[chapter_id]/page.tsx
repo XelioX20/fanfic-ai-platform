@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronLeft, ChevronRight, List } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, List, Search } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
 import { ReaderSearchBar } from '@/components/reader/ReaderSearchBar'
 import { Loader } from '@/components/ui/Loader'
+import { useReaderStore } from '@/store'
 import { formatWordCount } from '@/lib/utils'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -33,6 +34,7 @@ export default function ChapterReaderPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showChapterList, setShowChapterList] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const chapterIds = allChapters ? allChapters.split(',') : []
   const currentIdx = chapterIds.indexOf(chapter_id)
@@ -76,6 +78,7 @@ export default function ChapterReaderPage() {
       {/* Top bar */}
       <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={() => router.push(`/fanfic/${id}`)}
@@ -93,11 +96,11 @@ export default function ChapterReaderPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {chapterIds.length > 0 && (
               <button
                 type="button"
-                onClick={() => setShowChapterList(!showChapterList)}
+                onClick={() => { setShowChapterList(!showChapterList); setSearchOpen(false) }}
                 title="Содержание"
                 aria-label="Содержание"
                 className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -105,8 +108,18 @@ export default function ChapterReaderPage() {
                 <List size={16} />
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => { setSearchOpen(v => !v); setShowChapterList(false) }}
+              title="Поиск по тексту (Ctrl+F)"
+              aria-label="Поиск по тексту"
+              className="p-2 text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <Search size={16} />
+            </button>
             <ReaderSettingsPanel />
           </div>
+        </div>
         </div>
       </div>
 
@@ -128,8 +141,8 @@ export default function ChapterReaderPage() {
         </div>
       )}
 
-      {/* Full-text search bar — collapses to a FAB when not in use */}
-      <ReaderSearchBar />
+      {/* Full-text search — controlled by topbar Search button */}
+      <ReaderSearchBar open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Chapter info */}
       <div className="max-w-4xl mx-auto px-4 pt-6 pb-2">

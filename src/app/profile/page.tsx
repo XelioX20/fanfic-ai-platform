@@ -13,12 +13,11 @@ import { cn } from '@/lib/utils'
 import { FONT_OPTIONS, getFontCssVar } from '@/lib/fonts'
 import type { Fanfic } from '@/types'
 
-type Tab = 'profile' | 'favourites' | 'continue' | 'history' | 'settings'
+type Tab = 'continue' | 'favourites' | 'history' | 'settings'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'profile',    label: 'Профиль',            icon: <User size={15} /> },
-  { id: 'favourites', label: 'Избранное',          icon: <Heart size={15} /> },
   { id: 'continue',   label: 'Продолжить чтение',  icon: <Anchor size={15} /> },
+  { id: 'favourites', label: 'Избранное',          icon: <Heart size={15} /> },
   { id: 'history',    label: 'История',            icon: <Clock size={15} /> },
   { id: 'settings',   label: 'Читалка',            icon: <Settings size={15} /> },
 ]
@@ -141,8 +140,8 @@ function LocalBookmarksTab() {
             <Link
               href={`/fanfic/${entry.fanficId}`}
               className={cn(
-                'flex gap-3 p-3 rounded-xl border border-pink-900/40 bg-gradient-to-br from-pink-950/25 via-zinc-900/70 to-zinc-900/60',
-                'hover:border-pink-700/60 hover:from-pink-900/30 transition-all',
+                'flex gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-900/50',
+                'hover:border-zinc-600 hover:bg-zinc-900 transition-all',
               )}
             >
               {entry.cover_url ? (
@@ -360,8 +359,8 @@ function ContinueReadingTab() {
             <li key={anchor.fanficId} className="relative group">
               <div className={cn(
                 'flex flex-col gap-3 p-3 rounded-xl border transition-all',
-                'border-purple-800/40 bg-gradient-to-br from-purple-950/25 via-zinc-900/70 to-zinc-900/60',
-                'hover:border-purple-600/60 hover:from-purple-900/30',
+                'border-zinc-800 bg-zinc-900/50',
+                'hover:border-zinc-600 hover:bg-zinc-900',
               )}>
                 <div className="flex gap-3">
                   {histEntry?.cover_url ? (
@@ -463,6 +462,7 @@ function ReaderSettingsTab() {
           <span className="text-sm font-medium text-zinc-200 tabular-nums">{settings.font_size}px</span>
         </div>
         <input type="range" min="12" max="26" step="1" value={settings.font_size}
+          title="Размер шрифта"
           onChange={e => updateSettings({ font_size: Number(e.target.value) })} className="w-full" />
         <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
           <span>12px</span><span>26px</span>
@@ -476,6 +476,7 @@ function ReaderSettingsTab() {
           <span className="text-sm font-medium text-zinc-200 tabular-nums">{settings.line_height.toFixed(1)}</span>
         </div>
         <input type="range" min="1.2" max="2.5" step="0.1" value={settings.line_height}
+          title="Межстрочный интервал"
           onChange={e => updateSettings({ line_height: Number(e.target.value) })} className="w-full" />
         <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
           <span>тесно</span><span>просторно</span>
@@ -489,6 +490,7 @@ function ReaderSettingsTab() {
           <span className="text-sm font-medium text-zinc-200 tabular-nums">{settings.max_width}px</span>
         </div>
         <input type="range" min="480" max="900" step="20" value={settings.max_width}
+          title="Ширина колонки"
           onChange={e => updateSettings({ max_width: Number(e.target.value) })} className="w-full" />
         <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
           <span>узкая</span><span>широкая</span>
@@ -610,8 +612,14 @@ function ProfileContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, accessToken } = useAuthStore()
-  const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'profile')
-  const [profileData, setProfileData] = useState<{ ficbook_username?: string; ficbook_avatar_url?: string; ficbook_profile_url?: string } | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'continue')
+  const [profileData, setProfileData] = useState<{
+    ficbook_username?: string
+    ficbook_avatar_url?: string
+    custom_avatar_url?: string
+    avatar_url?: string
+    ficbook_profile_url?: string
+  } | null>(null)
 
   useEffect(() => {
     if (!accessToken) {
@@ -627,20 +635,76 @@ function ProfileContent() {
   }
 
   const displayName = profileData?.ficbook_username || user?.ficbook_username || 'Пользователь'
-  const avatarUrl = profileData?.ficbook_avatar_url || user?.ficbook_avatar_url
+  // Effective avatar: custom upload > ficbook > placeholder
+  const avatarUrl = profileData?.avatar_url || profileData?.ficbook_avatar_url || user?.ficbook_avatar_url || null
+  const [avatarUploading, setAvatarUploading] = useState(false)
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 512 * 1024) {
+      alert('Фото слишком большое — максимум 512 КБ. Пожалуйста, сожми изображение.')
+      return
+    }
+    setAvatarUploading(true)
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      await profileApi.updateAvatar(base64)
+      // Refresh profile data to show the new avatar immediately
+      const r = await profileApi.me()
+      setProfileData(r.data)
+    } catch {
+      alert('Не удалось загрузить фото. Попробуй снова.')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+  }
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
       {/* Profile header */}
       <div className="flex items-center gap-4 mb-8">
-        {avatarUrl ? (
-          <Image src={avatarUrl} alt={displayName} width={64} height={64}
-            className="rounded-full object-cover" unoptimized />
-        ) : (
-          <div className="w-16 h-16 rounded-full bg-purple-800 flex items-center justify-center">
-            <User size={28} className="text-white" />
+        {/* Avatar — click to upload custom photo */}
+        <label className="relative cursor-pointer group" title="Нажми чтобы изменить фото">
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={handleAvatarChange}
+            disabled={avatarUploading}
+          />
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={displayName}
+              width={72}
+              height={72}
+              className="rounded-full object-cover ring-2 ring-transparent group-hover:ring-purple-500 transition-all"
+              unoptimized
+            />
+          ) : (
+            <div className="w-18 h-18 w-[72px] h-[72px] rounded-full bg-gradient-to-br from-purple-700 to-purple-900 flex items-center justify-center ring-2 ring-transparent group-hover:ring-purple-500 transition-all">
+              <User size={32} className="text-white" />
+            </div>
+          )}
+          {/* Overlay on hover */}
+          <div className={cn(
+            'absolute inset-0 rounded-full bg-black/50 flex items-center justify-center transition-opacity',
+            avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+          )}>
+            {avatarUploading
+              ? <Loader2 size={20} className="text-white animate-spin" />
+              : <span className="text-white text-[10px] font-medium text-center leading-tight px-1">Сменить фото</span>
+            }
           </div>
-        )}
+        </label>
+
         <div>
           <h1 className="text-xl font-bold text-zinc-100">{displayName}</h1>
           {profileData?.ficbook_profile_url && (
@@ -648,6 +712,21 @@ function ProfileContent() {
               className="flex items-center gap-1 text-sm text-zinc-500 hover:text-purple-400 transition-colors mt-0.5">
               <ExternalLink size={12} /> Профиль на ficbook.net
             </a>
+          )}
+          {profileData?.custom_avatar_url && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await profileApi.deleteAvatar()
+                  const r = await profileApi.me()
+                  setProfileData(r.data)
+                } catch { /* ignore */ }
+              }}
+              className="text-[11px] text-zinc-600 hover:text-red-400 mt-0.5 transition-colors"
+            >
+              Удалить своё фото
+            </button>
           )}
         </div>
       </div>
@@ -667,20 +746,9 @@ function ProfileContent() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'profile' && (
-        <div className="space-y-3 text-sm text-zinc-400">
-          <div className="flex gap-2"><span className="text-zinc-600 w-32">Имя:</span><span>{displayName}</span></div>
-          {profileData?.ficbook_profile_url && (
-            <div className="flex gap-2">
-              <span className="text-zinc-600 w-32">ficbook.net:</span>
-              <a href={profileData.ficbook_profile_url} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">Открыть профиль</a>
-            </div>
-          )}
-        </div>
-      )}
+      {activeTab === 'continue' && <ContinueReadingTab />}
       {activeTab === 'favourites' && <LocalBookmarksTab />}
       {activeTab === 'history' && <LocalHistoryTab />}
-      {activeTab === 'continue' && <ContinueReadingTab />}
       {activeTab === 'settings' && <ReaderSettingsTab />}
     </main>
   )

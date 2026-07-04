@@ -3,6 +3,7 @@ import os
 import httpx
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
 from typing import Optional
 from app.core.security import verify_token
 from app.db.session import AsyncSessionLocal
@@ -123,15 +124,67 @@ async def get_profile(user_id: str = Depends(_get_current_user_id)):
         user = await repo.get_by_id(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        # Effective avatar: custom upload takes precedence over ficbook avatar
+        effective_avatar = getattr(user, 'custom_avatar_url', None) or user.ficbook_avatar_url
         return {
             "id": user.id, "ficbook_user_id": user.ficbook_user_id,
-            "ficbook_username": user.ficbook_username, "ficbook_avatar_url": user.ficbook_avatar_url,
+            "ficbook_username": user.ficbook_username,
+            "ficbook_avatar_url": user.ficbook_avatar_url,
+            "custom_avatar_url": getattr(user, 'custom_avatar_url', None),
+            "avatar_url": effective_avatar,
             "ficbook_profile_url": (
                 f"https://ficbook.net/authors/{user.ficbook_user_id}"
                 if user.ficbook_user_id and not user.ficbook_user_id.startswith("u_") else None
             ),
             "created_at": user.created_at.isoformat() if user.created_at else None,
         }
+
+
+class AvatarPayload(BaseModel):
+    """Either a base64 data URL (data:image/...;base64,...) or a remote https:// URL."""
+    avatar_url: str
+
+
+@router.put("/avatar")
+async def update_avatar(payload: AvatarPayload, user_id: str = Depends(_get_current_user_id)):
+    """Store a custom avatar URL (remote URL or base64 data-URL) for the user.
+
+    Accepts:
+    - Remote URL: https://... — stored as-is (useful for avatars already hosted elsewhere)
+    - Base64 data URL: data:image/jpeg;base64,... — stored as text in the DB
+      (no external storage required; the column is TEXT so size is ~200kB safe)
+
+    Clients should resize/compress the image to ≤200kB before uploading to avoid
+    slow page loads.
+    """
+    url = payload.avatar_url.strip()
+    if not (url.startswith("https://") or url.startswith("data:image/")):
+        raise HTTPException(status_code=422, detail="avatar_url must start with https:// or data:image/")
+    # Rough size guard for base64 blobs: a 200kB image is ~270kB base64
+    if url.startswith("data:") and len(url) > 400_000:
+        raise HTTPException(status_code=413, detail="Avatar too large — please resize to <200kB before uploading")
+
+    async with AsyncSessionLocal() as db:
+        repo = UserRepository(db)
+        user = await repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user.custom_avatar_url = url  # type: ignore[attr-defined]
+        await db.commit()
+        await db.refresh(user)
+    return {"avatar_url": url}
+
+
+@router.delete("/avatar", status_code=204)
+async def delete_avatar(user_id: str = Depends(_get_current_user_id)):
+    """Remove the custom avatar — fall back to the ficbook avatar."""
+    async with AsyncSessionLocal() as db:
+        repo = UserRepository(db)
+        user = await repo.get_by_id(user_id)
+        if user:
+            user.custom_avatar_url = None  # type: ignore[attr-defined]
+            await db.commit()
+    return None
 
 
 @router.get("/favourites")

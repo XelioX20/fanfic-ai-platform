@@ -77,6 +77,8 @@ export const profileApi = {
   history: (page = 1) => api.get('/profile/history', { params: { page } }),
   liked: (page = 1) => api.get('/profile/liked', { params: { page } }),
   subscriptions: (page = 1) => api.get('/profile/subscriptions', { params: { page } }),
+  updateAvatar: (avatar_url: string) => api.put('/profile/avatar', { avatar_url }),
+  deleteAvatar: () => api.delete('/profile/avatar'),
 }
 
 export const discoverApi = {
