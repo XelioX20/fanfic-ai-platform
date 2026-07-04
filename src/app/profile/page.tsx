@@ -93,6 +93,23 @@ function relativeTime(ts: number): string {
   return new Date(ts).toLocaleDateString('ru-RU')
 }
 
+function ratingChip(value: string) {
+  const map: Record<string, string> = {
+    'G':     'bg-emerald-900/60 text-emerald-200 border-emerald-700/40',
+    'PG-13': 'bg-yellow-900/60 text-yellow-200 border-yellow-700/40',
+    'R':     'bg-orange-900/60 text-orange-200 border-orange-700/40',
+    'NC-17': 'bg-red-900/60 text-red-200 border-red-700/40',
+    'NC-21': 'bg-red-950/70 text-red-200 border-red-800/50',
+  }
+  return map[value] ?? 'bg-zinc-700/60 text-zinc-200 border-zinc-600/50'
+}
+
+function statusChip(value: string) {
+  if (value === 'Завершён') return 'bg-emerald-900/40 text-emerald-300 border-emerald-700/40'
+  if (value === 'Заморожен') return 'bg-blue-900/40 text-blue-300 border-blue-700/40'
+  return 'bg-zinc-700/50 text-zinc-300 border-zinc-600/50'  // В процессе / прочее
+}
+
 /* ─── Local bookmarks (heart / bookmark FAB target) ───────────────────── */
 
 function LocalBookmarksTab() {
@@ -168,13 +185,13 @@ function LocalBookmarksTab() {
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   {entry.direction && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">{entry.direction}</span>
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded border", "bg-zinc-700/50 text-zinc-200 border-zinc-600/50")}>{entry.direction}</span>
                   )}
                   {entry.rating && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">{entry.rating}</span>
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded border", ratingChip(entry.rating))}>{entry.rating}</span>
                   )}
                   {entry.completion_status && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">{entry.completion_status}</span>
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded border", statusChip(entry.completion_status))}>{entry.completion_status}</span>
                   )}
                 </div>
                 <p className="text-xs text-zinc-300 mt-2 flex items-center gap-1">
@@ -274,17 +291,17 @@ function LocalHistoryTab() {
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   {entry.direction && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">
+                    <span className={cn('text-xs px-1.5 py-0.5 rounded border', 'bg-zinc-700/50 text-zinc-200 border-zinc-600/50')}>
                       {entry.direction}
                     </span>
                   )}
                   {entry.rating && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">
+                    <span className={cn('text-xs px-1.5 py-0.5 rounded border', ratingChip(entry.rating))}>
                       {entry.rating}
                     </span>
                   )}
                   {entry.completion_status && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">
+                    <span className={cn('text-xs px-1.5 py-0.5 rounded border', statusChip(entry.completion_status))}>
                       {entry.completion_status}
                     </span>
                   )}
