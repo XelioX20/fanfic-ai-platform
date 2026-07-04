@@ -837,14 +837,16 @@ function ProfileContent() {
                   active ? 'text-purple-400' : 'text-zinc-500',
                 )}
               >
-                {/* Badge */}
-                {count != null && count > 0 && (
-                  <span className="absolute top-2 right-[calc(50%-12px)] -translate-x-[4px] bg-purple-600 text-white text-[9px] font-bold px-1 rounded-full min-w-[16px] h-[16px] flex items-center justify-center tabular-nums leading-none">
-                    {count > 99 ? '99+' : count}
+                {/* Icon + badge in a wrapper so badge anchors to the icon */}
+                <span className="relative inline-flex shrink-0">
+                  <span className={cn('transition-transform', active && 'scale-110')}>
+                    {tab.icon}
                   </span>
-                )}
-                <span className={cn('transition-transform', active && 'scale-110')}>
-                  {tab.icon}
+                  {count != null && count > 0 && (
+                    <span className="absolute -top-1.5 -right-2 bg-purple-600 text-white text-[9px] font-bold px-1 rounded-full min-w-[16px] h-[16px] flex items-center justify-center tabular-nums leading-none">
+                      {count > 99 ? '99+' : count}
+                    </span>
+                  )}
                 </span>
                 <span className="text-[11px] xs:text-xs sm:text-xs font-medium leading-tight">{tab.shortLabel}</span>
                 {active && (
