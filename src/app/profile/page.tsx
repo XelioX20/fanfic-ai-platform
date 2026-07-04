@@ -642,13 +642,26 @@ function ProfileContent() {
     ficbook_profile_url?: string
   } | null>(null)
 
+  // Redirect unauthenticated visitors to login. The profile data itself
+  // is already loaded by ReadingStateHydrator (which writes to auth store),
+  // so we seed profileData from the store and only refetch after an avatar
+  // upload — no duplicate /profile/me on every mount.
   useEffect(() => {
     if (!accessToken) {
       router.push('/login')
       return
     }
-    profileApi.me().then(r => setProfileData(r.data)).catch(() => {})
-  }, [accessToken, router])
+    if (user && !profileData) {
+      setProfileData({
+        ficbook_username: user.ficbook_username,
+        ficbook_avatar_url: user.ficbook_avatar_url,
+        custom_avatar_url: user.custom_avatar_url,
+        avatar_url: user.custom_avatar_url || user.ficbook_avatar_url,
+        ficbook_profile_url: user.ficbook_profile_url,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, user])
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)

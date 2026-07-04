@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Search } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
@@ -38,12 +39,10 @@ export default function ChapterReaderPage() {
   const { id, chapter_id } = useParams<{ id: string; chapter_id: string }>()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const allChapters = searchParams.get('all') || ''
   const useAnchor = searchParams.get('anchor') === '1'
 
-  const [chapter, setChapter] = useState<Chapter | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [showChapterList, setShowChapterList] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const readerTheme = useReaderStore(s => s.settings.theme)
@@ -52,21 +51,46 @@ export default function ChapterReaderPage() {
   const chapterIds = allChapters ? allChapters.split(',') : []
   const currentIdx = chapterIds.indexOf(chapter_id)
 
-  useEffect(() => {
-    if (!id || !chapter_id) return
-    setLoading(true)
-    const params = allChapters ? `?all_chapters=${encodeURIComponent(allChapters)}` : ''
-    fetch(`${API_URL}/api/v1/fanfics/${id}/chapter/${chapter_id}${params}`)
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then(data => { setChapter(data); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
-  }, [id, chapter_id, allChapters])
+  const chapterQuery = useQuery<Chapter>({
+    queryKey: ['chapter', id, chapter_id],
+    queryFn: async () => {
+      const params = allChapters ? `?all_chapters=${encodeURIComponent(allChapters)}` : ''
+      const r = await fetch(`${API_URL}/api/v1/fanfics/${id}/chapter/${chapter_id}${params}`)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json()
+    },
+    enabled: !!id && !!chapter_id,
+    // Chapter content is effectively immutable — keep it in cache forever
+    // so back/forward navigation and re-reads are instant.
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000, // keep 30 min in memory before GC
+  })
 
-  // Scroll to top on chapter change is now handled inside ReaderContent via progressKey.
-  // If a saved position exists it will be restored; otherwise scrolls to top.
+  const chapter = chapterQuery.data
+  const loading = chapterQuery.isLoading
+  const error = chapterQuery.error
+
+  // Prefetch adjacent chapters as soon as the current one loads so
+  // "Следующая"/"Предыдущая" click feels instant. The backend already
+  // caches these for 24h; here we warm the browser's React Query cache.
+  useEffect(() => {
+    if (!chapter || !id) return
+    const params = allChapters ? `?all_chapters=${encodeURIComponent(allChapters)}` : ''
+    const prefetch = (cid: string | null) => {
+      if (!cid) return
+      queryClient.prefetchQuery({
+        queryKey: ['chapter', id, cid],
+        queryFn: async () => {
+          const r = await fetch(`${API_URL}/api/v1/fanfics/${id}/chapter/${cid}${params}`)
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return r.json()
+        },
+        staleTime: Infinity,
+      })
+    }
+    prefetch(chapter.next_chapter_id)
+    prefetch(chapter.prev_chapter_id)
+  }, [chapter, id, allChapters, queryClient])
 
   const goToChapter = (chapId: string) => {
     router.push(`/fanfic/${id}/read/${chapId}?all=${allChapters}`)
@@ -80,7 +104,7 @@ export default function ChapterReaderPage() {
 
   if (error) return (
     <div className="min-h-screen bg-zinc-950 p-8">
-      <p className="text-red-400">Ошибка: {error}</p>
+      <p className="text-red-400">Ошибка: {error instanceof Error ? error.message : String(error)}</p>
     </div>
   )
 

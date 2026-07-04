@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked, Anchor,
   Bookmark, Check, Download, Loader2, Flame, ChevronDown, ChevronUp, ExternalLink,
@@ -123,9 +124,6 @@ export default function FanficPage() {
   // renders: (1) loading=true → early return, (2) fanfic loaded → falls
   // through to the full body. Every hook has to be called in both.
   const anchor = useReaderStore(s => (s.anchors ?? {})[id ?? ''])
-  const [fanfic, setFanfic] = useState<FanficFull | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const [actState, setActState] = useState<ActionState>(() =>
     actionCache.get(id ?? '') ?? { is_liked: false, is_read: false, is_followed: false }
@@ -147,36 +145,43 @@ export default function FanficPage() {
     return () => window.removeEventListener('mousedown', onClick)
   }, [downloadOpen])
 
+  // Fanfic detail: read via React Query so prefetches from CompactFanficCard
+  // (rail hover/focus) land in the same cache and the page renders instantly
+  // when the prefetch has already completed. 5-min staleTime matches the
+  // backend Cache-Control: max-age=300 on /fanfics/{id}/full.
+  const detailQuery = useQuery<FanficFull>({
+    queryKey: ['fanfic-full', id],
+    queryFn: async () => {
+      const r = await fetch(`${API_URL}/api/v1/fanfics/${id}/full`)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json()
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const fanfic = detailQuery.data ?? null
+  const loading = detailQuery.isLoading
+  const error = detailQuery.error ? (detailQuery.error as Error).message : null
+
+  // Record this fanfic in the local history so it shows up under
+  // /profile → История even for anonymous browsing. Fires exactly once
+  // per successful load.
   useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    fetch(`${API_URL}/api/v1/fanfics/${id}/full`)
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then(data => {
-        setFanfic(data)
-        setLoading(false)
-        // Record this fanfic in the local history so it shows up under
-        // /profile → История even for anonymous browsing.
-        if (data?.id && data?.title) {
-          recordHistory({
-            fanficId: data.id,
-            title: data.title,
-            author_name: data.authors?.[0]?.name ?? '',
-            author_id: data.authors?.[0]?.id,
-            cover_url: data.cover_url ?? null,
-            direction: data.direction,
-            rating: data.rating,
-            completion_status: data.completion_status,
-            fandoms: data.fandoms ?? [],
-          })
-        }
-      })
-      .catch(e => { setError(e.message); setLoading(false) })
+    if (!fanfic?.id || !fanfic?.title) return
+    recordHistory({
+      fanficId: fanfic.id,
+      title: fanfic.title,
+      author_name: fanfic.authors?.[0]?.name ?? '',
+      author_id: fanfic.authors?.[0]?.id,
+      cover_url: fanfic.cover_url ?? null,
+      direction: fanfic.direction,
+      rating: fanfic.rating,
+      completion_status: fanfic.completion_status,
+      fandoms: fanfic.fandoms ?? [],
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [fanfic?.id, fanfic?.title])
 
   useEffect(() => {
     if (!accessToken || !id) return

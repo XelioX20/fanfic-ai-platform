@@ -1,8 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { Heart, BookOpen } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Fanfic } from '@/types'
 import { cn, formatNumber } from '@/lib/utils'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface CompactFanficCardProps {
   fanfic: Fanfic
@@ -26,15 +29,36 @@ const RATING_COLOR: Record<string, string> = {
  * cover anywhere on ficbook — the fallback fetch always returned null while
  * adding a slow round-trip to Render for every cover-less card. Removing it
  * makes the rail load instantly; cover-less fics show a clean placeholder.
+ *
+ * On hover/focus we prefetch /fanfics/{id}/full into React Query so the
+ * detail page renders instantly when the user clicks. Backend caches the
+ * response for 15 min so prefetch is essentially free.
  */
 export function CompactFanficCard({ fanfic, className }: CompactFanficCardProps) {
   const primaryAuthor = fanfic.author_name
   const primaryFandom = fanfic.fandoms?.[0]
   const ratingCls = RATING_COLOR[fanfic.rating] ?? 'bg-zinc-800/80 text-zinc-300'
+  const queryClient = useQueryClient()
+
+  const prefetchDetail = () => {
+    if (!fanfic.id) return
+    queryClient.prefetchQuery({
+      queryKey: ['fanfic-full', fanfic.id],
+      queryFn: async () => {
+        const r = await fetch(`${API_URL}/api/v1/fanfics/${fanfic.id}/full`)
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      },
+      staleTime: 5 * 60 * 1000, // matches backend Cache-Control max-age
+    })
+  }
 
   return (
     <Link
       href={`/fanfic/${fanfic.id}`}
+      onMouseEnter={prefetchDetail}
+      onFocus={prefetchDetail}
+      onTouchStart={prefetchDetail}
       className={cn(
         'group flex-shrink-0 w-[160px] md:w-[180px] snap-start',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-lg',

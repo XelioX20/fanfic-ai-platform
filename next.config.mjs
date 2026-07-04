@@ -54,6 +54,13 @@ const nextConfig = {
 
   // Explicit — React strict mode is on by default in Next 14 anyway.
   reactStrictMode: true,
+
+  // Only import the icons/components actually referenced in each file
+  // instead of pulling in the whole barrel index. lucide-react is used in
+  // 24 files across the app — this saves ~30-120kB gzipped on every route.
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@tanstack/react-query'],
+  },
 }
 
 export default nextConfig
