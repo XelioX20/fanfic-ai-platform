@@ -9,6 +9,9 @@ interface AuthState {
   clearAuth: () => void
 }
 
+// Auth is persisted in localStorage by default. The login page can opt out of
+// persistence via `rememberMe=false` by clearing the store keys immediately
+// after login; partialize keeps localStorage clean of secondary duplicates.
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -16,24 +19,34 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       setAuth: (user, accessToken) => {
         set({ user, accessToken })
+        // Legacy consumers (older code paths / debug tools) read this key.
+        // The persist middleware itself also serializes accessToken into
+        // 'auth-store' — logout must clear both, see clearAuth below.
         localStorage.setItem('access_token', accessToken)
       },
       clearAuth: () => {
         set({ user: null, accessToken: null })
         localStorage.removeItem('access_token')
+        // Wipe the persisted store entirely so remember-me=off truly forgets.
+        try { localStorage.removeItem('auth-store') } catch { /* SSR */ }
       },
     }),
     { name: 'auth-store' }
   )
 )
 
+/** Reading-progress value shape. Legacy entries persist as a plain scrollY number. */
+export type ReadingProgressValue = number | { scrollY: number; updatedAt: number }
+
 interface ReaderState {
   settings: ReaderSettings
   updateSettings: (partial: Partial<ReaderSettings>) => void
   currentFanficId: string | null
   setCurrentFanfic: (id: string) => void
-  readingProgress: Record<string, number>
-  setReadingProgress: (fanficId: string, progress: number) => void
+  // Key format: `${fanficId}:${chapterId}` (or just fanficId for single-chapter fics).
+  // See extractRecentProgress in app/page.tsx — consumers must tolerate both value shapes.
+  readingProgress: Record<string, ReadingProgressValue>
+  setReadingProgress: (key: string, scrollY: number) => void
 }
 
 export const useReaderStore = create<ReaderState>()(
@@ -51,10 +64,17 @@ export const useReaderStore = create<ReaderState>()(
       currentFanficId: null,
       setCurrentFanfic: (id) => set({ currentFanficId: id }),
       readingProgress: {},
-      setReadingProgress: (fanficId, progress) =>
-        set((state) => ({
-          readingProgress: { ...state.readingProgress, [fanficId]: progress },
-        })),
+      setReadingProgress: (key, scrollY) =>
+        set((state) => {
+          // Rebuild the map so the touched key lands LAST — insertion order is
+          // our recency fallback when updatedAt is missing on legacy entries.
+          const next: Record<string, ReadingProgressValue> = {}
+          for (const [k, v] of Object.entries(state.readingProgress)) {
+            if (k !== key) next[k] = v
+          }
+          next[key] = { scrollY, updatedAt: Date.now() }
+          return { readingProgress: next }
+        }),
     }),
     { name: 'reader-store' }
   )

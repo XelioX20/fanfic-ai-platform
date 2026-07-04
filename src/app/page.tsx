@@ -12,100 +12,85 @@ import { EditorialCollection } from '@/components/home/EditorialCollection'
 import { FandomStrip } from '@/components/home/FandomStrip'
 import { FooterActions } from '@/components/home/FooterActions'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
 // ---------- fetchers ----------
+//
+// Home rails go through the Next.js API proxy at /api/ficbook/list which fronts
+// the Cloudflare Worker. The FastAPI backend does NOT expose /search/list,
+// /profile/*, /recommendations/for-me, or /fanfics/{id}/full — those endpoints
+// belong to a later milestone (see docs/ux-synthesis-2026-07-04.md). Until then
+// we serve the home page from public ficbook.net data, which needs no auth and
+// covers 90% of the value.
+//
+// The proxy accepts these path values:
+//   'popular-fanfics-376846'        — trending (default)
+//   'popular-fanfics-376846/het'    — het
+//   'popular-fanfics-376846/slash-fics-ngf3487tnsfb' — slash
+//   'popular-fanfics-376846/gen'    — gen
+
+const RAIL_PATH_TRENDING = 'popular-fanfics-376846'
+const RAIL_PATH_SLASH    = 'popular-fanfics-376846/slash-fics-ngf3487tnsfb'
+const RAIL_PATH_GEN      = 'popular-fanfics-376846/gen'
 
 async function fetchList(path: string): Promise<Fanfic[]> {
-  const res = await fetch(`${API_URL}/api/v1/search/list?path=${encodeURIComponent(path)}&page=1`)
+  const res = await fetch(`/api/ficbook/list?path=${encodeURIComponent(path)}&p=1`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
   return (data.items ?? []) as Fanfic[]
-}
-
-async function fetchAuthedList(pathname: string, token: string): Promise<Fanfic[]> {
-  const res = await fetch(`${API_URL}/api/v1${pathname}?page=1`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const data = await res.json()
-  return (data.items ?? []) as Fanfic[]
-}
-
-async function fetchForMe(token: string): Promise<Fanfic[]> {
-  const res = await fetch(`${API_URL}/api/v1/recommendations/for-me?page=1`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const data = await res.json()
-  // Accept a few plausible shapes
-  const items = data.items ?? data.recommendations ?? []
-  return items as Fanfic[]
-}
-
-async function fetchFanficFull(id: string): Promise<Fanfic | null> {
-  try {
-    const res = await fetch(`${API_URL}/api/v1/fanfics/${id}/full`)
-    if (!res.ok) return null
-    const data = await res.json()
-    // The /full endpoint returns a richer object — normalize to Fanfic-ish shape
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description ?? '',
-      author_name: data.authors?.[0]?.name ?? '',
-      author_id: data.authors?.[0]?.id ?? '',
-      fandoms: data.fandoms ?? [],
-      pairings: data.pairings ?? [],
-      tags: data.tags ?? [],
-      direction: data.direction ?? '',
-      rating: data.rating ?? '',
-      completion_status: data.completion_status ?? '',
-      likes: data.likes ?? 0,
-      trophies: data.trophies ?? 0,
-      words_count: data.words_count ?? 0,
-      chapters_count: data.chapters?.length ?? 0,
-      comments_count: data.comments_count ?? 0,
-      cover_url: data.cover_url,
-      ficbook_url: data.ficbook_url ?? '',
-      is_hot: data.is_hot ?? false,
-      updated_at: data.chapters?.[data.chapters.length - 1]?.date,
-      // Extra fields consumed by the ContinueReadingHero chapter-meta derivation.
-      _chapters: data.chapters,
-      _is_single_chapter: data.is_single_chapter,
-    } as unknown as Fanfic
-  } catch {
-    return null
-  }
 }
 
 // ---------- helpers ----------
 
 /**
  * Extract up to N most-recent progress entries from the reader store.
- * Zustand's persist middleware preserves insertion order for object keys, and
- * `setReadingProgress` spreads existing state before adding the current key,
- * so the last N keys are effectively the N most recently updated fanfics.
+ *
+ * The reader store stores `{ scrollY, updatedAt }` per key when available, but
+ * legacy entries persist as a plain number (scrollY). We accept both shapes and
+ * sort by updatedAt desc; entries without a timestamp fall back to their
+ * insertion-order slot (last known reasonable proxy for recency).
+ *
+ * Threshold `scrollY > 800px` filters accidental scrolls — a typical chapter
+ * top has ~600px of chrome, so 800 means the user actually engaged with text.
  */
 function extractRecentProgress(
-  progress: Record<string, number>,
+  progress: Record<string, number | { scrollY: number; updatedAt?: number }>,
   limit = 5,
 ): ReadingProgressEntry[] {
-  const keys = Object.keys(progress).filter((k) => (progress[k] ?? 0) > 100)
-  // Deduplicate by fanficId — keep the last chapter per fic
-  const byFic = new Map<string, ReadingProgressEntry>()
-  for (const key of keys) {
+  type Row = ReadingProgressEntry & { updatedAt: number; insertionRank: number }
+  const rows: Row[] = []
+  let rank = 0
+  for (const [key, raw] of Object.entries(progress)) {
+    const scrollY = typeof raw === 'number' ? raw : (raw?.scrollY ?? 0)
+    const updatedAt = typeof raw === 'number' ? 0 : (raw?.updatedAt ?? 0)
+    if (scrollY <= 800) continue
     const [fanficId, chapterId] = key.split(':')
     if (!fanficId) continue
-    byFic.set(fanficId, {
+    rows.push({
       fanficId,
-      chapterId: (chapterId as string) || 'single',
-      scrollY: progress[key] ?? 0,
+      chapterId: chapterId || 'single',
+      scrollY,
       progressKey: key,
+      updatedAt,
+      insertionRank: rank++,
     })
   }
+  // Deduplicate by fanficId — keep the highest-updatedAt (or last insertion) row per fic
+  const byFic = new Map<string, Row>()
+  for (const r of rows) {
+    const existing = byFic.get(r.fanficId)
+    if (!existing) { byFic.set(r.fanficId, r); continue }
+    const rScore = r.updatedAt || r.insertionRank
+    const eScore = existing.updatedAt || existing.insertionRank
+    if (rScore >= eScore) byFic.set(r.fanficId, r)
+  }
   const all = Array.from(byFic.values())
-  return all.slice(-limit).reverse()
+  all.sort((a, b) => {
+    const aScore = a.updatedAt || a.insertionRank
+    const bScore = b.updatedAt || b.insertionRank
+    return bScore - aScore
+  })
+  return all.slice(0, limit).map(({ fanficId, chapterId, scrollY, progressKey }) => ({
+    fanficId, chapterId, scrollY, progressKey,
+  }))
 }
 
 // ---------- page ----------
@@ -128,26 +113,23 @@ export default function HomePage() {
   )
   const primaryEntry = recentEntries[0] ?? null
 
-  // -------- Continue Reading: fetch primary fanfic --------
-  const primaryFicQuery = useQuery({
-    queryKey: ['fanfic-full', primaryEntry?.fanficId],
-    queryFn: () => fetchFanficFull(primaryEntry!.fanficId),
-    enabled: !!primaryEntry,
-    staleTime: 60 * 1000,
-    retry: 1,
-  })
+  // -------- Continue Reading --------
+  // We don't have a /fanfics/{id}/full endpoint on the backend yet, so the hero
+  // only shows what we can derive from the reader store (the fanficId + chapter).
+  // The card component tolerates a null fanfic and renders a lean resume CTA.
+  const primaryFic: Fanfic | null = null
 
   // -------- Public rails (always, cache-friendly) --------
   const trendingQuery = useQuery({
     queryKey: ['home-rail', 'trending'],
-    queryFn: () => fetchList('fanfiction'),
+    queryFn: () => fetchList(RAIL_PATH_TRENDING),
     staleTime: 5 * 60 * 1000,
     retry: 1,
   })
 
   const gemsQuery = useQuery({
     queryKey: ['home-rail', 'gems'],
-    queryFn: () => fetchList('fanfiction?direction=slash'),
+    queryFn: () => fetchList(RAIL_PATH_SLASH),
     staleTime: 5 * 60 * 1000,
     retry: 1,
     // reuse "slash" list as source pool; we sort client-side for high-like/low-view
@@ -164,45 +146,23 @@ export default function HomePage() {
 
   const beginnerQuery = useQuery({
     queryKey: ['home-rail', 'beginner'],
-    queryFn: () => fetchList('fanfiction?direction=gen'),
+    queryFn: () => fetchList(RAIL_PATH_GEN),
     staleTime: 10 * 60 * 1000,
     retry: 1,
     enabled: isGuest,
   })
 
-  // -------- Authed rails --------
-  const subsQuery = useQuery({
-    queryKey: ['home-rail', 'subscriptions'],
-    queryFn: () => fetchAuthedList('/profile/subscriptions', accessToken!),
-    enabled: isAuthed,
-    staleTime: 60 * 1000,
-    retry: 0,
-  })
-
-  const forMeQuery = useQuery({
-    queryKey: ['home-rail', 'for-me'],
-    queryFn: () => fetchForMe(accessToken!),
-    enabled: isAuthed,
-    staleTime: 2 * 60 * 1000,
-    retry: 1,
-  })
-
   // -------- Derived: continue-reading chapter meta --------
+  // Without /full we can only surface the raw chapter id — no chapter title or
+  // total-count until the endpoint lands. Percent is a rough heuristic based on
+  // scrollY only; a real percent needs scrollHeight persisted alongside.
   const chapterMeta = useMemo(() => {
-    const fic = primaryFicQuery.data as (Fanfic & { _chapters?: Array<{ id: string; title: string }>; _is_single_chapter?: boolean }) | null | undefined
-    if (!fic || !primaryEntry) return { title: undefined, index: undefined, total: undefined }
-    const chapters = fic._chapters ?? []
-    const total = chapters.length
-    if (primaryEntry.chapterId === 'single' || fic._is_single_chapter) {
-      return { title: undefined, index: 1, total: total || 1 }
+    if (!primaryEntry) return { title: undefined, index: undefined, total: undefined }
+    if (primaryEntry.chapterId === 'single') {
+      return { title: undefined, index: 1, total: 1 }
     }
-    const idx = chapters.findIndex((c) => c.id === primaryEntry.chapterId)
-    return {
-      title: idx >= 0 ? chapters[idx].title : undefined,
-      index: idx >= 0 ? idx + 1 : undefined,
-      total: total || undefined,
-    }
-  }, [primaryFicQuery.data, primaryEntry])
+    return { title: undefined, index: undefined, total: undefined }
+  }, [primaryEntry])
 
   // Heuristic progress percent — scrollY / 12000 clamped to 100.
   // Without measuring chapter height client-side, this is intentionally rough.
@@ -222,8 +182,8 @@ export default function HomePage() {
         ) : isAuthed && primaryEntry ? (
           <ContinueReadingHero
             entry={primaryEntry}
-            fanfic={primaryFicQuery.data ?? null}
-            loading={primaryFicQuery.isLoading}
+            fanfic={primaryFic}
+            loading={false}
             percent={percent}
             chapterTitle={chapterMeta.title}
             chapterIndex={chapterMeta.index}
@@ -243,40 +203,19 @@ export default function HomePage() {
         {/* 3 — Mood Grid (always visible) */}
         <MoodGrid />
 
-        {/* 4 — Subscriptions rail (auth only, conditional on non-empty) */}
-        {isAuthed && (
-          <FanficRail
-            title="Новое от подписок"
-            subtitle="Свежие главы от авторов, за которыми вы следите"
-            fanfics={subsQuery.data ?? []}
-            loading={subsQuery.isLoading}
-            error={subsQuery.isError}
-            seeAllHref="/profile/subscriptions"
-          />
-        )}
-
-        {/* 5 — Trending (always) */}
+        {/* 4 — Trending (always) */}
         <FanficRail
           title="🔥 Горячее сегодня"
           subtitle="Что читают прямо сейчас"
           fanfics={trendingQuery.data ?? []}
           loading={trendingQuery.isLoading}
           error={trendingQuery.isError}
-          seeAllHref="/search?q=популярное"
+          seeAllHref="/search"
           emptyLabel="Пусто — попробуйте обновить страницу."
         />
 
-        {/* 6 — For you (auth only) OR beginner rail (guests) */}
-        {isAuthed ? (
-          <FanficRail
-            title="✨ Для вас"
-            subtitle="Подобрано на основе ваших лайков и истории"
-            fanfics={forMeQuery.data ?? []}
-            loading={forMeQuery.isLoading}
-            error={forMeQuery.isError}
-            emptyLabel="Читайте и лайкайте — рекомендации появятся здесь."
-          />
-        ) : (
+        {/* 5 — Beginner rail for guests */}
+        {isGuest && (
           <FanficRail
             title="👋 С чего начать"
             subtitle="Хорошие входные точки, если вы здесь впервые"
@@ -287,17 +226,17 @@ export default function HomePage() {
           />
         )}
 
-        {/* 7 — Editorial: Hidden gems */}
+        {/* 6 — Editorial: Hidden gems */}
         <EditorialCollection
           title="Скрытые жемчужины"
           fanfics={gemsQuery.data ?? []}
           loading={gemsQuery.isLoading}
         />
 
-        {/* 8 — Fandom shortcuts */}
+        {/* 7 — Fandom shortcuts */}
         <FandomStrip />
 
-        {/* 9 — Footer nudge */}
+        {/* 8 — Footer nudge */}
         <FooterActions isGuest={isGuest} />
       </div>
     </main>

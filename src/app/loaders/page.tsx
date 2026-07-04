@@ -1,4 +1,5 @@
 'use client'
+import { Fragment } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { REGISTRY, type LoaderEntry } from '@/components/ui/Loader'
 import styles from '@/components/ui/loaders.module.css'
@@ -163,9 +164,8 @@ export default function LoadersPage() {
                   const inputId = `scope-${entry.name}-${opt.value}`
                   const isDisabled = !on || conflict
                   return (
-                    <>
+                    <Fragment key={inputId}>
                       <input
-                        key={`${inputId}-in`}
                         id={inputId}
                         type="radio"
                         name={`scope-${entry.name}`}
@@ -174,7 +174,6 @@ export default function LoadersPage() {
                         onChange={() => setMode(entry.name, combineMode(true, opt.value))}
                       />
                       <label
-                        key={`${inputId}-lbl`}
                         htmlFor={inputId}
                         className={cn(ctl.tab, isDisabled && ctl.disabled)}
                         title={
@@ -189,8 +188,8 @@ export default function LoadersPage() {
                       >
                         {opt.label}
                       </label>
-                      {idx === shownOptions.length - 1 && <span key={`${inputId}-gl`} className={ctl.glider} />}
-                    </>
+                      {idx === shownOptions.length - 1 && <span className={ctl.glider} />}
+                    </Fragment>
                   )
                 })}
                 </div>

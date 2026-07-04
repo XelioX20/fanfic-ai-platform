@@ -56,9 +56,11 @@ export function ReaderContent({ content, chapterTitle, progressKey }: ReaderCont
   useEffect(() => {
     if (!progressKey) return
     const saved = readingProgress[progressKey]
-    if (typeof saved === 'number' && saved > 100) {
+    // Legacy entries are plain numbers; new ones are { scrollY, updatedAt }.
+    const scrollY = typeof saved === 'number' ? saved : (saved?.scrollY ?? 0)
+    if (scrollY > 100) {
       // Wait a tick for content to render into DOM
-      const t = setTimeout(() => window.scrollTo({ top: saved, behavior: 'auto' }), 50)
+      const t = setTimeout(() => window.scrollTo({ top: scrollY, behavior: 'auto' }), 50)
       return () => clearTimeout(t)
     } else {
       window.scrollTo(0, 0)
