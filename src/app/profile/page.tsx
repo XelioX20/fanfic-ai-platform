@@ -15,11 +15,11 @@ import type { Fanfic } from '@/types'
 
 type Tab = 'continue' | 'favourites' | 'history' | 'settings'
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'continue',   label: 'Продолжить чтение',  icon: <Anchor size={15} /> },
-  { id: 'favourites', label: 'Избранное',          icon: <Heart size={15} /> },
-  { id: 'history',    label: 'История',            icon: <Clock size={15} /> },
-  { id: 'settings',   label: 'Читалка',            icon: <Settings size={15} /> },
+const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
+  { id: 'continue',   label: 'Продолжить чтение', shortLabel: 'Читаю',    icon: <Anchor size={20} /> },
+  { id: 'favourites', label: 'Избранное',         shortLabel: 'Избранное', icon: <Heart size={20} /> },
+  { id: 'history',    label: 'История',           shortLabel: 'История',   icon: <Clock size={20} /> },
+  { id: 'settings',   label: 'Читалка',           shortLabel: 'Читалка',   icon: <Settings size={20} /> },
 ]
 
 /* ─── ficbook-backed sections (Избранное) ────────────────────────────── */
@@ -639,6 +639,16 @@ function ProfileContent() {
   const avatarUrl = profileData?.avatar_url || profileData?.ficbook_avatar_url || user?.ficbook_avatar_url || null
   const [avatarUploading, setAvatarUploading] = useState(false)
 
+  // Counts shown as badges on tab items
+  const anchorsCount = Object.keys(useReaderStore(s => s.anchors ?? {})).length
+  const bookmarksCount = Object.keys(useReaderStore(s => s.bookmarks ?? {})).length
+  const historyCount = Object.keys(useReaderStore(s => s.history ?? {})).length
+  const tabCounts: Partial<Record<Tab, number>> = {
+    continue: anchorsCount,
+    favourites: bookmarksCount,
+    history: historyCount,
+  }
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -667,90 +677,162 @@ function ProfileContent() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      {/* Profile header */}
-      <div className="flex items-center gap-4 mb-8">
-        {/* Avatar — click to upload custom photo */}
-        <label className="relative cursor-pointer group" title="Нажми чтобы изменить фото">
-          <input
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={handleAvatarChange}
-            disabled={avatarUploading}
-          />
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={displayName}
-              width={72}
-              height={72}
-              className="rounded-full object-cover ring-2 ring-transparent group-hover:ring-purple-500 transition-all"
-              unoptimized
-            />
-          ) : (
-            <div className="w-18 h-18 w-[72px] h-[72px] rounded-full bg-gradient-to-br from-purple-700 to-purple-900 flex items-center justify-center ring-2 ring-transparent group-hover:ring-purple-500 transition-all">
-              <User size={32} className="text-white" />
-            </div>
-          )}
-          {/* Overlay on hover */}
-          <div className={cn(
-            'absolute inset-0 rounded-full bg-black/50 flex items-center justify-center transition-opacity',
-            avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-          )}>
-            {avatarUploading
-              ? <Loader2 size={20} className="text-white animate-spin" />
-              : <span className="text-white text-[10px] font-medium text-center leading-tight px-1">Сменить фото</span>
-            }
+    <>
+      {/* ── Main: responsive two-column on desktop, stacked on mobile ── */}
+      <main className="max-w-5xl mx-auto px-4 py-6 pb-24 md:pb-8 md:flex md:gap-6">
+
+        {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
+        <aside className="hidden md:flex md:flex-col md:w-56 md:shrink-0">
+          {/* Profile card */}
+          <div className="mb-6 p-4 bg-zinc-900 border border-zinc-800 rounded-2xl">
+            {/* Avatar */}
+            <label className="relative cursor-pointer group block w-fit mb-3" title="Нажми чтобы изменить фото">
+              <input type="file" accept="image/*" className="sr-only"
+                onChange={handleAvatarChange} disabled={avatarUploading} />
+              {avatarUrl ? (
+                <Image src={avatarUrl} alt={displayName} width={64} height={64}
+                  className="rounded-full object-cover ring-2 ring-transparent group-hover:ring-purple-500 transition-all" unoptimized />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-700 to-purple-900 flex items-center justify-center ring-2 ring-transparent group-hover:ring-purple-500 transition-all">
+                  <User size={28} className="text-white" />
+                </div>
+              )}
+              <div className={cn('absolute inset-0 rounded-full bg-black/50 flex items-center justify-center transition-opacity',
+                avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                {avatarUploading ? <Loader2 size={16} className="text-white animate-spin" />
+                  : <span className="text-white text-[9px] font-medium text-center leading-tight px-1">Сменить</span>}
+              </div>
+            </label>
+            <p className="font-semibold text-zinc-100 text-sm truncate">{displayName}</p>
+            {profileData?.ficbook_profile_url && (
+              <a href={profileData.ficbook_profile_url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-purple-400 transition-colors mt-0.5">
+                <ExternalLink size={10} /> ficbook.net
+              </a>
+            )}
+            {profileData?.custom_avatar_url && (
+              <button type="button" onClick={async () => {
+                try { await profileApi.deleteAvatar(); const r = await profileApi.me(); setProfileData(r.data) } catch {}
+              }} className="text-[10px] text-zinc-600 hover:text-red-400 mt-1 transition-colors block">
+                Удалить своё фото
+              </button>
+            )}
           </div>
-        </label>
 
-        <div>
-          <h1 className="text-xl font-bold text-zinc-100">{displayName}</h1>
-          {profileData?.ficbook_profile_url && (
-            <a href={profileData.ficbook_profile_url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1 text-sm text-zinc-500 hover:text-purple-400 transition-colors mt-0.5">
-              <ExternalLink size={12} /> Профиль на ficbook.net
-            </a>
-          )}
-          {profileData?.custom_avatar_url && (
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await profileApi.deleteAvatar()
-                  const r = await profileApi.me()
-                  setProfileData(r.data)
-                } catch { /* ignore */ }
-              }}
-              className="text-[11px] text-zinc-600 hover:text-red-400 mt-0.5 transition-colors"
-            >
-              Удалить своё фото
-            </button>
-          )}
+          {/* Nav items */}
+          <nav className="flex flex-col gap-1">
+            {TABS.map(tab => {
+              const count = tabCounts[tab.id]
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left w-full',
+                    activeTab === tab.id
+                      ? 'bg-purple-600/20 text-purple-300 border border-purple-600/30'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border border-transparent',
+                  )}
+                >
+                  <span className={cn('shrink-0', activeTab === tab.id ? 'text-purple-400' : '')}>
+                    {tab.icon}
+                  </span>
+                  <span className="flex-1 truncate">{tab.label}</span>
+                  {count != null && count > 0 && (
+                    <span className={cn(
+                      'text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[20px] text-center tabular-nums',
+                      activeTab === tab.id
+                        ? 'bg-purple-600/30 text-purple-200'
+                        : 'bg-zinc-700/60 text-zinc-400',
+                    )}>
+                      {count > 999 ? '999+' : count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        </aside>
+
+        {/* ── CONTENT AREA ────────────────────────────────────────────── */}
+        <div className="flex-1 min-w-0">
+          {/* Mobile: compact profile header */}
+          <div className="flex items-center gap-3 mb-5 md:hidden">
+            <label className="relative cursor-pointer group shrink-0" title="Изменить фото">
+              <input type="file" accept="image/*" className="sr-only"
+                onChange={handleAvatarChange} disabled={avatarUploading} />
+              {avatarUrl ? (
+                <Image src={avatarUrl} alt={displayName} width={48} height={48}
+                  className="rounded-full object-cover ring-2 ring-transparent group-hover:ring-purple-500 transition-all" unoptimized />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-700 to-purple-900 flex items-center justify-center">
+                  <User size={20} className="text-white" />
+                </div>
+              )}
+              <div className={cn('absolute inset-0 rounded-full bg-black/50 flex items-center justify-center transition-opacity',
+                avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                {avatarUploading ? <Loader2 size={14} className="text-white animate-spin" /> : <span className="text-[8px] text-white">✏</span>}
+              </div>
+            </label>
+            <div className="min-w-0">
+              <p className="font-semibold text-zinc-100 text-sm truncate">{displayName}</p>
+              {profileData?.ficbook_profile_url && (
+                <a href={profileData.ficbook_profile_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-purple-400 transition-colors">
+                  <ExternalLink size={10} /> ficbook.net
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Tab content */}
+          {activeTab === 'continue' && <ContinueReadingTab />}
+          {activeTab === 'favourites' && <LocalBookmarksTab />}
+          {activeTab === 'history' && <LocalHistoryTab />}
+          {activeTab === 'settings' && <ReaderSettingsTab />}
         </div>
-      </div>
+      </main>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-zinc-800 overflow-x-auto">
-        {TABS.map(tab => (
-          <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)}
-            className={cn('flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px',
-              activeTab === tab.id
-                ? 'border-purple-500 text-purple-400'
-                : 'border-transparent text-zinc-500 hover:text-zinc-300'
-            )}>
-            {tab.icon}{tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      {activeTab === 'continue' && <ContinueReadingTab />}
-      {activeTab === 'favourites' && <LocalBookmarksTab />}
-      {activeTab === 'history' && <LocalHistoryTab />}
-      {activeTab === 'settings' && <ReaderSettingsTab />}
-    </main>
+      {/* ── BOTTOM TAB BAR (mobile only, fixed) ─────────────────────── */}
+      <nav className={cn(
+        'fixed bottom-0 inset-x-0 z-40 md:hidden',
+        'bg-zinc-900/95 backdrop-blur border-t border-zinc-800',
+        'safe-area-inset-bottom', // respects iOS home indicator
+      )}>
+        <div className="flex items-stretch h-16">
+          {TABS.map(tab => {
+            const count = tabCounts[tab.id]
+            const active = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                className={cn(
+                  'flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors relative',
+                  active ? 'text-purple-400' : 'text-zinc-500',
+                )}
+              >
+                {/* Badge */}
+                {count != null && count > 0 && (
+                  <span className="absolute top-2 right-[calc(50%-12px)] -translate-x-[4px] bg-purple-600 text-white text-[9px] font-bold px-1 rounded-full min-w-[16px] h-[16px] flex items-center justify-center tabular-nums leading-none">
+                    {count > 99 ? '99+' : count}
+                  </span>
+                )}
+                <span className={cn('transition-transform', active && 'scale-110')}>
+                  {tab.icon}
+                </span>
+                <span className="text-[10px] font-medium leading-tight">{tab.shortLabel}</span>
+                {active && (
+                  <span className="absolute top-0 inset-x-0 h-0.5 bg-purple-500 rounded-b" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </nav>
+    </>
   )
 }
 
