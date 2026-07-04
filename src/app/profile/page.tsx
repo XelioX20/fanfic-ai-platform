@@ -389,8 +389,8 @@ function ContinueReadingTab() {
                       <p className="text-sm text-zinc-300 mt-1 truncate">{histEntry.author_name}</p>
                     )}
                     {anchor.chapterTitle && (
-                      <p className="text-xs text-purple-200 mt-1.5 flex items-center gap-1">
-                        <Anchor size={10} className="fill-purple-300/60" />
+                      <p className="text-xs text-zinc-100 mt-1.5 flex items-center gap-1 font-medium">
+                        <Anchor size={10} className="text-indigo-300 shrink-0" />
                         <span className="truncate">{anchor.chapterTitle}</span>
                       </p>
                     )}
