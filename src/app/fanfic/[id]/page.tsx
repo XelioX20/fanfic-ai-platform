@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked, Anchor,
-  Download, Loader2, Flame, ChevronDown, ChevronUp,
+  Bookmark, Check, Download, Loader2, Flame, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { useAuthStore, useReaderStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
@@ -512,17 +512,19 @@ export default function FanficPage() {
                 'inline-flex items-center gap-2 rounded-lg text-base font-semibold transition-all',
                 'px-5 py-3 border',
                 actState.is_liked
-                  ? 'bg-pink-600 text-white border-pink-500 hover:bg-pink-500 shadow-md shadow-pink-900/40 ring-1 ring-pink-300/40'
+                  // "In favourites" — green solid, checkmark icon, past-tense label
+                  ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-500 shadow-md shadow-emerald-900/40 ring-1 ring-emerald-300/40'
                   : 'bg-zinc-900 text-zinc-200 border-zinc-700 hover:border-pink-500 hover:text-pink-300',
                 (!accessToken) && 'opacity-60 cursor-not-allowed',
               )}
             >
               {(actLoading === 'like' || actLoading === 'unlike')
                 ? <Loader2 size={16} className="animate-spin" />
-                : <Heart size={16} className={actState.is_liked ? 'fill-pink-200 text-pink-100' : ''} />
+                : actState.is_liked
+                  ? <Check size={16} />
+                  : <Bookmark size={16} />
               }
               <span>{actState.is_liked ? 'В избранном' : 'В избранное'}</span>
-              <span className="tabular-nums text-sm opacity-80">{formatNumber(likeCount)}</span>
             </button>
           </div>
         )}
