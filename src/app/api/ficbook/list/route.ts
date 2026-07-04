@@ -13,6 +13,15 @@ const SECTION_QUERY: Record<string, string> = {
   'popular-fanfics-376846/femslash-fanfics-kojhi9jhhmkhgi9t98': 'direction=femslash',
 }
 
+// HTTP cache policy for public rails:
+// - Browser holds the response for 60s (fresh).
+// - Vercel Edge + CDN keep serving stale-while-revalidate for 5 min after
+//   that, so a stampede of visitors during a Render cold-start still gets
+//   a fast response while we quietly refetch in the background.
+// - Personal sections (with cookie) are private and skipped from caching.
+const PUBLIC_CACHE = 'public, s-maxage=60, max-age=60, stale-while-revalidate=300'
+const PRIVATE_CACHE = 'private, no-store'
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const path = searchParams.get('path') || 'popular-fanfics-376846'
@@ -22,7 +31,9 @@ export async function GET(req: NextRequest) {
   const cacheKey = `${path}::${page}`
   const cached = cache.get(cacheKey)
   if (cached && Date.now() < cached.expires && !cookie) {
-    return NextResponse.json(cached.data)
+    return NextResponse.json(cached.data, {
+      headers: { 'Cache-Control': PUBLIC_CACHE },
+    })
   }
 
   try {
@@ -48,7 +59,10 @@ export async function GET(req: NextRequest) {
     const html = await res.text()
 
     if (!res.ok) {
-      return NextResponse.json({ error: `Worker returned ${res.status}`, items: [], has_next: false })
+      return NextResponse.json(
+        { error: `Worker returned ${res.status}`, items: [], has_next: false },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
     }
 
     const items = parseFanficCards(html)
@@ -57,9 +71,14 @@ export async function GET(req: NextRequest) {
     const result = { items, has_next, page: parseInt(page) }
     if (!cookie) cache.set(cacheKey, { data: result, expires: Date.now() + 300_000 })
 
-    return NextResponse.json(result)
+    return NextResponse.json(result, {
+      headers: { 'Cache-Control': cookie ? PRIVATE_CACHE : PUBLIC_CACHE },
+    })
   } catch (e) {
-    return NextResponse.json({ error: String(e), items: [], has_next: false })
+    return NextResponse.json(
+      { error: String(e), items: [], has_next: false },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 }
 

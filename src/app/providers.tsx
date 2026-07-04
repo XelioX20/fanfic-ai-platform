@@ -27,7 +27,25 @@ function ThemeInitializer() {
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
-      queries: { staleTime: 60 * 1000, retry: 1 },
+      queries: {
+        staleTime: 60 * 1000,
+        // Don't hammer the API on window focus — most of our reads are
+        // long-lived (fic details, chapter lists). The user can pull to
+        // refresh if they really want to.
+        refetchOnWindowFocus: false,
+        // Render's free tier cold-starts take 15–30s and often surface as
+        // 502s or timeouts on the first request. Retry up to 3× with
+        // exponential backoff so the second/third call rides on a warm
+        // instance — but never retry 4xx (bad request / auth / not found).
+        retry: (failureCount, err: unknown) => {
+          const status = (err as { response?: { status?: number }; status?: number })?.response?.status
+                       ?? (err as { status?: number })?.status
+          if (typeof status === 'number' && status >= 400 && status < 500) return false
+          return failureCount < 3
+        },
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+      },
+      mutations: { retry: 0 },
     },
   }))
 
