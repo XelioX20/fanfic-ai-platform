@@ -411,12 +411,22 @@ export default function FanficPage() {
                     ? `Продолжить: ${anchorChapterMeta.title}`
                     : 'Продолжить с последнего якоря'
                 }
-                className="inline-flex items-center gap-2 px-4 py-3 bg-zinc-900 hover:bg-zinc-800 border border-purple-700/50 hover:border-purple-500 text-purple-200 rounded-lg text-sm font-semibold transition-colors"
+                className={cn(
+                  'group inline-flex items-center gap-2 rounded-lg text-base font-semibold transition-all',
+                  'px-5 py-3',
+                  // Solid fill so it reads as a peer CTA to "Читать", but a
+                  // distinct hue (indigo→fuchsia gradient) so users see it's
+                  // a different action. Bright ring keeps it findable on the
+                  // dark background where the previous ghost style vanished.
+                  'text-white bg-gradient-to-r from-indigo-500 to-fuchsia-500',
+                  'hover:from-indigo-400 hover:to-fuchsia-400',
+                  'shadow-lg shadow-fuchsia-900/40 ring-1 ring-fuchsia-300/40',
+                )}
               >
-                <Anchor size={14} />
+                <Anchor size={16} className="fill-white/30" />
                 <span>Продолжить с якоря</span>
                 {anchorChapterMeta && (
-                  <span className="hidden md:inline text-zinc-500 font-normal">
+                  <span className="hidden md:inline text-white/70 font-normal text-sm">
                     · {anchorChapterMeta.title.length > 24
                         ? anchorChapterMeta.title.slice(0, 24) + '…'
                         : anchorChapterMeta.title}
