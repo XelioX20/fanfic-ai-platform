@@ -375,7 +375,7 @@ function ContinueReadingTab() {
             : `/fanfic/${anchor.fanficId}/read/${anchor.chapterId}?anchor=1`
           return (
             <li key={anchor.fanficId} className="relative group">
-              <div className={cn(
+              <div data-hero="continue-reading" className={cn(
                 'flex flex-col gap-3 p-3 rounded-xl border transition-all',
                 'border-indigo-900/40 bg-indigo-950/20',
                 'hover:border-indigo-700/50 hover:bg-indigo-950/30',

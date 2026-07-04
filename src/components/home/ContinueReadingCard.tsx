@@ -57,11 +57,15 @@ export function ContinueReadingHero({
 
   return (
     <section
+      data-hero="continue-reading"
       className={cn(
         // Match the anchor-card palette from the profile "Продолжить чтение"
         // tab (border-indigo-900/40 bg-indigo-950/20). The previous
         // near-black gradient made mobile text hard to read; a solid pastel
         // indigo tint gives the same look-and-feel across the app.
+        // Light-theme overrides live in globals.css under the
+        // [data-hero="continue-reading"] selector so the hero flips to a
+        // soft lavender/cream card automatically.
         'rounded-2xl border transition-all',
         'border-indigo-900/40 bg-indigo-950/20',
         'hover:border-indigo-700/50 hover:bg-indigo-950/30',

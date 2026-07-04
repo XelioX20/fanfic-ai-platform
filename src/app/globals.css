@@ -233,6 +233,53 @@
 /* Chapter list and bordered divs */
 .light .border.border-zinc-800 { border-color: #d4d4d8 !important; }
 
+/* ── Continue-Reading hero (both home page + profile anchor cards) ──
+   In dark mode the card uses border-indigo-900/40 bg-indigo-950/20 which
+   is basically black. On the light site theme that stays dark and text
+   contrast collapses. Flip both to a soft lavender-on-cream card with
+   crisp indigo text so the block reads clearly on white. */
+.light [data-hero="continue-reading"] {
+  background-color: #eef2ff !important;         /* indigo-50 */
+  border-color: #c7d2fe !important;             /* indigo-200 */
+  box-shadow: 0 4px 14px -4px rgba(99,102,241,0.18) !important;
+}
+.light [data-hero="continue-reading"]:hover {
+  background-color: #e0e7ff !important;         /* indigo-100 */
+  border-color: #a5b4fc !important;             /* indigo-300 */
+}
+/* Text inside the hero — override the dark-mode zinc classes. */
+.light [data-hero="continue-reading"] .text-white,
+.light [data-hero="continue-reading"] .text-zinc-100 {
+  color: #1e1b4b !important;                    /* indigo-950 */
+}
+.light [data-hero="continue-reading"] .text-zinc-200 {
+  color: #312e81 !important;                    /* indigo-900 */
+}
+.light [data-hero="continue-reading"] .text-zinc-300 {
+  color: #3730a3 !important;                    /* indigo-800 */
+}
+.light [data-hero="continue-reading"] .text-zinc-400 {
+  color: #4338ca !important;                    /* indigo-700 */
+}
+.light [data-hero="continue-reading"] .text-zinc-500 {
+  color: #6366f1 !important;                    /* indigo-500 */
+}
+.light [data-hero="continue-reading"] .text-indigo-300 {
+  color: #4f46e5 !important;                    /* indigo-600 — accent label */
+}
+.light [data-hero="continue-reading"] .text-purple-300 {
+  color: #7c3aed !important;                    /* violet-600 accent */
+}
+/* Progress bar track */
+.light [data-hero="continue-reading"] .bg-zinc-800,
+.light [data-hero="continue-reading"] .bg-zinc-800\/70 {
+  background-color: #e0e7ff !important;         /* indigo-100 */
+}
+/* Placeholder cover square */
+.light [data-hero="continue-reading"] .bg-zinc-800.shadow-xl {
+  background-color: #e0e7ff !important;
+}
+
 /* ─────────────────────────────────────────────────────────
    READER THEMES — scoped to .reader-content wrapper
    Independent from site theme. Only affects reader chrome
