@@ -1,17 +1,15 @@
 'use client'
-import { useState } from 'react'
 import { REGISTRY, type LoaderEntry } from '@/components/ui/Loader'
 import styles from '@/components/ui/loaders.module.css'
-import { useLoaderPrefs, type LoaderMode } from '@/store/loaderPrefs'
+import { useLoaderPrefs, type LoaderMode, isLoaderEnabled } from '@/store/loaderPrefs'
 import { useUIStore } from '@/store'
 import { cn } from '@/lib/utils'
 
 const MODE_OPTIONS: { value: LoaderMode; label: string; hint: string }[] = [
-  { value: 'off',    label: 'Off',    hint: 'Никогда' },
-  { value: 'all',    label: 'On',     hint: 'Все темы' },
-  { value: 'light',  label: '☀',      hint: 'Только светлая' },
-  { value: 'dark',   label: '🌙',      hint: 'Только тёмная' },
-  { value: 'amoled', label: '⚫',      hint: 'Только AMOLED' },
+  { value: 'off',   label: 'Off',   hint: 'Никогда' },
+  { value: 'all',   label: 'On',    hint: 'Все темы' },
+  { value: 'light', label: '☀',     hint: 'Только светлая' },
+  { value: 'dark',  label: '🌙',    hint: 'Только тёмная (dark + AMOLED)' },
 ]
 
 function renderLoader(entry: LoaderEntry) {
@@ -22,18 +20,33 @@ function renderLoader(entry: LoaderEntry) {
   return <div className={(styles as Record<string, string>)[entry.name]} role="presentation" />
 }
 
+// A user-selectable mode 'X' can conflict with the loader's built-in themes allow-list.
+// 'light' conflicts if the loader is dark-only.
+// 'dark' conflicts if the loader is light-only.
+function modeConflicts(mode: LoaderMode, forcedThemes: LoaderEntry['themes']) {
+  if (!forcedThemes || forcedThemes.length === 3) return false
+  if (mode === 'light') return !forcedThemes.includes('light')
+  if (mode === 'dark') return !forcedThemes.includes('dark') && !forcedThemes.includes('amoled')
+  return false
+}
+
+// Human-readable label for the loader's built-in theme restriction badge.
+function themeBadgeLabel(themes: NonNullable<LoaderEntry['themes']>) {
+  const hasLight = themes.includes('light')
+  const hasDark  = themes.includes('dark') || themes.includes('amoled')
+  if (hasLight && !hasDark) return 'light-only'
+  if (!hasLight && hasDark) return 'dark-only'
+  return themes.join('/')
+}
+
 export default function LoadersPage() {
   const { modes, setMode, reset } = useLoaderPrefs()
-  const siteTheme = useUIStore(s => s.theme)
+  const siteTheme = useUIStore(s => s.theme) as 'light' | 'dark' | 'amoled'
 
   const total = REGISTRY.length
-  const enabledForCurrentTheme = REGISTRY.filter(e => {
-    if (e.themes && !e.themes.includes(siteTheme as 'light' | 'dark' | 'amoled')) return false
-    const m = modes[e.name] ?? 'all'
-    if (m === 'off') return false
-    if (m === 'all') return true
-    return m === siteTheme
-  }).length
+  const enabledForCurrentTheme = REGISTRY.filter(e =>
+    isLoaderEnabled(e.name, siteTheme, e.themes, modes[e.name])
+  ).length
   const offCount = Object.values(modes).filter(m => m === 'off').length
 
   return (
@@ -64,8 +77,11 @@ export default function LoadersPage() {
               <div className="flex items-center justify-between">
                 <div className="text-xs text-zinc-500">#{i + 1}</div>
                 {forcedThemes && forcedThemes.length < 3 && (
-                  <span className="text-[10px] uppercase text-amber-400 bg-amber-900/40 border border-amber-700/40 px-1.5 py-0.5 rounded" title={`Разрешено только: ${forcedThemes.join(', ')}`}>
-                    {forcedThemes.join('/')}
+                  <span
+                    className="text-[10px] uppercase text-amber-400 bg-amber-900/40 border border-amber-700/40 px-1.5 py-0.5 rounded"
+                    title={`Разрешено только: ${forcedThemes.join(', ')}`}
+                  >
+                    {themeBadgeLabel(forcedThemes)}
                   </span>
                 )}
               </div>
@@ -77,20 +93,16 @@ export default function LoadersPage() {
               <p className="text-zinc-300 text-xs font-mono text-center">{entry.name}</p>
 
               {/* Segmented control */}
-              <div className="grid grid-cols-5 gap-1 mt-auto">
+              <div className="grid grid-cols-4 gap-1 mt-auto">
                 {MODE_OPTIONS.map(opt => {
                   const isSelected = currentMode === opt.value
-                  // Grey out theme-specific modes that conflict with built-in restrictions
-                  const conflict =
-                    (opt.value === 'light' || opt.value === 'dark' || opt.value === 'amoled') &&
-                    forcedThemes &&
-                    !forcedThemes.includes(opt.value as 'light' | 'dark' | 'amoled')
+                  const conflict = modeConflicts(opt.value, forcedThemes)
                   return (
                     <button
                       key={opt.value}
                       type="button"
                       title={opt.hint}
-                      disabled={!!conflict}
+                      disabled={conflict}
                       onClick={() => setMode(entry.name, opt.value)}
                       className={cn(
                         'px-1 py-1 text-xs rounded border text-center transition-colors',
