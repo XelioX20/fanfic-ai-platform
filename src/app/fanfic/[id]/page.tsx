@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked, Anchor,
-  Bookmark, Check, Download, Loader2, Flame, ChevronDown, ChevronUp,
+  Bookmark, Check, Download, Loader2, Flame, ChevronDown, ChevronUp, ExternalLink,
 } from 'lucide-react'
 import { useAuthStore, useReaderStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
@@ -526,6 +526,25 @@ export default function FanficPage() {
               }
               <span>{actState.is_liked ? 'В избранном' : 'В избранное'}</span>
             </button>
+
+            {/* Открыть на ficbook.net — жест наружу, а не in-app CTA, поэтому
+                ghost-style (transparent + border), новая вкладка. Стоит после
+                «В избранное» чтобы не соперничать с primary «Читать». */}
+            <a
+              href={`https://ficbook.net/readfic/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Открыть страницу фанфика на ficbook.net"
+              className={cn(
+                'inline-flex items-center gap-2 rounded-lg text-base font-semibold transition-all',
+                'px-5 py-3 border',
+                'bg-zinc-900 text-zinc-200 border-zinc-700',
+                'hover:border-sky-500 hover:text-sky-300 hover:bg-zinc-900',
+              )}
+            >
+              <ExternalLink size={16} />
+              <span>На ficbook</span>
+            </a>
           </div>
         )}
 
