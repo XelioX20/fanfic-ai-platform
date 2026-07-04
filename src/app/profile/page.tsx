@@ -678,6 +678,8 @@ function ProfileContent() {
       return
     }
     setAvatarUploading(true)
+    // eslint-disable-next-line no-console
+    console.log('[avatar] starting upload', { name: file.name, size: file.size, type: file.type })
     try {
       // Multipart upload — backend down-scales the image and either stores
       // it on Cloudflare R2 (production) or falls back to a base64 data-URL
@@ -687,20 +689,37 @@ function ProfileContent() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const form = new FormData()
       form.append('file', file, file.name)
-      const res = await fetch(`${API_URL}/api/v1/profile/avatar`, {
-        method: 'POST',
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: form,
-        signal: AbortSignal.timeout(60_000),
-      })
+
+      let res: Response
+      try {
+        res = await fetch(`${API_URL}/api/v1/profile/avatar`, {
+          method: 'POST',
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: form,
+          signal: AbortSignal.timeout(60_000),
+        })
+      } catch (netErr: unknown) {
+        // eslint-disable-next-line no-console
+        console.error('[avatar] fetch failed (network layer)', netErr)
+        const msg = netErr instanceof Error ? netErr.message : String(netErr)
+        alert(`Сетевая ошибка при загрузке: ${msg}. Проверь соединение.`)
+        return
+      }
+
+      // eslint-disable-next-line no-console
+      console.log('[avatar] response', res.status, res.statusText)
+
+      // Read body as text first so we can log it even if JSON parsing fails.
+      const rawBody = await res.text()
+      // eslint-disable-next-line no-console
+      console.log('[avatar] body', rawBody.slice(0, 500))
+
+      let data: { detail?: string; avatar_url?: string } = {}
+      try { data = rawBody ? JSON.parse(rawBody) : {} } catch { /* not JSON */ }
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        const detail = data?.detail || ''
-        if (res.status === 401) alert('Сессия истекла — войди снова.')
-        else if (res.status === 413) alert('Фото слишком большое — выбери файл меньше 2 МБ.')
-        else if (res.status === 422) alert(detail || 'Не удалось обработать изображение.')
-        else if (res.status === 502) alert(detail || 'Хранилище недоступно — попробуй позже.')
-        else alert(detail || 'Не удалось загрузить фото. Попробуй снова.')
+        const detail = data?.detail || rawBody?.slice(0, 200) || ''
+        alert(`Ошибка ${res.status}: ${detail || 'без описания'}`)
         return
       }
       // Refresh profile data so the new avatar appears immediately.
@@ -708,8 +727,9 @@ function ProfileContent() {
       setProfileData(r.data)
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[avatar upload error]', err)
-      alert('Не удалось загрузить фото. Проверь соединение и попробуй снова.')
+      console.error('[avatar] unexpected error', err)
+      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+      alert(`Не удалось загрузить фото. ${msg}`)
     } finally {
       setAvatarUploading(false)
       e.target.value = ''
