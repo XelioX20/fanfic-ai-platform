@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, User, LogOut, ChevronDown, Heart, Clock, Users, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
+import { BookOpen, User, LogOut, Heart, Clock, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/store'
 import { authApi } from '@/lib/api'
 import { SearchBar } from '@/components/search/SearchBar'
@@ -161,13 +161,11 @@ export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, accessToken, clearAuth } = useAuthStore()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [linkModalOpen, setLinkModalOpen] = useState(false)
 
   const handleLogout = async () => {
     try { await authApi.logout() } catch {}
     clearAuth()
-    setMenuOpen(false)
     router.push('/')
   }
 
@@ -219,9 +217,10 @@ export function Header() {
                 Войти
               </Link>
             ) : (
-              <div className="relative">
-                <button
-                  onClick={() => setMenuOpen(!menuOpen)}
+              <div className="flex items-center gap-2">
+                {/* Avatar + username — click goes to profile */}
+                <Link
+                  href="/profile"
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
                 >
                   {user?.ficbook_avatar_url ? (
@@ -234,36 +233,25 @@ export function Header() {
                       unoptimized
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-purple-700 flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-full bg-purple-700 flex items-center justify-center shrink-0">
                       <User size={14} className="text-white" />
                     </div>
                   )}
                   <span className="text-zinc-300 text-sm hidden sm:block max-w-[120px] truncate">
                     {user?.ficbook_username || 'Профиль'}
                   </span>
-                  <ChevronDown size={14} className="text-zinc-500" />
-                </button>
+                </Link>
 
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50 py-1 overflow-hidden">
-                      <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-                        <User size={14} /> Профиль
-                      </Link>
-                      <Link href="/profile?tab=favourites" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-                        <Heart size={14} /> Избранное
-                      </Link>
-                      <Link href="/profile?tab=history" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-                        <Clock size={14} /> История
-                      </Link>
-                      <div className="border-t border-zinc-800 my-1" />
-                      <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-zinc-800 transition-colors">
-                        <LogOut size={14} /> Выйти
-                      </button>
-                    </div>
-                  </>
-                )}
+                {/* Logout button — inline, no dropdown */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Выйти"
+                  aria-label="Выйти"
+                  className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors rounded-md hover:bg-zinc-800"
+                >
+                  <LogOut size={16} />
+                </button>
               </div>
             )}
           </div>

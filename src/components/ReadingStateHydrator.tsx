@@ -1,20 +1,19 @@
 'use client'
 import { useEffect } from 'react'
 import { useAuthStore, useReaderStore } from '@/store'
-import { readingStateApi } from '@/lib/api'
+import { readingStateApi, profileApi } from '@/lib/api'
 
 /**
- * Silent hydrator — pulls anchors + local history from the backend right
- * after a JWT becomes available (login / page load with existing session).
- * Merges server rows on top of whatever's already in the local persisted
- * store, so a phone that hasn't seen a fic yet still gets the anchor the
- * user placed on their laptop.
- *
- * Rendered once, near the root of the client tree (see providers.tsx).
- * Fire-and-forget: failures are silent — we still function offline.
+ * Silent hydrator — runs on every accessToken change (login / page load).
+ * 1. Pulls anchors + history + bookmarks from the backend.
+ * 2. Refreshes the auth store user with the latest ficbook avatar from
+ *    /profile/me so the header always shows the current avatar even when
+ *    the user logged in before avatar extraction was implemented.
  */
 export function ReadingStateHydrator() {
   const accessToken = useAuthStore(s => s.accessToken)
+  const user = useAuthStore(s => s.user)
+  const setAuth = useAuthStore(s => s.setAuth)
   const hydrateAnchors = useReaderStore(s => s.hydrateAnchorsFromServer)
   const hydrateHistory = useReaderStore(s => s.hydrateHistoryFromServer)
   const hydrateBookmarks = useReaderStore(s => s.hydrateBookmarksFromServer)
@@ -25,12 +24,26 @@ export function ReadingStateHydrator() {
 
     ;(async () => {
       try {
-        const [anchors, history, bookmarks] = await Promise.all([
+        const [anchors, history, bookmarks, profileRes] = await Promise.all([
           readingStateApi.listAnchors(),
           readingStateApi.listHistory(200),
           readingStateApi.listBookmarks(500),
+          profileApi.me().catch(() => null),
         ])
         if (!alive) return
+
+        // Update avatar in auth store if the server has a newer one
+        if (profileRes && accessToken) {
+          const p = profileRes.data
+          const serverAvatar = p.avatar_url || p.ficbook_avatar_url || null
+          if (serverAvatar && user?.ficbook_avatar_url !== serverAvatar) {
+            setAuth(
+              { ...user!, ficbook_avatar_url: serverAvatar, ficbook_username: p.ficbook_username || user?.ficbook_username },
+              accessToken,
+            )
+          }
+        }
+
         hydrateAnchors(
           anchors.data.map(r => ({
             fanficId: r.fanfic_id,
@@ -69,15 +82,13 @@ export function ReadingStateHydrator() {
           })),
         )
       } catch {
-        // Silent — backend may be waking up on Render free-tier, or the
-        // user's JWT might be stale (interceptor in api.ts handles 401).
+        // Silent
       }
     })()
 
-    return () => {
-      alive = false
-    }
-  }, [accessToken, hydrateAnchors, hydrateHistory, hydrateBookmarks])
+    return () => { alive = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken])
 
   return null
 }
