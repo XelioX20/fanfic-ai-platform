@@ -53,15 +53,15 @@ async def create_tables():
 
 async def _ensure_columns(conn) -> None:
     from sqlalchemy import text
+    # Correct table name is "platform_users" (see app/db/models/user.py).
     # Postgres and SQLite both accept "ADD COLUMN IF NOT EXISTS".
     statements = (
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT",
+        "ALTER TABLE platform_users ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT",
     )
     for sql in statements:
         try:
             await conn.execute(text(sql))
-        except Exception:
-            # Best-effort — if the DB doesn't support the syntax or the
-            # column already exists in an incompatible form, don't crash
-            # boot. The endpoint will surface the real error at runtime.
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("_ensure_columns skipped: %s", e)
             pass
