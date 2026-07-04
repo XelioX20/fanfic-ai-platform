@@ -40,12 +40,15 @@ class Settings(BaseSettings):
     CACHE_TTL_SEARCH: int = 600
     CACHE_TTL_RECOMMENDATIONS: int = 1800
 
-    # Cloudflare R2 (S3-compatible) — user avatar storage.
-    # If R2_BUCKET is empty, avatar uploads fall back to storing the base64
-    # data-URL directly in the DB (custom_avatar_url TEXT column).
+    # Cloudflare R2 (object storage) — user avatar storage.
+    # If any of these is empty, avatar uploads fall back to storing the
+    # base64 data-URL directly in the DB (custom_avatar_url TEXT column).
+    #
+    # Auth via Cloudflare API Bearer token (not S3-compat) so we don't need
+    # to provision permanent Access Keys through the dashboard — a single
+    # API token with "Workers R2 Storage → Edit" scope covers everything.
     R2_ACCOUNT_ID: str = ""
-    R2_ACCESS_KEY_ID: str = ""
-    R2_SECRET_ACCESS_KEY: str = ""
+    R2_API_TOKEN: str = ""
     R2_BUCKET: str = ""
     # Public base URL that serves objects from the bucket. Either the
     # r2.dev URL Cloudflare gives out, or a custom domain bound to the
