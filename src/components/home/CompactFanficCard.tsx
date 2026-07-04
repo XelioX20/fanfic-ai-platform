@@ -1,8 +1,11 @@
 'use client'
 import Link from 'next/link'
-import { Heart } from 'lucide-react'
+import { Heart, BookOpen } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import type { Fanfic } from '@/types'
 import { cn, formatNumber } from '@/lib/utils'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface CompactFanficCardProps {
   fanfic: Fanfic
@@ -19,12 +22,40 @@ const RATING_COLOR: Record<string, string> = {
 
 /**
  * Small, poster-first card used inside horizontal rails.
- * Cover on top, title + minimal meta below.
+ *
+ * Cover-URL fallback: ficbook's /fanfiction listing sometimes omits the
+ * cover image for fics served through certain paths (premium redirects,
+ * UUID-only ids). When our proxy hands us a card without cover_url, we
+ * lazily hit /api/v1/fanfics/{id}/full — which scrapes the fic's detail
+ * page where the cover IS present — and use that. Cached via React Query
+ * for the session so we don't refetch on rail scroll.
  */
+
+async function fetchCoverFallback(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/fanfics/${id}/full`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.cover_url as string | null) ?? null
+  } catch {
+    return null
+  }
+}
+
 export function CompactFanficCard({ fanfic, className }: CompactFanficCardProps) {
   const primaryAuthor = fanfic.author_name
   const primaryFandom = fanfic.fandoms?.[0]
   const ratingCls = RATING_COLOR[fanfic.rating] ?? 'bg-zinc-800/80 text-zinc-300'
+
+  const coverQuery = useQuery({
+    queryKey: ['card-cover-fallback', fanfic.id],
+    queryFn: () => fetchCoverFallback(fanfic.id),
+    enabled: !fanfic.cover_url && !!fanfic.id,
+    staleTime: 10 * 60 * 1000,
+    retry: 0,
+  })
+
+  const effectiveCover = fanfic.cover_url ?? coverQuery.data ?? null
 
   return (
     <Link
@@ -36,17 +67,21 @@ export function CompactFanficCard({ fanfic, className }: CompactFanficCardProps)
       )}
     >
       <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden bg-zinc-800 border border-zinc-800 group-hover:border-zinc-600 transition-colors">
-        {fanfic.cover_url ? (
+        {effectiveCover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={fanfic.cover_url}
+            src={effectiveCover}
             alt={fanfic.title}
             loading="lazy"
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-            <span className="text-zinc-600 text-xs px-3 text-center line-clamp-4">
+          // No cover on ficbook + fallback fetch didn't yield one either.
+          // Render a decorative placeholder with icon + title so the card
+          // reads clearly rather than being a flat grey rectangle.
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black p-3">
+            <BookOpen size={28} className="text-zinc-600 shrink-0" />
+            <span className="text-zinc-400 text-xs text-center line-clamp-4 leading-tight">
               {fanfic.title}
             </span>
           </div>

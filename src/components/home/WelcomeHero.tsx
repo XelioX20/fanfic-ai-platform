@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { Dice5, LogIn, UserPlus } from 'lucide-react'
+import { useUIStore } from '@/store'
 import { cn } from '@/lib/utils'
 
 interface WelcomeHeroProps {
@@ -14,6 +15,11 @@ interface WelcomeHeroProps {
  *
  * - Guest: greeting + login CTA (soft, not modal).
  * - Authed-caught-up: greeting + quiz CTA (used when auth store has no readingProgress).
+ *
+ * Theme-aware. In light theme (light/sepia/paper equivalents) we render a
+ * soft-white gradient with dark text; in dark themes (dark/amoled) — a deep
+ * purple→black gradient with light text. The previous implementation locked
+ * to a dark palette which made the subtitle unreadable on light UI theme.
  */
 export function WelcomeHero({
   greeting,
@@ -21,20 +27,34 @@ export function WelcomeHero({
   className,
 }: WelcomeHeroProps) {
   const isGuest = variant === 'guest'
+  const uiTheme = useUIStore(s => s.theme) as 'light' | 'dark' | 'amoled'
+  const isLight = uiTheme === 'light'
 
   return (
     <section
       className={cn(
-        'rounded-2xl bg-gradient-to-br from-purple-950/30 via-zinc-900 to-zinc-900',
-        'border border-zinc-800 p-6 md:p-10',
-        className
+        'rounded-2xl border p-6 md:p-10',
+        isLight
+          ? 'bg-gradient-to-br from-purple-100 via-white to-pink-50 border-purple-200/70 shadow-sm'
+          : 'bg-gradient-to-br from-purple-900/50 via-zinc-900 to-zinc-950 border-purple-800/40',
+        className,
       )}
     >
       <div className="max-w-2xl">
-        <h1 className="text-2xl md:text-4xl font-bold text-zinc-100 mb-2 tracking-tight">
+        <h1
+          className={cn(
+            'text-2xl md:text-4xl font-bold mb-2 tracking-tight',
+            isLight ? 'text-zinc-900' : 'text-zinc-50',
+          )}
+        >
           {greeting ?? (isGuest ? 'Что почитаем сегодня?' : 'С возвращением')}
         </h1>
-        <p className="text-sm md:text-base text-zinc-400 mb-6">
+        <p
+          className={cn(
+            'text-sm md:text-base mb-6',
+            isLight ? 'text-zinc-700' : 'text-zinc-300',
+          )}
+        >
           {isGuest
             ? 'AI-подборки фанфиков с ficbook.net — под ваше настроение. Войдите, чтобы сохранять прогресс и подписки.'
             : 'Вы всё прочитали — выберите настроение или доверьтесь случаю.'}
@@ -54,14 +74,22 @@ export function WelcomeHero({
             <>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 rounded-lg text-sm font-medium transition-all"
+                className={cn(
+                  'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border',
+                  isLight
+                    ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-zinc-50 hover:border-purple-400'
+                    : 'bg-zinc-800 text-zinc-100 border-zinc-700 hover:bg-zinc-700',
+                )}
               >
                 <LogIn size={16} />
                 Войти
               </Link>
               <Link
                 href="/login?mode=register"
-                className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-purple-400 transition-colors"
+                className={cn(
+                  'inline-flex items-center gap-1 text-sm transition-colors',
+                  isLight ? 'text-zinc-600 hover:text-purple-700' : 'text-zinc-400 hover:text-purple-400',
+                )}
               >
                 <UserPlus size={14} />
                 Регистрация
@@ -70,7 +98,12 @@ export function WelcomeHero({
           ) : (
             <Link
               href="/search"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 rounded-lg text-sm font-medium transition-all"
+              className={cn(
+                'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border',
+                isLight
+                  ? 'bg-white text-zinc-800 border-zinc-300 hover:bg-zinc-50 hover:border-purple-400'
+                  : 'bg-zinc-800 text-zinc-100 border-zinc-700 hover:bg-zinc-700',
+              )}
             >
               Каталог
             </Link>
