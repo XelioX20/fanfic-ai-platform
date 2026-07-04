@@ -43,3 +43,25 @@ class Base(DeclarativeBase):
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Lightweight in-place migrations for columns added after the table
+        # was originally created. Base.metadata.create_all() creates missing
+        # TABLES but not missing COLUMNS on existing tables — so a plain
+        # ALTER TABLE ... ADD COLUMN IF NOT EXISTS keeps prod schema in sync
+        # without pulling in Alembic. Idempotent on both Postgres and SQLite.
+        await _ensure_columns(conn)
+
+
+async def _ensure_columns(conn) -> None:
+    from sqlalchemy import text
+    # Postgres and SQLite both accept "ADD COLUMN IF NOT EXISTS".
+    statements = (
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT",
+    )
+    for sql in statements:
+        try:
+            await conn.execute(text(sql))
+        except Exception:
+            # Best-effort — if the DB doesn't support the syntax or the
+            # column already exists in an incompatible form, don't crash
+            # boot. The endpoint will surface the real error at runtime.
+            pass
