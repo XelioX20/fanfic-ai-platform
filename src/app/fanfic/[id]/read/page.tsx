@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
+import { ReaderSearchBar } from '@/components/reader/ReaderSearchBar'
 import { Loader } from '@/components/ui/Loader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -55,6 +56,8 @@ export default function SingleChapterReaderPage() {
           <ReaderSettingsPanel />
         </div>
       </div>
+      {/* Full-text search bar — collapses to a FAB when not in use */}
+      <ReaderSearchBar />
       <ReaderContent
         content={html || ''}
         progressKey={`${id}:single`}

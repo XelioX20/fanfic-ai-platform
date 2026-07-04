@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, List } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
+import { ReaderSearchBar } from '@/components/reader/ReaderSearchBar'
 import { Loader } from '@/components/ui/Loader'
 import { formatWordCount } from '@/lib/utils'
 
@@ -126,6 +127,9 @@ export default function ChapterReaderPage() {
           </div>
         </div>
       )}
+
+      {/* Full-text search bar — collapses to a FAB when not in use */}
+      <ReaderSearchBar />
 
       {/* Chapter info */}
       <div className="max-w-4xl mx-auto px-4 pt-6 pb-2">
