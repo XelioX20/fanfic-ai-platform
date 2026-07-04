@@ -687,17 +687,31 @@ function ProfileContent() {
         reader.onerror = reject
         reader.readAsDataURL(file)
       })
-      await profileApi.updateAvatar(base64)
+      // Use fetch directly to avoid axios interceptors that redirect on 401
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const res = await fetch(`${API_URL}/api/v1/profile/avatar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ avatar_url: base64 }),
+        signal: AbortSignal.timeout(60_000),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        const detail = data?.detail || ''
+        if (res.status === 401) alert('Сессия истекла — войди снова.')
+        else if (res.status === 413) alert('Фото слишком большое — выбери файл меньше 2 МБ.')
+        else if (res.status === 422) alert(detail || 'Неверный формат файла.')
+        else alert(detail || 'Не удалось загрузить фото. Попробуй снова.')
+        return
+      }
       // Refresh profile data to show the new avatar immediately
       const r = await profileApi.me()
       setProfileData(r.data)
-    } catch (err: unknown) {
-      const detail = (err as {response?: {data?: {detail?: string}}})?.response?.data?.detail
-      if (detail) {
-        alert(detail)
-      } else {
-        alert('Не удалось загрузить фото. Попробуй снова.')
-      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[avatar upload error]', err)
+      alert('Не удалось загрузить фото. Проверь соединение и попробуй снова.')
     } finally {
       setAvatarUploading(false)
       e.target.value = ''
