@@ -127,8 +127,8 @@ function LocalBookmarksTab() {
 
   return (
     <div>
-      <p className="text-sm sm:text-base text-zinc-500 mb-4">
-        <span className="text-zinc-300 font-medium">{entries.length}</span>{' '}
+      <p className="text-sm text-zinc-300 mb-4">
+        <span className="text-white font-medium">{entries.length}</span>{' '}
         {entries.length === 1 ? 'фанфик в избранном' : 'фанфиков в избранном'}
         {' · '}
         <span className="text-zinc-600">синхронизировано между устройствами</span>
@@ -160,24 +160,24 @@ function LocalBookmarksTab() {
                 </div>
               )}
               <div className="flex-1 min-w-0 pr-6">
-                <h3 className="text-sm sm:text-base font-semibold text-zinc-100 line-clamp-2 leading-snug">
+                <h3 className="text-base font-semibold text-white line-clamp-2 leading-snug">
                   {entry.title || `Фанфик ${entry.fanficId.slice(0, 8)}…`}
                 </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 mt-1 truncate">
+                <p className="text-sm text-zinc-200 mt-1 truncate">
                   {entry.author_name || 'Автор неизвестен'}
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   {entry.direction && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.direction}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">{entry.direction}</span>
                   )}
                   {entry.rating && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.rating}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">{entry.rating}</span>
                   )}
                   {entry.completion_status && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">{entry.completion_status}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">{entry.completion_status}</span>
                   )}
                 </div>
-                <p className="text-xs text-zinc-600 mt-2 flex items-center gap-1">
+                <p className="text-xs text-zinc-300 mt-2 flex items-center gap-1">
                   <Bookmark size={10} /> добавлено {relativeTime(entry.addedAt)}
                 </p>
               </div>
@@ -228,7 +228,7 @@ function LocalHistoryTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-zinc-500">
-          <span className="text-zinc-300 font-medium">{entries.length}</span> {entries.length === 1 ? 'фанфик' : 'фанфиков'}
+          <span className="text-white font-medium">{entries.length}</span> {entries.length === 1 ? 'фанфик' : 'фанфиков'}
         </p>
         <button
           type="button"
@@ -266,30 +266,30 @@ function LocalHistoryTab() {
                 <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0" />
               )}
               <div className="flex-1 min-w-0 pr-6">
-                <h3 className="text-sm sm:text-base font-semibold text-zinc-100 line-clamp-2 leading-snug">
+                <h3 className="text-base font-semibold text-white line-clamp-2 leading-snug">
                   {entry.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 mt-1 truncate">
+                <p className="text-sm text-zinc-200 mt-1 truncate">
                   {entry.author_name || 'Автор неизвестен'}
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   {entry.direction && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">
                       {entry.direction}
                     </span>
                   )}
                   {entry.rating && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">
                       {entry.rating}
                     </span>
                   )}
                   {entry.completion_status && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-600/50">
                       {entry.completion_status}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-zinc-600 mt-2 flex items-center gap-1">
+                <p className="text-xs text-zinc-300 mt-2 flex items-center gap-1">
                   <Clock size={10} /> {relativeTime(entry.openedAt)}
                 </p>
               </div>
@@ -344,8 +344,8 @@ function ContinueReadingTab() {
 
   return (
     <div>
-      <p className="text-sm sm:text-base text-zinc-500 mb-4">
-        <span className="text-zinc-300 font-medium">{entries.length}</span> {entries.length === 1 ? 'фанфик с якорем' : 'фанфиков с якорями'}
+      <p className="text-sm text-zinc-300 mb-4">
+        <span className="text-white font-medium">{entries.length}</span> {entries.length === 1 ? 'фанфик с якорем' : 'фанфиков с якорями'}
         {' · '}
         <span className="text-zinc-600">синхронизировано между устройствами</span>
       </p>
@@ -381,20 +381,20 @@ function ContinueReadingTab() {
                   <div className="flex-1 min-w-0 pr-7">
                     <Link
                       href={`/fanfic/${anchor.fanficId}`}
-                      className="text-base font-semibold text-zinc-50 line-clamp-2 leading-snug hover:text-purple-300 transition-colors"
+                      className="text-base font-semibold text-white line-clamp-2 leading-snug hover:text-purple-300 transition-colors"
                     >
                       {histEntry?.title || `Фанфик ${anchor.fanficId.slice(0, 8)}…`}
                     </Link>
                     {histEntry?.author_name && (
-                      <p className="text-sm text-zinc-300 mt-1 truncate">{histEntry.author_name}</p>
+                      <p className="text-sm text-zinc-200 mt-1 truncate">{histEntry.author_name}</p>
                     )}
                     {anchor.chapterTitle && (
-                      <p className="text-xs text-zinc-100 mt-1.5 flex items-center gap-1 font-medium">
+                      <p className="text-xs text-purple-300 mt-1.5 flex items-center gap-1 font-medium">
                         <Anchor size={10} className="text-indigo-300 shrink-0" />
                         <span className="truncate">{anchor.chapterTitle}</span>
                       </p>
                     )}
-                    <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-zinc-300 mt-1 flex items-center gap-1">
                       <Clock size={11} /> {relativeTime(anchor.updatedAt)}
                     </p>
                   </div>
