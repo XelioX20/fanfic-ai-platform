@@ -1,0 +1,51 @@
+.loader {
+  width: 160px;
+  height: 160px;
+  color: #1a1a1a;
+  stroke: currentColor;
+  stroke-width: 0.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.loader path {
+  stroke-dasharray: 360;
+  stroke-dashoffset: 360;
+  animation: draw 4s ease-in-out infinite;
+}
+
+.loader path:nth-child(1)  { animation-delay: 0.00s; }
+.loader path:nth-child(2)  { animation-delay: 0.08s; }
+.loader path:nth-child(3)  { animation-delay: 0.16s; }
+.loader path:nth-child(4)  { animation-delay: 0.24s; }
+.loader path:nth-child(5)  { animation-delay: 0.32s; }
+.loader path:nth-child(6)  { animation-delay: 0.40s; }
+.loader path:nth-child(7)  { animation-delay: 0.48s; }
+.loader path:nth-child(8)  { animation-delay: 0.56s; }
+.loader path:nth-child(9)  { animation-delay: 0.64s; }
+.loader path:nth-child(10) { animation-delay: 0.72s; }
+.loader path:nth-child(11) { animation-delay: 0.80s; }
+.loader path:nth-child(12) { animation-delay: 0.88s; }
+.loader path:nth-child(13) { animation-delay: 0.96s; }
+.loader path:nth-child(14) { animation-delay: 1.04s; }
+.loader path:nth-child(15) { animation-delay: 1.12s; }
+
+@keyframes draw {
+  0% {
+    stroke-dashoffset: 360;
+    fill-opacity: 0;
+  }
+  40% {
+    stroke-dashoffset: 0;
+    fill-opacity: 0;
+  }
+  60% {
+    stroke-dashoffset: 0;
+    fill-opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 360;
+    fill-opacity: 0;
+  }
+}

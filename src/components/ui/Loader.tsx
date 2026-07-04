@@ -9,6 +9,11 @@ import { HandLoader } from './loaders/HandLoader'
 import { HamsterLoader } from './loaders/HamsterLoader'
 import { BeesLoader } from './loaders/BeesLoader'
 import { ButterflyLoader } from './loaders/ButterflyLoader'
+import { SharinganLoader } from './loaders/SharinganLoader'
+import { SketchLoader } from './loaders/SketchLoader'
+import { DogLoader } from './loaders/DogLoader'
+import { CampsiteLoader } from './loaders/CampsiteLoader'
+import { EvaLoader } from './loaders/EvaLoader'
 
 type Theme = 'light' | 'dark' | 'amoled'
 const ALL_THEMES: Theme[] = ['light', 'dark', 'amoled']
@@ -44,6 +49,11 @@ const REGISTRY: LoaderEntry[] = [
   { kind: 'complex', name: 'butterfly',Component: ButterflyLoader },
   // Light-theme-only: ink-on-white, illegible on dark backgrounds.
   { kind: 'complex', name: 'cat',      Component: CatLoader, themes: ['light'] },
+  { kind: 'complex', name: 'sharingan', Component: SharinganLoader },
+  { kind: 'complex', name: 'sketch', Component: SketchLoader, themes: ['light'] },
+  { kind: 'complex', name: 'dog', Component: DogLoader },
+  { kind: 'complex', name: 'campsite', Component: CampsiteLoader, themes: ['dark', 'amoled'] },
+  { kind: 'complex', name: 'eva', Component: EvaLoader, themes: ['dark', 'amoled'] },
 ]
 
 function isAllowed(entry: LoaderEntry, theme: Theme) {

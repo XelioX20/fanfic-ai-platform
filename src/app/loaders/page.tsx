@@ -8,6 +8,11 @@ import { HandLoader } from '@/components/ui/loaders/HandLoader'
 import { HamsterLoader } from '@/components/ui/loaders/HamsterLoader'
 import { BeesLoader } from '@/components/ui/loaders/BeesLoader'
 import { ButterflyLoader } from '@/components/ui/loaders/ButterflyLoader'
+import { SharinganLoader } from '@/components/ui/loaders/SharinganLoader'
+import { SketchLoader } from '@/components/ui/loaders/SketchLoader'
+import { DogLoader } from '@/components/ui/loaders/DogLoader'
+import { CampsiteLoader } from '@/components/ui/loaders/CampsiteLoader'
+import { EvaLoader } from '@/components/ui/loaders/EvaLoader'
 
 // Show ALL loaders in gallery regardless of theme so user can preview them all.
 const SIMPLE: string[] = [
@@ -25,6 +30,11 @@ const COMPLEX: ComplexEntry[] = [
   { name: 'bees',      Component: BeesLoader },
   { name: 'butterfly', Component: ButterflyLoader },
   { name: 'cat',       Component: CatLoader, themes: ['light'] },
+  { name: 'sharingan', Component: SharinganLoader },
+  { name: 'sketch',    Component: SketchLoader, themes: ['light'] },
+  { name: 'dog',       Component: DogLoader },
+  { name: 'campsite',  Component: CampsiteLoader, themes: ['dark', 'amoled'] },
+  { name: 'eva',       Component: EvaLoader, themes: ['dark', 'amoled'] },
 ]
 
 export default function LoadersPage() {
