@@ -679,19 +679,18 @@ function ProfileContent() {
     }
     setAvatarUploading(true)
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
-      // Use fetch directly to avoid axios interceptors that redirect on 401
+      // Multipart upload — backend down-scales the image and either stores
+      // it on Cloudflare R2 (production) or falls back to a base64 data-URL
+      // in the DB (development). Uses fetch directly to sidestep the axios
+      // 401 interceptor that redirects to /login.
       const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const form = new FormData()
+      form.append('file', file, file.name)
       const res = await fetch(`${API_URL}/api/v1/profile/avatar`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ avatar_url: base64 }),
+        method: 'POST',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: form,
         signal: AbortSignal.timeout(60_000),
       })
       if (!res.ok) {
@@ -699,11 +698,12 @@ function ProfileContent() {
         const detail = data?.detail || ''
         if (res.status === 401) alert('Сессия истекла — войди снова.')
         else if (res.status === 413) alert('Фото слишком большое — выбери файл меньше 2 МБ.')
-        else if (res.status === 422) alert(detail || 'Неверный формат файла.')
+        else if (res.status === 422) alert(detail || 'Не удалось обработать изображение.')
+        else if (res.status === 502) alert(detail || 'Хранилище недоступно — попробуй позже.')
         else alert(detail || 'Не удалось загрузить фото. Попробуй снова.')
         return
       }
-      // Refresh profile data to show the new avatar immediately
+      // Refresh profile data so the new avatar appears immediately.
       const r = await profileApi.me()
       setProfileData(r.data)
     } catch (err) {

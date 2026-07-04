@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     CACHE_TTL_SEARCH: int = 600
     CACHE_TTL_RECOMMENDATIONS: int = 1800
 
+    # Cloudflare R2 (S3-compatible) — user avatar storage.
+    # If R2_BUCKET is empty, avatar uploads fall back to storing the base64
+    # data-URL directly in the DB (custom_avatar_url TEXT column).
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET: str = ""
+    # Public base URL that serves objects from the bucket. Either the
+    # r2.dev URL Cloudflare gives out, or a custom domain bound to the
+    # bucket. No trailing slash.
+    R2_PUBLIC_URL: str = ""
+
     def get_cors_origins(self) -> list[str]:
         if isinstance(self.CORS_ORIGINS, str):
             try:

@@ -1,13 +1,16 @@
+import base64
+import io
 import logging
 import os
 import httpx
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 from app.core.security import verify_token
 from app.db.session import AsyncSessionLocal
 from app.db.repositories.users import UserRepository
+from app.services import r2_storage
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -145,17 +148,112 @@ class AvatarPayload(BaseModel):
     avatar_url: str
 
 
+# Maximum decoded image size, in bytes (2 MB source; we down-scale to ~512×512).
+MAX_AVATAR_BYTES = 2 * 1024 * 1024
+# Target size for stored avatar. Enough for the header (28px) and the profile
+# hero (~120px) even on retina screens without wasting bandwidth.
+AVATAR_TARGET_PX = 512
+
+
+def _process_image(raw: bytes) -> tuple[bytes, str]:
+    """Down-scale + re-encode the uploaded image so we don't store 2 MB blobs.
+
+    Returns (encoded_bytes, content_type). Falls back to the original bytes
+    if Pillow isn't installed (e.g. lightweight dev containers).
+    """
+    try:
+        from PIL import Image  # type: ignore
+    except ImportError:
+        return raw, "image/jpeg"
+
+    with Image.open(io.BytesIO(raw)) as im:
+        im.load()
+        # Convert palette / RGBA-on-alpha → RGB so JPEG encode works.
+        if im.mode not in ("RGB", "L"):
+            bg = Image.new("RGB", im.size, (255, 255, 255))
+            if im.mode == "RGBA":
+                bg.paste(im, mask=im.split()[3])
+            else:
+                bg.paste(im.convert("RGBA"))
+            im = bg
+        # Contain, keep aspect ratio; only shrink, never upscale.
+        im.thumbnail((AVATAR_TARGET_PX, AVATAR_TARGET_PX))
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=85, optimize=True)
+        return buf.getvalue(), "image/jpeg"
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    user_id: str = Depends(_get_current_user_id),
+):
+    """Upload a user avatar as a multipart file.
+
+    Behaviour:
+    - If R2 is configured (R2_* env vars set), upload to Cloudflare R2 and
+      store the public URL in the DB.
+    - Otherwise fall back to storing a base64 data-URL in the TEXT column
+      (works for development / small deployments without R2).
+
+    The image is down-scaled to <=512×512 and re-encoded as JPEG so we
+    never ship 2 MB blobs through /profile/me or the R2 bucket.
+    """
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(status_code=422, detail="Файл должен быть изображением.")
+
+    raw = await file.read()
+    if len(raw) > MAX_AVATAR_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Фото слишком большое — максимум 2 МБ.",
+        )
+    if not raw:
+        raise HTTPException(status_code=422, detail="Пустой файл.")
+
+    try:
+        processed, ct = _process_image(raw)
+    except Exception as e:
+        logger.warning("Avatar processing failed for user %s: %s", user_id, e)
+        raise HTTPException(status_code=422, detail="Не удалось обработать изображение.")
+
+    # Store — R2 if configured, else inline base64.
+    if r2_storage.is_enabled():
+        try:
+            new_url = await r2_storage.upload_avatar(user_id, processed, ct)
+        except Exception as e:
+            logger.error("R2 upload failed for user %s: %s", user_id, e)
+            raise HTTPException(status_code=502, detail="Не удалось загрузить в облако — попробуй позже.")
+    else:
+        b64 = base64.b64encode(processed).decode("ascii")
+        new_url = f"data:{ct};base64,{b64}"
+
+    async with AsyncSessionLocal() as db:
+        repo = UserRepository(db)
+        user = await repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        previous_url = getattr(user, "custom_avatar_url", None)
+        user.custom_avatar_url = new_url  # type: ignore[attr-defined]
+        await db.commit()
+
+    # Best-effort cleanup of the previous R2 object.
+    if r2_storage.is_enabled() and previous_url:
+        try:
+            await r2_storage.delete_avatar(user_id, previous_url)
+        except Exception:
+            pass
+
+    return {"avatar_url": new_url}
+
+
 @router.put("/avatar")
 async def update_avatar(payload: AvatarPayload, user_id: str = Depends(_get_current_user_id)):
-    """Store a custom avatar URL (remote URL or base64 data-URL) for the user.
+    """Legacy avatar endpoint kept for existing frontend calls.
 
-    Accepts:
-    - Remote URL: https://... — stored as-is (useful for avatars already hosted elsewhere)
-    - Base64 data URL: data:image/jpeg;base64,... — stored as text in the DB
-      (no external storage required; the column is TEXT so size is ~200kB safe)
-
-    Clients should resize/compress the image to ≤200kB before uploading to avoid
-    slow page loads.
+    Accepts either a remote https:// URL or a base64 data-URL and stores
+    it verbatim. New frontend code should POST a multipart file to this
+    same path instead so the backend can down-scale it and upload to R2.
     """
     url = payload.avatar_url.strip()
     if not (url.startswith("https://") or url.startswith("data:image/")):
@@ -182,8 +280,14 @@ async def delete_avatar(user_id: str = Depends(_get_current_user_id)):
         repo = UserRepository(db)
         user = await repo.get_by_id(user_id)
         if user:
+            previous_url = getattr(user, "custom_avatar_url", None)
             user.custom_avatar_url = None  # type: ignore[attr-defined]
             await db.commit()
+            if r2_storage.is_enabled() and previous_url:
+                try:
+                    await r2_storage.delete_avatar(user_id, previous_url)
+                except Exception:
+                    pass
     return None
 
 
