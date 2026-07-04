@@ -1,80 +1,119 @@
 'use client'
-import { pickLoadersForTheme } from '@/components/ui/Loader'
+import { useState } from 'react'
+import { REGISTRY, type LoaderEntry } from '@/components/ui/Loader'
 import styles from '@/components/ui/loaders.module.css'
-import { CauldronLoader } from '@/components/ui/loaders/CauldronLoader'
-import { Book3dLoader } from '@/components/ui/loaders/Book3dLoader'
-import { CatLoader } from '@/components/ui/loaders/CatLoader'
-import { HandLoader } from '@/components/ui/loaders/HandLoader'
-import { HamsterLoader } from '@/components/ui/loaders/HamsterLoader'
-import { BeesLoader } from '@/components/ui/loaders/BeesLoader'
-import { ButterflyLoader } from '@/components/ui/loaders/ButterflyLoader'
-import { SharinganLoader } from '@/components/ui/loaders/SharinganLoader'
-import { SketchLoader } from '@/components/ui/loaders/SketchLoader'
-import { DogLoader } from '@/components/ui/loaders/DogLoader'
-import { CampsiteLoader } from '@/components/ui/loaders/CampsiteLoader'
-import { EvaLoader } from '@/components/ui/loaders/EvaLoader'
+import { useLoaderPrefs, type LoaderMode } from '@/store/loaderPrefs'
+import { useUIStore } from '@/store'
+import { cn } from '@/lib/utils'
 
-// Show ALL loaders in gallery regardless of theme so user can preview them all.
-const SIMPLE: string[] = [
-  'hourglass', 'eyes', 'book', 'face', 'pan',
-  'gear', 'stickball', 'treadmill', 'eightbit', 'elevator',
-  'rings', 'pawprints', 'duck',
+const MODE_OPTIONS: { value: LoaderMode; label: string; hint: string }[] = [
+  { value: 'off',    label: 'Off',    hint: 'Никогда' },
+  { value: 'all',    label: 'On',     hint: 'Все темы' },
+  { value: 'light',  label: '☀',      hint: 'Только светлая' },
+  { value: 'dark',   label: '🌙',      hint: 'Только тёмная' },
+  { value: 'amoled', label: '⚫',      hint: 'Только AMOLED' },
 ]
 
-type ComplexEntry = { name: string; Component: React.ComponentType; themes?: string[] }
-const COMPLEX: ComplexEntry[] = [
-  { name: 'cauldron',  Component: CauldronLoader },
-  { name: 'book3d',    Component: Book3dLoader },
-  { name: 'hand',      Component: HandLoader },
-  { name: 'hamster',   Component: HamsterLoader },
-  { name: 'bees',      Component: BeesLoader },
-  { name: 'butterfly', Component: ButterflyLoader },
-  { name: 'cat',       Component: CatLoader, themes: ['light'] },
-  { name: 'sharingan', Component: SharinganLoader },
-  { name: 'sketch',    Component: SketchLoader, themes: ['light'] },
-  { name: 'dog',       Component: DogLoader },
-  { name: 'campsite',  Component: CampsiteLoader, themes: ['dark', 'amoled'] },
-  { name: 'eva',       Component: EvaLoader, themes: ['dark', 'amoled'] },
-]
+function renderLoader(entry: LoaderEntry) {
+  if (entry.kind === 'complex') {
+    const Component = entry.Component
+    return <Component />
+  }
+  return <div className={(styles as Record<string, string>)[entry.name]} role="presentation" />
+}
 
 export default function LoadersPage() {
-  const total = SIMPLE.length + COMPLEX.length
-  return (
-    <main className="max-w-5xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-zinc-100 mb-2">Галерея лоадеров</h1>
-      <p className="text-zinc-500 text-sm mb-8">
-        Всего: {total}. Лоадеры с плашкой темы показываются только в этой теме сайта.
-      </p>
+  const { modes, setMode, reset } = useLoaderPrefs()
+  const siteTheme = useUIStore(s => s.theme)
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {SIMPLE.map((name, i) => (
-          <div key={name} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col items-center gap-3 hover:border-zinc-600 transition-colors">
-            <div className="text-xs text-zinc-500 self-start">#{i + 1}</div>
-            <div className="flex items-center justify-center min-h-[80px] w-full overflow-hidden">
-              <div className={(styles as Record<string, string>)[name]} role="presentation" />
-            </div>
-            <p className="text-zinc-300 text-xs font-mono">{name}</p>
-          </div>
-        ))}
-        {COMPLEX.map(({ name, Component, themes }, i) => (
-          <div key={name} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col items-center gap-3 hover:border-zinc-600 transition-colors">
-            <div className="flex items-center justify-between w-full">
-              <div className="text-xs text-zinc-500">#{SIMPLE.length + i + 1}</div>
-              {themes && themes.length < 3 && (
-                <span className="text-[10px] uppercase text-amber-400 bg-amber-900/40 border border-amber-700/40 px-1.5 py-0.5 rounded">
-                  {themes.join('/')}-only
-                </span>
-              )}
-            </div>
-            <div className="flex items-center justify-center min-h-[80px] w-full overflow-hidden">
-              <Component />
-            </div>
-            <p className="text-zinc-300 text-xs font-mono">{name}</p>
-          </div>
-        ))}
+  const total = REGISTRY.length
+  const enabledForCurrentTheme = REGISTRY.filter(e => {
+    if (e.themes && !e.themes.includes(siteTheme as 'light' | 'dark' | 'amoled')) return false
+    const m = modes[e.name] ?? 'all'
+    if (m === 'off') return false
+    if (m === 'all') return true
+    return m === siteTheme
+  }).length
+  const offCount = Object.values(modes).filter(m => m === 'off').length
+
+  return (
+    <main className="max-w-6xl mx-auto px-4 py-10">
+      <h1 className="text-2xl font-bold text-zinc-100 mb-2">Галерея лоадеров</h1>
+      <p className="text-zinc-500 text-sm mb-2">
+        Всего: {total}. Активно в текущей теме ({String(siteTheme)}): <span className="text-zinc-300">{enabledForCurrentTheme}</span>. Выключено: {offCount}.
+      </p>
+      <div className="flex gap-2 mb-8">
+        <button
+          type="button"
+          onClick={() => reset()}
+          className="text-xs text-zinc-500 hover:text-zinc-300 underline"
+        >
+          Сбросить настройки
+        </button>
       </div>
 
-      <p className="text-zinc-600 text-xs mt-8 text-center">Сообщи номер или название чтобы удалить.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {REGISTRY.map((entry, i) => {
+          const currentMode = modes[entry.name] ?? 'all'
+          const forcedThemes = entry.themes
+          return (
+            <div
+              key={entry.name}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col items-stretch gap-3 hover:border-zinc-600 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-zinc-500">#{i + 1}</div>
+                {forcedThemes && forcedThemes.length < 3 && (
+                  <span className="text-[10px] uppercase text-amber-400 bg-amber-900/40 border border-amber-700/40 px-1.5 py-0.5 rounded" title={`Разрешено только: ${forcedThemes.join(', ')}`}>
+                    {forcedThemes.join('/')}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center min-h-[100px] w-full overflow-hidden">
+                {renderLoader(entry)}
+              </div>
+
+              <p className="text-zinc-300 text-xs font-mono text-center">{entry.name}</p>
+
+              {/* Segmented control */}
+              <div className="grid grid-cols-5 gap-1 mt-auto">
+                {MODE_OPTIONS.map(opt => {
+                  const isSelected = currentMode === opt.value
+                  // Grey out theme-specific modes that conflict with built-in restrictions
+                  const conflict =
+                    (opt.value === 'light' || opt.value === 'dark' || opt.value === 'amoled') &&
+                    forcedThemes &&
+                    !forcedThemes.includes(opt.value as 'light' | 'dark' | 'amoled')
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      title={opt.hint}
+                      disabled={!!conflict}
+                      onClick={() => setMode(entry.name, opt.value)}
+                      className={cn(
+                        'px-1 py-1 text-xs rounded border text-center transition-colors',
+                        isSelected
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : conflict
+                            ? 'bg-zinc-950 border-zinc-800 text-zinc-700 cursor-not-allowed'
+                            : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <p className="text-zinc-600 text-xs mt-8 text-center">
+        Настройки сохраняются в браузере (localStorage). Влияют на то какой лоадер выбирается случайно в реальных загрузках страниц.
+      </p>
     </main>
   )
 }

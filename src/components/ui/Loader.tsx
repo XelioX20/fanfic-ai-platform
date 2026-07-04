@@ -2,6 +2,7 @@
 import { useMemo } from 'react'
 import styles from './loaders.module.css'
 import { useUIStore } from '@/store'
+import { useLoaderPrefs, isLoaderEnabled } from '@/store/loaderPrefs'
 import { CauldronLoader } from './loaders/CauldronLoader'
 import { Book3dLoader } from './loaders/Book3dLoader'
 import { CatLoader } from './loaders/CatLoader'
@@ -20,11 +21,11 @@ const ALL_THEMES: Theme[] = ['light', 'dark', 'amoled']
 
 // Each loader entry: name, optional themes allow-list (default = all themes).
 // Set `themes` when the loader looks bad in some themes (e.g. cat is ink-on-white).
-type LoaderEntry =
+export type LoaderEntry =
   | { kind: 'simple'; name: string; themes?: Theme[] }
   | { kind: 'complex'; name: string; Component: React.ComponentType; themes?: Theme[] }
 
-const REGISTRY: LoaderEntry[] = [
+export const REGISTRY: LoaderEntry[] = [
   // Simple (CSS in loaders.module.css)
   { kind: 'simple', name: 'hourglass' },
   { kind: 'simple', name: 'eyes' },
@@ -79,16 +80,19 @@ interface LoaderProps {
  */
 export function Loader({ label, variant, className }: LoaderProps) {
   const theme = useUIStore(s => (ALL_THEMES.includes(s.theme as Theme) ? (s.theme as Theme) : 'dark'))
+  const modes = useLoaderPrefs(s => s.modes)
 
   const entry = useMemo<LoaderEntry>(() => {
     if (variant) {
       const found = REGISTRY.find(e => e.name === variant)
       if (found) return found
     }
-    const pool = pickLoadersForTheme(theme)
+    const pool = REGISTRY.filter(e => isLoaderEnabled(e.name, theme, e.themes, modes[e.name]))
+    // Fallback: if user disabled EVERYTHING, still pick something (hourglass) so page doesn't crash
+    if (pool.length === 0) return REGISTRY[0]
     return pool[Math.floor(Math.random() * pool.length)]
     // theme is intentionally part of deps — flipping theme should re-pick a suitable loader
-  }, [variant, theme])
+  }, [variant, theme, modes])
 
   return (
     <div className={`flex flex-col items-center justify-center gap-4 py-16 ${className ?? ''}`}>
