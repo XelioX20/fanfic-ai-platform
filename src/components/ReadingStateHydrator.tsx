@@ -35,13 +35,15 @@ export function ReadingStateHydrator() {
         // Update avatar in auth store if the server has a newer one
         if (profileRes && accessToken) {
           const p = profileRes.data
-          const serverAvatar = p.avatar_url || p.ficbook_avatar_url || null
-          if (serverAvatar && user?.ficbook_avatar_url !== serverAvatar) {
-            setAuth(
-              { ...user!, ficbook_avatar_url: serverAvatar, ficbook_username: p.ficbook_username || user?.ficbook_username },
-              accessToken,
-            )
-          }
+          setAuth(
+            {
+              ...user!,
+              custom_avatar_url: p.custom_avatar_url ?? undefined,
+              ficbook_avatar_url: p.ficbook_avatar_url || user?.ficbook_avatar_url,
+              ficbook_username: p.ficbook_username || user?.ficbook_username,
+            },
+            accessToken,
+          )
         }
 
         hydrateAnchors(

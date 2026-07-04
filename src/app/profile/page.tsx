@@ -626,7 +626,7 @@ function ReaderSettingsTab() {
 function ProfileContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, accessToken, clearAuth } = useAuthStore()
+  const { user, accessToken, clearAuth, setAuth } = useAuthStore()
   const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'continue')
 
   const handleLogout = async () => {
@@ -713,6 +713,17 @@ function ProfileContent() {
       }
       const r = await profileApi.me()
       setProfileData(r.data)
+      // Sync auth store so the header avatar updates immediately
+      if (user && accessToken) {
+        setAuth(
+          {
+            ...user,
+            custom_avatar_url: r.data.custom_avatar_url ?? undefined,
+            ficbook_avatar_url: r.data.ficbook_avatar_url || user.ficbook_avatar_url,
+          },
+          accessToken,
+        )
+      }
     } catch (err) {
       const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
       alert(`Не удалось загрузить фото. ${msg}`)

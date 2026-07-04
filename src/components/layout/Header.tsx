@@ -217,9 +217,9 @@ export function Header() {
                   href="/profile"
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
                 >
-                  {user?.ficbook_avatar_url ? (
+                  {(user?.custom_avatar_url || user?.ficbook_avatar_url) ? (
                     <Image
-                      src={user.ficbook_avatar_url}
+                      src={user.custom_avatar_url || user.ficbook_avatar_url!}
                       alt={user.ficbook_username || 'avatar'}
                       width={28}
                       height={28}

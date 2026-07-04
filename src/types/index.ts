@@ -73,6 +73,7 @@ export interface User {
   ficbook_user_id?: string
   ficbook_username?: string
   ficbook_avatar_url?: string
+  custom_avatar_url?: string
   ficbook_profile_url?: string
 }
 
