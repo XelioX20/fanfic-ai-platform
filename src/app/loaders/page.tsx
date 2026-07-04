@@ -1,4 +1,5 @@
 'use client'
+import { Sun, Moon } from 'lucide-react'
 import { REGISTRY, type LoaderEntry } from '@/components/ui/Loader'
 import styles from '@/components/ui/loaders.module.css'
 import ctl from './controls.module.css'
@@ -7,10 +8,10 @@ import { useUIStore } from '@/store'
 import { cn } from '@/lib/utils'
 
 type ScopeMode = 'all' | 'light' | 'dark'
-const SCOPE_OPTIONS: { value: ScopeMode; label: string }[] = [
+const SCOPE_OPTIONS: { value: ScopeMode; label: React.ReactNode }[] = [
   { value: 'all',   label: 'All' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark',  label: 'Dark' },
+  { value: 'light', label: <span className="inline-flex items-center gap-1"><Sun size={11} strokeWidth={2.4} /> Light</span> },
+  { value: 'dark',  label: <span className="inline-flex items-center gap-1"><Moon size={11} strokeWidth={2.4} /> Dark</span> },
 ]
 
 function renderLoader(entry: LoaderEntry) {
@@ -115,15 +116,20 @@ export default function LoadersPage() {
                 </div>
               </div>
 
-              {/* Loader preview — takes all leftover vertical space so tabs pin to bottom */}
-              <div className="flex items-center justify-center min-h-[100px] flex-1 w-full overflow-hidden">
+              {/* Loader preview */}
+              <div className="flex items-center justify-center min-h-[120px] w-full overflow-hidden py-2">
                 {renderLoader(entry)}
               </div>
 
-              <p className="text-zinc-300 text-xs font-mono text-center">{entry.name}</p>
+              {/* Name + scope tabs pinned to bottom */}
+              <div className="mt-auto flex flex-col gap-2">
+                <p className="text-zinc-300 text-xs font-mono text-center">{entry.name}</p>
 
-              {/* Scope tabs — All / Light / Dark (always pinned to bottom of card) */}
-              <div className={`${ctl.tabs} mt-auto`} data-selected={selectedIndex} aria-disabled={on ? 'false' : 'true'}>
+                <div
+                  className={ctl.tabs}
+                  data-selected={selectedIndex}
+                  {...(on ? {} : { 'aria-disabled': 'true' as const })}
+                >
                 {SCOPE_OPTIONS.map((opt, idx) => {
                   const conflict = scopeConflicts(opt.value, forcedThemes)
                   const inputId = `scope-${entry.name}-${opt.value}`
@@ -148,7 +154,9 @@ export default function LoadersPage() {
                             ? 'Включите переключатель on/off слева'
                             : conflict
                               ? 'Недоступно из-за встроенного ограничения'
-                              : opt.label
+                              : opt.value === 'all' ? 'Во всех темах'
+                              : opt.value === 'light' ? 'Только в светлой теме'
+                              : 'Только в тёмной теме (dark + amoled)'
                         }
                       >
                         {opt.label}
@@ -157,6 +165,7 @@ export default function LoadersPage() {
                     </>
                   )
                 })}
+                </div>
               </div>
             </div>
           )
