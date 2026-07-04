@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked,
+  Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked, Anchor,
   Bell, BellOff, FolderPlus, Download, Loader2, Flame, ChevronDown, ChevronUp,
 } from 'lucide-react'
-import { useAuthStore } from '@/store'
+import { useAuthStore, useReaderStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
 import { Loader } from '@/components/ui/Loader'
 
@@ -221,6 +221,25 @@ export default function FanficPage() {
       ? `/fanfic/${id}/read/${fanfic.chapters[0].id}?all=${chapterIds}`
       : null
 
+  // Anchor for this fanfic. If set, we surface a "Продолжить с якоря" CTA
+  // next to "Читать" that jumps straight to the anchor's chapter with a
+  // ?anchor=1 query so ReaderContent knows to restore to anchor.scrollY.
+  const anchor = useReaderStore(s => s.anchors[id])
+  const anchorHref = (() => {
+    if (!anchor) return null
+    if (anchor.chapterId === 'single' || fanfic.is_single_chapter) {
+      return `/fanfic/${id}/read?anchor=1`
+    }
+    // Verify the anchor's chapter still exists in this fic (chapter might have
+    // been deleted by the author since the user placed the anchor).
+    const exists = fanfic.chapters.some(c => c.id === anchor.chapterId)
+    if (!exists) return null
+    return `/fanfic/${id}/read/${anchor.chapterId}?all=${chapterIds}&anchor=1`
+  })()
+  const anchorChapterMeta = anchor
+    ? fanfic.chapters.find(c => c.id === anchor.chapterId)
+    : null
+
   const likeCount = fanfic.likes + (actState.is_liked ? 1 : 0)
 
   return (
@@ -319,15 +338,36 @@ export default function FanficPage() {
           </div>
         )}
 
-        {/* PRIMARY CTA — Читать */}
+        {/* PRIMARY CTA — Читать + опционально Продолжить с якоря */}
         {readHref && (
-          <div className="mb-4 flex justify-center sm:justify-start">
+          <div className="mb-4 flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <Link
               href={readHref}
               className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-base font-semibold transition-colors shadow-md shadow-purple-950/30"
             >
               <BookMarked size={16} /> Читать
             </Link>
+            {anchorHref && (
+              <Link
+                href={anchorHref}
+                title={
+                  anchorChapterMeta
+                    ? `Продолжить: ${anchorChapterMeta.title}`
+                    : 'Продолжить с последнего якоря'
+                }
+                className="inline-flex items-center gap-2 px-4 py-3 bg-zinc-900 hover:bg-zinc-800 border border-purple-700/50 hover:border-purple-500 text-purple-200 rounded-lg text-sm font-semibold transition-colors"
+              >
+                <Anchor size={14} />
+                <span>Продолжить с якоря</span>
+                {anchorChapterMeta && (
+                  <span className="hidden md:inline text-zinc-500 font-normal">
+                    · {anchorChapterMeta.title.length > 24
+                        ? anchorChapterMeta.title.slice(0, 24) + '…'
+                        : anchorChapterMeta.title}
+                  </span>
+                )}
+              </Link>
+            )}
           </div>
         )}
 
@@ -518,8 +558,28 @@ export default function FanficPage() {
                           headers: { Authorization: `Bearer ${accessToken}` },
                         })
                         if (!res.ok) {
-                          const err = await res.json().catch(() => ({ detail: 'Не удалось скачать' }))
-                          alert(err.detail || `Ошибка ${res.status}`)
+                          const err = await res.json().catch(() => ({ detail: '' }))
+                          const detail = (err.detail || '').toString()
+                          // Map common backend errors to human messages
+                          let message = detail
+                          if (res.status === 401) {
+                            message = 'Сессия истекла. Перелогинься через кнопку "Войти".'
+                          } else if (res.status === 403) {
+                            // Backend says: "Not logged in to ficbook. Please log in again."
+                            // — that's the case when the JWT is fine but there are no
+                            // ficbook session cookies stored, i.e. the user hasn't used
+                            // the ficbook login flow.
+                            message = detail.toLowerCase().includes('log in')
+                              ? 'Нужно войти в ficbook через нашу форму логина, чтобы скачивание работало от твоего имени.'
+                              : (detail || 'Скачивание недоступно (нужна авторизация или премиум на ficbook).')
+                          } else if (res.status === 429) {
+                            message = detail || 'Ficbook ограничил частоту скачиваний. Попробуй через 5–10 минут.'
+                          } else if (res.status === 404 || res.status === 502) {
+                            message = detail || 'Не удалось получить файл с ficbook. Возможно, формат недоступен для этой работы.'
+                          } else if (!message) {
+                            message = `Ошибка ${res.status}`
+                          }
+                          alert(message)
                           return
                         }
                         const blob = await res.blob()

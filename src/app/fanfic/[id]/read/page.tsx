@@ -1,9 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
+import { AnchorButton } from '@/components/reader/AnchorButton'
 import { Loader } from '@/components/ui/Loader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -11,6 +12,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 export default function SingleChapterReaderPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const useAnchor = searchParams.get('anchor') === '1'
   const [html, setHtml] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(true)
@@ -43,14 +46,23 @@ export default function SingleChapterReaderPage() {
   return (
     <div className="min-h-screen">
       {/* Top bar */}
-      <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
-        <button onClick={() => router.push(`/fanfic/${id}`)} className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-sm">
+      <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between gap-2">
+        <button onClick={() => router.push(`/fanfic/${id}`)} className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-sm min-w-0">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline truncate max-w-xs">{title}</span>
         </button>
-        <ReaderSettingsPanel />
+        <div className="flex items-center gap-2 shrink-0">
+          <AnchorButton fanficId={id} chapterId="single" chapterTitle={title} />
+          <ReaderSettingsPanel />
+        </div>
       </div>
-      <ReaderContent content={html || ''} progressKey={`${id}:single`} />
+      <ReaderContent
+        content={html || ''}
+        progressKey={`${id}:single`}
+        restoreFromAnchor={useAnchor}
+        anchorFanficId={id}
+        anchorChapterId="single"
+      />
     </div>
   )
 }

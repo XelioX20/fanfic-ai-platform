@@ -38,6 +38,20 @@ export const useAuthStore = create<AuthState>()(
 /** Reading-progress value shape. Legacy entries persist as a plain scrollY number. */
 export type ReadingProgressValue = number | { scrollY: number; updatedAt: number }
 
+/**
+ * A user-placed anchor — one per fanfic. Set explicitly by pressing the
+ * ⚓ button in the reader. Distinct from `readingProgress` which auto-tracks
+ * every scroll. Anchors are what the fanfic detail page's "Продолжить с
+ * последнего места" button uses.
+ */
+export interface ReadingAnchor {
+  fanficId: string
+  chapterId: string        // 'single' for single-chapter fics
+  scrollY: number
+  chapterTitle?: string    // for UX display only
+  updatedAt: number
+}
+
 interface ReaderState {
   settings: ReaderSettings
   updateSettings: (partial: Partial<ReaderSettings>) => void
@@ -47,6 +61,11 @@ interface ReaderState {
   // See extractRecentProgress in app/page.tsx — consumers must tolerate both value shapes.
   readingProgress: Record<string, ReadingProgressValue>
   setReadingProgress: (key: string, scrollY: number) => void
+  // One anchor per fanfic. Keyed by fanficId so setting a new anchor
+  // in chapter 5 overwrites an anchor from chapter 2 of the same fic.
+  anchors: Record<string, ReadingAnchor>
+  setAnchor: (anchor: ReadingAnchor) => void
+  clearAnchor: (fanficId: string) => void
 }
 
 export const useReaderStore = create<ReaderState>()(
@@ -74,6 +93,17 @@ export const useReaderStore = create<ReaderState>()(
           }
           next[key] = { scrollY, updatedAt: Date.now() }
           return { readingProgress: next }
+        }),
+      anchors: {},
+      setAnchor: (anchor) =>
+        set((state) => ({
+          anchors: { ...state.anchors, [anchor.fanficId]: { ...anchor, updatedAt: Date.now() } },
+        })),
+      clearAnchor: (fanficId) =>
+        set((state) => {
+          const next = { ...state.anchors }
+          delete next[fanficId]
+          return { anchors: next }
         }),
     }),
     { name: 'reader-store' }

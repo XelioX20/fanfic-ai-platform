@@ -4,6 +4,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronLeft, ChevronRight, List } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
+import { AnchorButton } from '@/components/reader/AnchorButton'
 import { Loader } from '@/components/ui/Loader'
 import { formatWordCount } from '@/lib/utils'
 
@@ -25,6 +26,7 @@ export default function ChapterReaderPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const allChapters = searchParams.get('all') || ''
+  const useAnchor = searchParams.get('anchor') === '1'
 
   const [chapter, setChapter] = useState<Chapter | null>(null)
   const [loading, setLoading] = useState(true)
@@ -96,6 +98,7 @@ export default function ChapterReaderPage() {
                 <List size={16} />
               </button>
             )}
+            <AnchorButton fanficId={id} chapterId={chapter_id} chapterTitle={chapter.title} />
             <ReaderSettingsPanel />
           </div>
         </div>
@@ -127,7 +130,14 @@ export default function ChapterReaderPage() {
       </div>
 
       {/* Content */}
-      <ReaderContent content={chapter.html} chapterTitle={chapter.title} progressKey={`${id}:${chapter_id}`} />
+      <ReaderContent
+        content={chapter.html}
+        chapterTitle={chapter.title}
+        progressKey={`${id}:${chapter_id}`}
+        restoreFromAnchor={useAnchor}
+        anchorFanficId={id}
+        anchorChapterId={chapter_id}
+      />
 
       {/* Bottom navigation */}
       <div className="border-t border-zinc-800 py-6 px-4">

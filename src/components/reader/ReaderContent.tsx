@@ -8,6 +8,14 @@ interface ReaderContentProps {
   content: string
   chapterTitle?: string
   progressKey?: string  // e.g. `${fanficId}:${chapterId}` — enables position save/restore
+  /**
+   * If provided AND the anchor matches this fanfic + chapter, restore scroll
+   * to the anchor's scrollY instead of the auto-tracked reading position.
+   * Set by reader pages when they detect a `?anchor=1` search param.
+   */
+  restoreFromAnchor?: boolean
+  anchorFanficId?: string
+  anchorChapterId?: string
 }
 
 function formatChapterHtml(html: string): string {
@@ -45,28 +53,43 @@ function formatChapterHtml(html: string): string {
   return result
 }
 
-export function ReaderContent({ content, chapterTitle, progressKey }: ReaderContentProps) {
-  const { settings, readingProgress, setReadingProgress } = useReaderStore()
+export function ReaderContent({ content, chapterTitle, progressKey, restoreFromAnchor, anchorFanficId, anchorChapterId }: ReaderContentProps) {
+  const { settings, readingProgress, setReadingProgress, anchors } = useReaderStore()
   const contentRef = useRef<HTMLDivElement>(null)
 
   const theme = settings.theme
   const processedContent = formatChapterHtml(content)
 
-  // Restore scroll position when chapter loads
+  // Restore scroll position when chapter loads.
+  //
+  // Priority order:
+  //   1. Anchor for this fanfic+chapter, if the caller asked for anchor restore
+  //      (i.e. user came in via "Продолжить с якоря" and the anchor targets
+  //      this exact chapter).
+  //   2. Otherwise, auto-tracked reading position.
+  //   3. Otherwise, top of chapter.
   useEffect(() => {
     if (!progressKey) return
+
+    const anchor = anchorFanficId ? anchors[anchorFanficId] : undefined
+    const anchorMatchesHere =
+      restoreFromAnchor && anchor && anchor.chapterId === anchorChapterId
+
+    if (anchorMatchesHere && anchor.scrollY > 0) {
+      const t = setTimeout(() => window.scrollTo({ top: anchor.scrollY, behavior: 'auto' }), 50)
+      return () => clearTimeout(t)
+    }
+
     const saved = readingProgress[progressKey]
     // Legacy entries are plain numbers; new ones are { scrollY, updatedAt }.
     const scrollY = typeof saved === 'number' ? saved : (saved?.scrollY ?? 0)
     if (scrollY > 100) {
-      // Wait a tick for content to render into DOM
       const t = setTimeout(() => window.scrollTo({ top: scrollY, behavior: 'auto' }), 50)
       return () => clearTimeout(t)
-    } else {
-      window.scrollTo(0, 0)
     }
+    window.scrollTo(0, 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progressKey])
+  }, [progressKey, restoreFromAnchor])
 
   // Save scroll position (throttled)
   useEffect(() => {
