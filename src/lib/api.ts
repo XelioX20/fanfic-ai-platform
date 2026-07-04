@@ -77,7 +77,13 @@ export const profileApi = {
   history: (page = 1) => api.get('/profile/history', { params: { page } }),
   liked: (page = 1) => api.get('/profile/liked', { params: { page } }),
   subscriptions: (page = 1) => api.get('/profile/subscriptions', { params: { page } }),
-  updateAvatar: (avatar_url: string) => api.put('/profile/avatar', { avatar_url }),
+  updateAvatar: (avatar_url: string) => api.put('/profile/avatar', { avatar_url }, {
+    // Base64 data URLs can be several hundred kB — give the Render free-tier
+    // backend 60s to wake up and process instead of the default 15s.
+    timeout: 60_000,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+  }),
   deleteAvatar: () => api.delete('/profile/avatar'),
 }
 

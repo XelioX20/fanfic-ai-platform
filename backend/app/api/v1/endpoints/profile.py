@@ -159,10 +159,10 @@ async def update_avatar(payload: AvatarPayload, user_id: str = Depends(_get_curr
     """
     url = payload.avatar_url.strip()
     if not (url.startswith("https://") or url.startswith("data:image/")):
-        raise HTTPException(status_code=422, detail="avatar_url must start with https:// or data:image/")
-    # Rough size guard for base64 blobs: a 200kB image is ~270kB base64
-    if url.startswith("data:") and len(url) > 400_000:
-        raise HTTPException(status_code=413, detail="Avatar too large — please resize to <200kB before uploading")
+        raise HTTPException(status_code=422, detail="Неверный формат. Нужен URL (https://) или base64 изображение.")
+    # 2MB image → ~2.7MB base64; reject oversized blobs
+    if url.startswith("data:") and len(url) > 3_000_000:
+        raise HTTPException(status_code=413, detail="Фото слишком большое — пожалуйста, сожми до 2 МБ.")
 
     async with AsyncSessionLocal() as db:
         repo = UserRepository(db)

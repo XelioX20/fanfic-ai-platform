@@ -675,8 +675,8 @@ function ProfileContent() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 512 * 1024) {
-      alert('Фото слишком большое — максимум 512 КБ. Пожалуйста, сожми изображение.')
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Фото слишком большое — максимум 2 МБ.')
       return
     }
     setAvatarUploading(true)
@@ -691,8 +691,13 @@ function ProfileContent() {
       // Refresh profile data to show the new avatar immediately
       const r = await profileApi.me()
       setProfileData(r.data)
-    } catch {
-      alert('Не удалось загрузить фото. Попробуй снова.')
+    } catch (err: unknown) {
+      const detail = (err as {response?: {data?: {detail?: string}}})?.response?.data?.detail
+      if (detail) {
+        alert(detail)
+      } else {
+        alert('Не удалось загрузить фото. Попробуй снова.')
+      }
     } finally {
       setAvatarUploading(false)
       e.target.value = ''
