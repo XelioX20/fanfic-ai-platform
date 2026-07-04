@@ -11,12 +11,16 @@ def _make_engine():
     if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+    is_sqlite = url.startswith("sqlite")
     kwargs = {
-        "pool_size": settings.DATABASE_POOL_SIZE,
-        "max_overflow": settings.DATABASE_MAX_OVERFLOW,
         "echo": settings.APP_ENV == "development",
-        "pool_pre_ping": True,
     }
+    # SQLite's aiosqlite driver uses StaticPool and rejects pool_size/max_overflow.
+    # Pool tuning is only meaningful for real network backends.
+    if not is_sqlite:
+        kwargs["pool_size"] = settings.DATABASE_POOL_SIZE
+        kwargs["max_overflow"] = settings.DATABASE_MAX_OVERFLOW
+        kwargs["pool_pre_ping"] = True
     # Pass SSL as a boolean via connect_args for asyncpg
     if "neon.tech" in url or settings.APP_ENV == "production":
         import ssl as ssl_module

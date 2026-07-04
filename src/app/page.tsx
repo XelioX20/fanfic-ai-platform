@@ -14,18 +14,15 @@ import { FooterActions } from '@/components/home/FooterActions'
 
 // ---------- fetchers ----------
 //
-// Home rails go through the Next.js API proxy at /api/ficbook/list which fronts
-// the Cloudflare Worker. The FastAPI backend does NOT expose /search/list,
-// /profile/*, /recommendations/for-me, or /fanfics/{id}/full — those endpoints
-// belong to a later milestone (see docs/ux-synthesis-2026-07-04.md). Until then
-// we serve the home page from public ficbook.net data, which needs no auth and
-// covers 90% of the value.
+// Public rails (trending / gems / beginner) fetch through the Next.js API
+// proxy at /api/ficbook/list which fronts the Cloudflare Worker — this avoids
+// spinning up the FastAPI cold-start on Render for cache-friendly data.
 //
-// The proxy accepts these path values:
-//   'popular-fanfics-376846'        — trending (default)
-//   'popular-fanfics-376846/het'    — het
-//   'popular-fanfics-376846/slash-fics-ngf3487tnsfb' — slash
-//   'popular-fanfics-376846/gen'    — gen
+// Auth-scoped calls (Continue Reading /full, /profile/*, /recommendations/*)
+// go through the FastAPI backend directly; those endpoints landed in the
+// backend milestone commit — see docs/ux-synthesis-2026-07-04.md.
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 const RAIL_PATH_TRENDING = 'popular-fanfics-376846'
 const RAIL_PATH_SLASH    = 'popular-fanfics-376846/slash-fics-ngf3487tnsfb'
@@ -36,6 +33,81 @@ async function fetchList(path: string): Promise<Fanfic[]> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
   return (data.items ?? []) as Fanfic[]
+}
+
+async function fetchAuthedList(pathname: string, token: string): Promise<Fanfic[]> {
+  const res = await fetch(`${API_URL}/api/v1${pathname}?page=1`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json()
+  return (data.items ?? []) as Fanfic[]
+}
+
+async function fetchForMe(token: string): Promise<Fanfic[]> {
+  const res = await fetch(`${API_URL}/api/v1/recommendations/for-me?page=1`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json()
+  const items = data.items ?? data.recommendations ?? []
+  return items as Fanfic[]
+}
+
+interface FullFic {
+  id: string
+  title: string
+  description?: string
+  authors?: Array<{ name: string; id: string }>
+  fandoms?: string[]
+  pairings?: Array<{ characters: string[]; is_highlight: boolean }>
+  tags?: Array<{ name: string; is_adult: boolean }>
+  direction?: string
+  rating?: string
+  completion_status?: string
+  likes?: number
+  trophies?: number
+  words_count?: number
+  comments_count?: number
+  cover_url?: string | null
+  ficbook_url?: string
+  is_hot?: boolean
+  chapters?: Array<{ id: string; title: string; date: string; words_count: number }>
+  is_single_chapter?: boolean
+}
+
+async function fetchFanficFull(id: string): Promise<(Fanfic & FullFic) | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/fanfics/${id}/full`)
+    if (!res.ok) return null
+    const data = (await res.json()) as FullFic
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description ?? '',
+      author_name: data.authors?.[0]?.name ?? '',
+      author_id: data.authors?.[0]?.id ?? '',
+      fandoms: data.fandoms ?? [],
+      pairings: data.pairings ?? [],
+      tags: data.tags ?? [],
+      direction: data.direction ?? '',
+      rating: data.rating ?? '',
+      completion_status: data.completion_status ?? '',
+      likes: data.likes ?? 0,
+      trophies: data.trophies ?? 0,
+      words_count: data.words_count ?? 0,
+      chapters_count: data.chapters?.length ?? 0,
+      comments_count: data.comments_count ?? 0,
+      cover_url: data.cover_url ?? undefined,
+      ficbook_url: data.ficbook_url ?? '',
+      is_hot: data.is_hot ?? false,
+      // extra fields consumed below for chapter-meta derivation
+      chapters: data.chapters,
+      is_single_chapter: data.is_single_chapter,
+    } as Fanfic & FullFic
+  } catch {
+    return null
+  }
 }
 
 // ---------- helpers ----------
@@ -113,11 +185,14 @@ export default function HomePage() {
   )
   const primaryEntry = recentEntries[0] ?? null
 
-  // -------- Continue Reading --------
-  // We don't have a /fanfics/{id}/full endpoint on the backend yet, so the hero
-  // only shows what we can derive from the reader store (the fanficId + chapter).
-  // The card component tolerates a null fanfic and renders a lean resume CTA.
-  const primaryFic: Fanfic | null = null
+  // -------- Continue Reading: fetch primary fanfic --------
+  const primaryFicQuery = useQuery({
+    queryKey: ['fanfic-full', primaryEntry?.fanficId],
+    queryFn: () => fetchFanficFull(primaryEntry!.fanficId),
+    enabled: !!primaryEntry,
+    staleTime: 60 * 1000,
+    retry: 1,
+  })
 
   // -------- Public rails (always, cache-friendly) --------
   const trendingQuery = useQuery({
@@ -132,10 +207,8 @@ export default function HomePage() {
     queryFn: () => fetchList(RAIL_PATH_SLASH),
     staleTime: 5 * 60 * 1000,
     retry: 1,
-    // reuse "slash" list as source pool; we sort client-side for high-like/low-view
     select: (items) => {
       const sorted = [...items].sort((a, b) => {
-        // High likes-per-word (proxy for "high like ratio")
         const aRatio = a.likes / Math.max(1, a.words_count / 1000)
         const bRatio = b.likes / Math.max(1, b.words_count / 1000)
         return bRatio - aRatio
@@ -152,17 +225,39 @@ export default function HomePage() {
     enabled: isGuest,
   })
 
+  // -------- Authed rails --------
+  const subsQuery = useQuery({
+    queryKey: ['home-rail', 'subscriptions'],
+    queryFn: () => fetchAuthedList('/profile/subscriptions', accessToken!),
+    enabled: isAuthed,
+    staleTime: 60 * 1000,
+    retry: 0,
+  })
+
+  const forMeQuery = useQuery({
+    queryKey: ['home-rail', 'for-me'],
+    queryFn: () => fetchForMe(accessToken!),
+    enabled: isAuthed,
+    staleTime: 2 * 60 * 1000,
+    retry: 1,
+  })
+
   // -------- Derived: continue-reading chapter meta --------
-  // Without /full we can only surface the raw chapter id — no chapter title or
-  // total-count until the endpoint lands. Percent is a rough heuristic based on
-  // scrollY only; a real percent needs scrollHeight persisted alongside.
   const chapterMeta = useMemo(() => {
-    if (!primaryEntry) return { title: undefined, index: undefined, total: undefined }
-    if (primaryEntry.chapterId === 'single') {
-      return { title: undefined, index: 1, total: 1 }
+    const fic = primaryFicQuery.data
+    if (!fic || !primaryEntry) return { title: undefined, index: undefined, total: undefined }
+    const chapters = fic.chapters ?? []
+    const total = chapters.length
+    if (primaryEntry.chapterId === 'single' || fic.is_single_chapter) {
+      return { title: undefined, index: 1, total: total || 1 }
     }
-    return { title: undefined, index: undefined, total: undefined }
-  }, [primaryEntry])
+    const idx = chapters.findIndex((c) => c.id === primaryEntry.chapterId)
+    return {
+      title: idx >= 0 ? chapters[idx].title : undefined,
+      index: idx >= 0 ? idx + 1 : undefined,
+      total: total || undefined,
+    }
+  }, [primaryFicQuery.data, primaryEntry])
 
   // Heuristic progress percent — scrollY / 12000 clamped to 100.
   // Without measuring chapter height client-side, this is intentionally rough.
@@ -182,8 +277,8 @@ export default function HomePage() {
         ) : isAuthed && primaryEntry ? (
           <ContinueReadingHero
             entry={primaryEntry}
-            fanfic={primaryFic}
-            loading={false}
+            fanfic={primaryFicQuery.data ?? null}
+            loading={primaryFicQuery.isLoading}
             percent={percent}
             chapterTitle={chapterMeta.title}
             chapterIndex={chapterMeta.index}
@@ -203,7 +298,19 @@ export default function HomePage() {
         {/* 3 — Mood Grid (always visible) */}
         <MoodGrid />
 
-        {/* 4 — Trending (always) */}
+        {/* 4 — Subscriptions rail (auth only) */}
+        {isAuthed && (
+          <FanficRail
+            title="Новое от подписок"
+            subtitle="Свежие главы от авторов, за которыми вы следите"
+            fanfics={subsQuery.data ?? []}
+            loading={subsQuery.isLoading}
+            error={subsQuery.isError}
+            seeAllHref="/profile?tab=subscriptions"
+          />
+        )}
+
+        {/* 5 — Trending (always) */}
         <FanficRail
           title="🔥 Горячее сегодня"
           subtitle="Что читают прямо сейчас"
@@ -214,8 +321,17 @@ export default function HomePage() {
           emptyLabel="Пусто — попробуйте обновить страницу."
         />
 
-        {/* 5 — Beginner rail for guests */}
-        {isGuest && (
+        {/* 6 — For you (auth) OR beginner rail (guests) */}
+        {isAuthed ? (
+          <FanficRail
+            title="✨ Для вас"
+            subtitle="Подобрано на основе ваших лайков и истории"
+            fanfics={forMeQuery.data ?? []}
+            loading={forMeQuery.isLoading}
+            error={forMeQuery.isError}
+            emptyLabel="Читайте и лайкайте — рекомендации появятся здесь."
+          />
+        ) : (
           <FanficRail
             title="👋 С чего начать"
             subtitle="Хорошие входные точки, если вы здесь впервые"
@@ -226,17 +342,17 @@ export default function HomePage() {
           />
         )}
 
-        {/* 6 — Editorial: Hidden gems */}
+        {/* 7 — Editorial: Hidden gems */}
         <EditorialCollection
           title="Скрытые жемчужины"
           fanfics={gemsQuery.data ?? []}
           loading={gemsQuery.isLoading}
         />
 
-        {/* 7 — Fandom shortcuts */}
+        {/* 8 — Fandom shortcuts */}
         <FandomStrip />
 
-        {/* 8 — Footer nudge */}
+        {/* 9 — Footer nudge */}
         <FooterActions isGuest={isGuest} />
       </div>
     </main>

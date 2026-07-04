@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import bcrypt
 import jwt
-from passlib.context import CryptContext
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _prep(pw: str) -> bytes:
+    # bcrypt caps at 72 bytes; trim explicitly so bcrypt>=5 doesn't raise.
+    return pw.encode("utf-8")[:72]
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
@@ -24,8 +27,13 @@ def verify_token(token: str) -> Optional[str]:
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    """Hash `password` with bcrypt. Returns the standard `$2b$…` string."""
+    hashed = bcrypt.hashpw(_prep(password), bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(_prep(plain), hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False

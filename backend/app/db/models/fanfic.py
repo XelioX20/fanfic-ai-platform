@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Text, Integer, Float, Boolean, DateTime, ARRAY, JSON
+from sqlalchemy import String, Text, Integer, Float, Boolean, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.session import Base
 
@@ -14,7 +14,9 @@ class Fanfic(Base):
     description: Mapped[Optional[str]] = mapped_column(Text)
     author_name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     author_id: Mapped[Optional[str]] = mapped_column(String(50), index=True)
-    fandoms: Mapped[list] = mapped_column(ARRAY(String(200)), default=[])
+    # JSON not ARRAY so the model works against both Postgres (prod) and SQLite
+    # (tests). We don't rely on Postgres array-operators anywhere in the codebase.
+    fandoms: Mapped[list] = mapped_column(JSON, default=[])
     pairings: Mapped[list] = mapped_column(JSON, default=[])
     tags: Mapped[list] = mapped_column(JSON, default=[])
     direction: Mapped[str] = mapped_column(String(50), default="Неизвестно", index=True)
