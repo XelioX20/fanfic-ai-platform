@@ -1,58 +1,90 @@
 'use client'
 import { useMemo } from 'react'
 import styles from './loaders.module.css'
+import { useUIStore } from '@/store'
 import { CauldronLoader } from './loaders/CauldronLoader'
 import { Book3dLoader } from './loaders/Book3dLoader'
+import { CatLoader } from './loaders/CatLoader'
+import { HandLoader } from './loaders/HandLoader'
+import { HamsterLoader } from './loaders/HamsterLoader'
+import { BeesLoader } from './loaders/BeesLoader'
+import { ButterflyLoader } from './loaders/ButterflyLoader'
 
-// Two kinds of loaders:
-// 1. Simple: single-element CSS in loaders.module.css — added by name in SIMPLE_LOADERS
-// 2. Complex: multi-element JSX components — added to COMPLEX_LOADERS
-const SIMPLE_LOADERS = [
-  'hourglass', 'eyes', 'book', 'face', 'pan',
-  'gear', 'stickball', 'treadmill', 'eightbit', 'elevator',
-  'rings', 'pawprints', 'duck',
-] as const
+type Theme = 'light' | 'dark' | 'amoled'
+const ALL_THEMES: Theme[] = ['light', 'dark', 'amoled']
 
-const COMPLEX_LOADERS = ['cauldron', 'book3d'] as const
+// Each loader entry: name, optional themes allow-list (default = all themes).
+// Set `themes` when the loader looks bad in some themes (e.g. cat is ink-on-white).
+type LoaderEntry =
+  | { kind: 'simple'; name: string; themes?: Theme[] }
+  | { kind: 'complex'; name: string; Component: React.ComponentType; themes?: Theme[] }
 
-type SimpleName = typeof SIMPLE_LOADERS[number]
-type ComplexName = typeof COMPLEX_LOADERS[number]
-type LoaderName = SimpleName | ComplexName
+const REGISTRY: LoaderEntry[] = [
+  // Simple (CSS in loaders.module.css)
+  { kind: 'simple', name: 'hourglass' },
+  { kind: 'simple', name: 'eyes' },
+  { kind: 'simple', name: 'book' },
+  { kind: 'simple', name: 'face' },
+  { kind: 'simple', name: 'pan' },
+  { kind: 'simple', name: 'gear' },
+  { kind: 'simple', name: 'stickball' },
+  { kind: 'simple', name: 'treadmill' },
+  { kind: 'simple', name: 'eightbit' },
+  { kind: 'simple', name: 'elevator' },
+  { kind: 'simple', name: 'rings' },
+  { kind: 'simple', name: 'pawprints' },
+  { kind: 'simple', name: 'duck' },
 
-const ALL_LOADERS: LoaderName[] = [...SIMPLE_LOADERS, ...COMPLEX_LOADERS]
+  // Complex (multi-element JSX)
+  { kind: 'complex', name: 'cauldron', Component: CauldronLoader },
+  { kind: 'complex', name: 'book3d',   Component: Book3dLoader },
+  { kind: 'complex', name: 'hand',     Component: HandLoader },
+  { kind: 'complex', name: 'hamster',  Component: HamsterLoader },
+  { kind: 'complex', name: 'bees',     Component: BeesLoader },
+  { kind: 'complex', name: 'butterfly',Component: ButterflyLoader },
+  // Light-theme-only: ink-on-white, illegible on dark backgrounds.
+  { kind: 'complex', name: 'cat',      Component: CatLoader, themes: ['light'] },
+]
 
-const COMPLEX_COMPONENTS: Record<ComplexName, React.ComponentType> = {
-  cauldron: CauldronLoader,
-  book3d: Book3dLoader,
+function isAllowed(entry: LoaderEntry, theme: Theme) {
+  return !entry.themes || entry.themes.includes(theme)
+}
+
+export function pickLoadersForTheme(theme: Theme): LoaderEntry[] {
+  return REGISTRY.filter(e => isAllowed(e, theme))
 }
 
 interface LoaderProps {
   /** Optional caption shown below the loader */
   label?: string
   /** Pin to a specific loader for testing/deterministic use */
-  variant?: LoaderName
+  variant?: string
   /** Extra className on the outer wrapper */
   className?: string
 }
 
 /**
  * Big screen-filling loader used while a page fetches its initial data.
- * Picks a random loader from the registry each mount unless `variant` is set.
+ * Picks a random loader from the registry each mount, filtered by current site theme.
  */
 export function Loader({ label, variant, className }: LoaderProps) {
-  const name = useMemo<LoaderName>(() => {
-    if (variant) return variant
-    return ALL_LOADERS[Math.floor(Math.random() * ALL_LOADERS.length)]
-  }, [variant])
+  const theme = useUIStore(s => (ALL_THEMES.includes(s.theme as Theme) ? (s.theme as Theme) : 'dark'))
 
-  const isComplex = (COMPLEX_LOADERS as readonly string[]).includes(name)
-  const ComplexComp = isComplex ? COMPLEX_COMPONENTS[name as ComplexName] : null
+  const entry = useMemo<LoaderEntry>(() => {
+    if (variant) {
+      const found = REGISTRY.find(e => e.name === variant)
+      if (found) return found
+    }
+    const pool = pickLoadersForTheme(theme)
+    return pool[Math.floor(Math.random() * pool.length)]
+    // theme is intentionally part of deps — flipping theme should re-pick a suitable loader
+  }, [variant, theme])
 
   return (
     <div className={`flex flex-col items-center justify-center gap-4 py-16 ${className ?? ''}`}>
-      {ComplexComp
-        ? <ComplexComp />
-        : <div className={styles[name as SimpleName]} aria-label={label ?? 'Загрузка'} role="status" />
+      {entry.kind === 'complex'
+        ? <entry.Component />
+        : <div className={styles[entry.name]} aria-label={label ?? 'Загрузка'} role="status" />
       }
       {label && (
         <p className="text-sm text-zinc-500 text-center">{label}</p>

@@ -1,0 +1,43 @@
+.loader {
+  --sizeLoader: 60px;
+  --sizeLoaderHalf: calc(var(--sizeLoader) / 2);
+  --stepBtf: calc(var(--sizeLoader) / 10);
+  display: flex;
+  position: relative;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: var(--sizeLoader);
+  height: var(--sizeLoader);
+  background: radial-gradient(currentColor 0%, transparent 30%);
+  color: currentColor;
+  right: var(--sizeLoaderHalf);
+  transform-origin: center right;
+  animation: butterfly_moveAround 2s linear infinite;
+}
+.loader > :global(svg):nth-child(1) {
+  position: relative;
+  height: 100%;
+  left: 2%;
+  transform-origin: center right;
+  animation: butterfly_wing 0.2s ease-in-out infinite;
+}
+.loader > :global(svg):nth-child(2) {
+  height: 50%;
+}
+.loader > :global(svg):nth-child(3) {
+  position: relative;
+  height: 100%;
+  left: -2%;
+  transform-origin: center left;
+  animation: butterfly_wing 0.25s ease-in-out infinite;
+}
+@keyframes butterfly_wing {
+  0%   { transform: rotateY(0deg); }
+  50%  { transform: rotateY(60deg); }
+  100% { transform: rotateY(0deg); }
+}
+@keyframes butterfly_moveAround {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
