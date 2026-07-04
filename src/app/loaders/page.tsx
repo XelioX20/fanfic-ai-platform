@@ -84,7 +84,7 @@ export default function LoadersPage() {
           return (
             <div
               key={entry.name}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col items-stretch gap-3 hover:border-zinc-600 transition-colors"
+              className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col items-stretch gap-3 hover:border-zinc-600 transition-colors h-full"
             >
               {/* Top row: on/off switch (left) + theme-restriction badge (right) + index */}
               <div className="flex items-center justify-between gap-2">
@@ -115,15 +115,15 @@ export default function LoadersPage() {
                 </div>
               </div>
 
-              {/* Loader preview */}
-              <div className="flex items-center justify-center min-h-[100px] w-full overflow-hidden">
+              {/* Loader preview — takes all leftover vertical space so tabs pin to bottom */}
+              <div className="flex items-center justify-center min-h-[100px] flex-1 w-full overflow-hidden">
                 {renderLoader(entry)}
               </div>
 
               <p className="text-zinc-300 text-xs font-mono text-center">{entry.name}</p>
 
-              {/* Scope tabs — All / Light / Dark */}
-              <div className={ctl.tabs} data-selected={selectedIndex} aria-disabled={on ? 'false' : 'true'}>
+              {/* Scope tabs — All / Light / Dark (always pinned to bottom of card) */}
+              <div className={`${ctl.tabs} mt-auto`} data-selected={selectedIndex} aria-disabled={on ? 'false' : 'true'}>
                 {SCOPE_OPTIONS.map((opt, idx) => {
                   const conflict = scopeConflicts(opt.value, forcedThemes)
                   const inputId = `scope-${entry.name}-${opt.value}`
