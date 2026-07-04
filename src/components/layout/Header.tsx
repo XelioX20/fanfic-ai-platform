@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import { BookOpen, User, LogOut, ChevronDown, Heart, Clock, Users, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/store'
@@ -159,6 +159,7 @@ function OpenByLinkModal({ onClose }: { onClose: () => void }) {
 
 export function Header() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, accessToken, clearAuth } = useAuthStore()
   const [menuOpen, setMenuOpen] = useState(false)
   const [linkModalOpen, setLinkModalOpen] = useState(false)
@@ -169,6 +170,17 @@ export function Header() {
     setMenuOpen(false)
     router.push('/')
   }
+
+  // Hide the global header in reader routes — they have their own
+  // in-page top bar (chapter title, chapter list, reader settings) which
+  // is what users expect to see there. Site search + profile chip live
+  // above and are reachable from every other route.
+  //
+  // Paths that count as "reader":
+  //   /fanfic/{id}/read              (single-chapter)
+  //   /fanfic/{id}/read/{chapter_id} (multi-chapter)
+  const isReader = /^\/fanfic\/[^/]+\/read(\/|$)/.test(pathname ?? '')
+  if (isReader) return null
 
   return (
     <>
