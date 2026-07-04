@@ -5,6 +5,7 @@
   display: inline-block;
   width: 4.5em;
   height: 2em;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -116,8 +117,10 @@
   box-shadow:
     0 0 1px 0 rgba(24, 94, 224, 0.15),
     0 6px 12px 0 rgba(24, 94, 224, 0.15);
-  padding: 0.4rem;
+  padding: 4px;
   border-radius: 99px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tabs * {
@@ -129,11 +132,12 @@
 }
 
 .tab {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 26px;
-  min-width: 46px;
   padding: 0 0.5rem;
   font-size: 0.72rem;
   color: black;
@@ -152,18 +156,19 @@
   color: #185ee0;
 }
 
-/* Glider position keyed off the checked radio index via data-selected on parent */
+/* Glider tracks the checked radio: width = 1/3 of the tabs content-box.
+   Base position is 4px inset (matches tabs padding). */
 .glider {
   position: absolute;
-  display: flex;
   height: 26px;
-  width: calc(33.333% - 0.267rem);
-  top: 0.4rem;
-  left: 0.4rem;
+  width: calc((100% - 8px) / 3);
+  top: 4px;
+  left: 4px;
   background-color: #e6eef9;
   z-index: 1;
   border-radius: 99px;
-  transition: 0.25s ease-out;
+  transition: transform 0.25s ease-out;
+  pointer-events: none;
 }
 
 .tabs[data-selected='0'] .glider { transform: translateX(0%); }
