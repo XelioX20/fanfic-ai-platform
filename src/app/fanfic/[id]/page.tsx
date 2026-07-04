@@ -115,6 +115,12 @@ export default function FanficPage() {
   const router = useRouter()
   const { accessToken } = useAuthStore()
   const recordHistory = useReaderStore(s => s.recordHistory)
+  // Anchor selector must be at top-level of the component (Rules of Hooks) —
+  // NOT after any early return below. React error #310 fires the moment a
+  // hook count differs between renders. See fanfic detail page load = 2
+  // renders: (1) loading=true → early return, (2) fanfic loaded → falls
+  // through to the full body. Every hook has to be called in both.
+  const anchor = useReaderStore(s => (s.anchors ?? {})[id ?? ''])
   const [fanfic, setFanfic] = useState<FanficFull | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -272,7 +278,9 @@ export default function FanficPage() {
   // Anchor for this fanfic. If set, we surface a "Продолжить с якоря" CTA
   // next to "Читать" that jumps straight to the anchor's chapter with a
   // ?anchor=1 query so ReaderContent knows to restore to anchor.scrollY.
-  const anchor = useReaderStore(s => (s.anchors ?? {})[id])
+  // NOTE: the underlying useReaderStore selector is called at the top of the
+  // component — we only compute derived values here so subsequent early
+  // returns don't shift hook order.
   const anchorHref = (() => {
     if (!anchor) return null
     if (anchor.chapterId === 'single' || fanfic.is_single_chapter) {
