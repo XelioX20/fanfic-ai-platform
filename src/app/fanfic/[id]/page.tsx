@@ -255,14 +255,21 @@ export default function FanficPage() {
         body: JSON.stringify({ fanfic_id: id }),
       })
       if (!resp.ok) {
-        // Roll back the action-bar state on HTTP error, but KEEP the local
-        // bookmark change — the local bookmark works regardless of whether
-        // the ficbook mirror succeeded. 403 here = no ficbook cookies, and
-        // that's OK: the user's local favourites are still stored.
-        setActState(prev)
-        actionCache.set(id, prev)
         const err = await resp.json().catch(() => ({ detail: '' }))
         const detail = (err.detail || '').toString()
+        // For like/unlike specifically: local bookmark IS the source of truth
+        // for the "В избранное" button. It was already toggled synchronously
+        // above and it survives across sessions / devices via /profile/bookmarks.
+        // The ficbook AJAX mirror (500s, 502s from Render cold-starts, etc.)
+        // is best-effort — do NOT roll the button back or the user sees the
+        // "green" state flicker back to "grey" 1-2 seconds after clicking.
+        // Only roll back for the other actions (read/follow) which have no
+        // local mirror.
+        const isBookmarkAction = action === 'like' || action === 'unlike'
+        if (!isBookmarkAction) {
+          setActState(prev)
+          actionCache.set(id, prev)
+        }
         if (resp.status === 403) {
           alert(
             detail.toLowerCase().includes('log in')
@@ -272,18 +279,22 @@ export default function FanficPage() {
         } else if (resp.status === 429) {
           alert(detail || 'Ficbook ограничил частоту запросов. Попробуй через минуту.')
         }
-        // 5xx / other: keep optimistic state (best-effort). Ficbook AJAX is
-        // notoriously flaky; forcing rollback on every network hiccup annoys
-        // users more than an occasional lag.
+        // 5xx / other: keep optimistic state for bookmark; local storage
+        // + /profile/bookmarks sync already handled the user's request.
       }
       // We intentionally do NOT read `data.success` — ficbook's /ajax/mark
       // returns result:false when the fic is already in the target state
       // (e.g. liking something that's already liked). Trusting the HTTP
       // status is enough; the optimistic flip stays.
     } catch {
-      // Network failure — roll back.
-      setActState(prev)
-      actionCache.set(id, prev)
+      // Network failure — same reasoning as above: keep the optimistic
+      // state for bookmarks (local storage already updated), only roll
+      // back for actions with no local mirror.
+      const isBookmarkAction = action === 'like' || action === 'unlike'
+      if (!isBookmarkAction) {
+        setActState(prev)
+        actionCache.set(id, prev)
+      }
     }
     setActLoading(null)
   }
