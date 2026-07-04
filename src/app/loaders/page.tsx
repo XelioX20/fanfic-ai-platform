@@ -1,5 +1,6 @@
 'use client'
 import { CauldronLoader } from '@/components/ui/loaders/CauldronLoader'
+import { Book3dLoader } from '@/components/ui/loaders/Book3dLoader'
 import styles from '@/components/ui/loaders.module.css'
 
 const SIMPLE: string[] = [
@@ -11,6 +12,7 @@ const SIMPLE: string[] = [
 type ComplexEntry = { name: string; Component: React.ComponentType }
 const COMPLEX: ComplexEntry[] = [
   { name: 'cauldron', Component: CauldronLoader },
+  { name: 'book3d', Component: Book3dLoader },
 ]
 
 export default function LoadersPage() {

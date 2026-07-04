@@ -2,6 +2,7 @@
 import { useMemo } from 'react'
 import styles from './loaders.module.css'
 import { CauldronLoader } from './loaders/CauldronLoader'
+import { Book3dLoader } from './loaders/Book3dLoader'
 
 // Two kinds of loaders:
 // 1. Simple: single-element CSS in loaders.module.css — added by name in SIMPLE_LOADERS
@@ -12,7 +13,7 @@ const SIMPLE_LOADERS = [
   'rings', 'pawprints', 'duck',
 ] as const
 
-const COMPLEX_LOADERS = ['cauldron'] as const
+const COMPLEX_LOADERS = ['cauldron', 'book3d'] as const
 
 type SimpleName = typeof SIMPLE_LOADERS[number]
 type ComplexName = typeof COMPLEX_LOADERS[number]
@@ -22,6 +23,7 @@ const ALL_LOADERS: LoaderName[] = [...SIMPLE_LOADERS, ...COMPLEX_LOADERS]
 
 const COMPLEX_COMPONENTS: Record<ComplexName, React.ComponentType> = {
   cauldron: CauldronLoader,
+  book3d: Book3dLoader,
 }
 
 interface LoaderProps {
