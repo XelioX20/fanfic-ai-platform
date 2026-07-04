@@ -7,12 +7,9 @@ import { CauldronLoader } from './loaders/CauldronLoader'
 // 1. Simple: single-element CSS in loaders.module.css — added by name in SIMPLE_LOADERS
 // 2. Complex: multi-element JSX components — added to COMPLEX_LOADERS
 const SIMPLE_LOADERS = [
-  'hourglass', 'planet', 'orbit', 'disc', 'pearl',
-  'pong', 'tulip', 'bouncer', 'eyes', 'balance',
-  'magnifier', 'pendulum', 'drop', 'book', 'face',
-  'pan', 'bars', 'gear', 'stickball', 'treadmill',
-  'diamond', 'ripple', 'eightbit', 'elevator', 'rings',
-  'pawprints', 'duck',
+  'hourglass', 'eyes', 'book', 'face', 'pan',
+  'gear', 'stickball', 'treadmill', 'eightbit', 'elevator',
+  'rings', 'pawprints', 'duck',
 ] as const
 
 const COMPLEX_LOADERS = ['cauldron'] as const

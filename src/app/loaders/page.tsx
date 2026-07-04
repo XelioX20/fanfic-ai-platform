@@ -3,12 +3,9 @@ import { CauldronLoader } from '@/components/ui/loaders/CauldronLoader'
 import styles from '@/components/ui/loaders.module.css'
 
 const SIMPLE: string[] = [
-  'hourglass', 'planet', 'orbit', 'disc', 'pearl',
-  'pong', 'tulip', 'bouncer', 'eyes', 'balance',
-  'magnifier', 'pendulum', 'drop', 'book', 'face',
-  'pan', 'bars', 'gear', 'stickball', 'treadmill',
-  'diamond', 'ripple', 'eightbit', 'elevator', 'rings',
-  'pawprints', 'duck',
+  'hourglass', 'eyes', 'book', 'face', 'pan',
+  'gear', 'stickball', 'treadmill', 'eightbit', 'elevator',
+  'rings', 'pawprints', 'duck',
 ]
 
 type ComplexEntry = { name: string; Component: React.ComponentType }
