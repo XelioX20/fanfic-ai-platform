@@ -80,7 +80,22 @@ class FanficPageParser:
         return safe_text(el)
 
     def _parse_cover(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract the fic's own cover — never fall back to unrelated images.
+
+        Ficbook renders a block of "similar" and "author's other fics" on
+        every fanfic page, each with a cover thumbnail from fanfic-covers/.
+        A naive `img[src*=fanfic-covers]` selector picks the FIRST such
+        image in DOM order, which is often a recommended fic rather than
+        the one we're viewing — that's why some fics on our site show a
+        random rotating cover while ficbook itself shows no cover for
+        the same fic.
+
+        Rule: only look inside the fanfic's own hat/main sections. If the
+        fic has no cover there, return None and let the UI show the
+        cover-less layout.
+        """
         # Preferred (2025 layout): <fanfic-cover src-original="..." src-desktop="..." src-mobile="..."/>
+        # This custom element only exists on fics with an uploaded cover.
         vue_cover = soup.select_one("fanfic-cover")
         if vue_cover:
             # Original is the raw uploaded image with natural aspect ratio — best for our layout
@@ -90,13 +105,20 @@ class FanficPageParser:
             if src:
                 return src if src.startswith("http") else absolute_url(src)
 
-        # Fallbacks for older layouts
-        img = (soup.select_one("picture.fanfic-hat-cover-picture img")
-               or soup.select_one("img.fanfic-main-cover")
-               or soup.select_one("img[src*=fanfic-covers]"))
-        if img:
-            src = img.get("src") or img.get("data-src", "")
-            return src if src.startswith("http") else absolute_url(src)
+        # Fallbacks for older layouts — restrict to the fic's own header block
+        # so we can never accidentally pick a "similar fics" thumbnail.
+        for scope_sel in ("section.fanfic-hat", "div.fanfic-hat-body",
+                           "div.fanfic-main-info", "article.fanfic"):
+            scope = soup.select_one(scope_sel)
+            if not scope:
+                continue
+            img = (scope.select_one("picture.fanfic-hat-cover-picture img")
+                   or scope.select_one("img.fanfic-main-cover")
+                   or scope.select_one("img[src*='fanfic-covers']"))
+            if img:
+                src = img.get("src") or img.get("data-src", "")
+                if src:
+                    return src if src.startswith("http") else absolute_url(src)
         return None
 
     def _parse_authors(self, soup: BeautifulSoup) -> list[FanficAuthorModel]:
