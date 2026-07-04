@@ -678,13 +678,7 @@ function ProfileContent() {
       return
     }
     setAvatarUploading(true)
-    // eslint-disable-next-line no-console
-    console.log('[avatar] starting upload', { name: file.name, size: file.size, type: file.type })
     try {
-      // Multipart upload — backend down-scales the image and either stores
-      // it on Cloudflare R2 (production) or falls back to a base64 data-URL
-      // in the DB (development). Uses fetch directly to sidestep the axios
-      // 401 interceptor that redirects to /login.
       const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const form = new FormData()
@@ -699,35 +693,27 @@ function ProfileContent() {
           signal: AbortSignal.timeout(60_000),
         })
       } catch (netErr: unknown) {
-        // eslint-disable-next-line no-console
-        console.error('[avatar] fetch failed (network layer)', netErr)
         const msg = netErr instanceof Error ? netErr.message : String(netErr)
-        alert(`Сетевая ошибка при загрузке: ${msg}. Проверь соединение.`)
+        alert(`Сетевая ошибка: ${msg}`)
         return
       }
 
-      // eslint-disable-next-line no-console
-      console.log('[avatar] response', res.status, res.statusText)
-
-      // Read body as text first so we can log it even if JSON parsing fails.
       const rawBody = await res.text()
-      // eslint-disable-next-line no-console
-      console.log('[avatar] body', rawBody.slice(0, 500))
-
       let data: { detail?: string; avatar_url?: string } = {}
       try { data = rawBody ? JSON.parse(rawBody) : {} } catch { /* not JSON */ }
 
       if (!res.ok) {
         const detail = data?.detail || rawBody?.slice(0, 200) || ''
-        alert(`Ошибка ${res.status}: ${detail || 'без описания'}`)
+        if (res.status === 401) alert('Сессия истекла — войди снова.')
+        else if (res.status === 413) alert('Фото слишком большое — выбери файл меньше 2 МБ.')
+        else if (res.status === 422) alert(detail || 'Не удалось обработать изображение.')
+        else if (res.status === 502) alert(detail || 'Хранилище недоступно — попробуй позже.')
+        else alert(`Ошибка ${res.status}: ${detail || 'попробуй снова'}`)
         return
       }
-      // Refresh profile data so the new avatar appears immediately.
       const r = await profileApi.me()
       setProfileData(r.data)
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[avatar] unexpected error', err)
       const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
       alert(`Не удалось загрузить фото. ${msg}`)
     } finally {
