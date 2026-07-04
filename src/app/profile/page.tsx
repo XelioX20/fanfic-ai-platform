@@ -422,9 +422,8 @@ function ContinueReadingTab() {
                 }}
                 title="Убрать якорь"
                 className={cn(
-                  'absolute top-2 right-2 p-1.5 rounded-md transition-all',
-                  'bg-white/10 text-white/70',
-                  'hover:text-red-300 hover:bg-red-900/50',
+                  'absolute top-2 right-2 p-1.5 transition-all text-red-400',
+                  'hover:text-red-300',
                 )}
               >
                 <X size={16} />
