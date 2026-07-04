@@ -120,7 +120,16 @@ async def get_fanfic_full(fanfic_id: str):
         trophies=page.trophies,
         comments_count=page.comments_count,
         is_hot=page.status.is_hot,
-        authors=[{"name": a.user.name, "id": a.user.id, "href": a.user.href, "role": a.role} for a in page.authors],
+        authors=[
+            {
+                "name": a.user.name,
+                "id": a.user.id,
+                "href": a.user.href,
+                "role": a.role,
+                "avatar_url": a.user.avatar_url,
+            }
+            for a in page.authors
+        ],
         fandoms=page.fandoms,
         pairings=[{"characters": p.characters, "is_highlight": p.is_highlight} for p in page.pairings],
         tags=[{"name": t.name, "is_adult": t.is_adult} for t in page.tags],

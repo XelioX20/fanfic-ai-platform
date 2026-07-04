@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked, Anchor,
-  Bell, BellOff, FolderPlus, Download, Loader2, Flame, ChevronDown, ChevronUp,
+  Download, Loader2, Flame, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { useAuthStore, useReaderStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
@@ -33,7 +33,7 @@ interface FanficFull {
   trophies: number
   comments_count: number
   is_hot: boolean
-  authors: Array<{ name: string; id: string; href: string; role: string }>
+  authors: Array<{ name: string; id: string; href: string; role: string; avatar_url?: string | null }>
   fandoms: string[]
   pairings: Array<{ characters: string[]; is_highlight: boolean }>
   tags: Array<{ name: string; is_adult: boolean }>
@@ -307,8 +307,6 @@ export default function FanficPage() {
     )
   }
 
-  const ficbookUrl = `https://ficbook.net/readfic/${id}`
-  const ficbookCommentsUrl = `${ficbookUrl}/comments#comments-list`
   const chapterIds = fanfic.chapters.map(c => c.id).join(',')
   const readHref = fanfic.is_single_chapter
     ? `/fanfic/${id}/read`
@@ -409,14 +407,39 @@ export default function FanficPage() {
                     href={authorUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={cn(
-                      'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-base bg-gradient-to-br shadow-sm',
-                      'hover:ring-2 hover:ring-purple-500/60 transition-all',
-                      gradient
-                    )}
                     title={author.name}
+                    className={cn(
+                      'relative w-10 h-10 rounded-full overflow-hidden shadow-sm',
+                      'hover:ring-2 hover:ring-purple-500/60 transition-all',
+                      // Gradient fills the disk under the avatar, and shows
+                      // through as the initial-letter fallback if avatar_url
+                      // is missing or the image fails to load.
+                      !author.avatar_url && 'bg-gradient-to-br flex items-center justify-center text-white font-bold text-base',
+                      !author.avatar_url && gradient,
+                    )}
                   >
-                    {initial}
+                    {author.avatar_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={author.avatar_url}
+                        alt={author.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Hide the broken image so the gradient+initial
+                          // fallback underneath shows through.
+                          const target = e.currentTarget
+                          target.style.display = 'none'
+                          const parent = target.parentElement
+                          if (parent) {
+                            parent.classList.add('bg-gradient-to-br', 'flex', 'items-center', 'justify-center', 'text-white', 'font-bold', 'text-base', gradient)
+                            parent.textContent = initial
+                          }
+                        }}
+                      />
+                    ) : (
+                      initial
+                    )}
                   </a>
                   <div className="flex flex-col leading-tight">
                     <a
@@ -475,86 +498,34 @@ export default function FanficPage() {
                 )}
               </Link>
             )}
-          </div>
-        )}
 
-        {/* ACTION BAR — 4 buttons */}
-        <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {/* В избранное (=like on ficbook — appears in profile → Избранное tab) */}
-          <button
-            type="button"
-            onClick={() => doAction(actState.is_liked ? 'unlike' : 'like')}
-            disabled={!accessToken || actLoading === 'like' || actLoading === 'unlike'}
-            title={!accessToken ? 'Войдите, чтобы добавить в избранное' : (actState.is_liked ? 'Убрать из избранного' : 'Добавить в избранное')}
-            className={cn(
-              'flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-lg border text-xs font-medium transition-all',
-              actState.is_liked
-                ? 'bg-pink-900/60 text-pink-100 border-pink-500/70 ring-1 ring-pink-500/30'
-                : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-pink-700/60 hover:text-pink-300',
-              (!accessToken) && 'opacity-60 cursor-not-allowed'
-            )}
-          >
-            <span className="flex items-center gap-1.5">
+            {/* В избранное — the only surviving action-bar button. Writes the
+                local bookmark (cross-device via /profile/bookmarks) and, for
+                users with a linked ficbook account, mirrors to their ficbook
+                like list via /actions/like as a best-effort side effect. */}
+            <button
+              type="button"
+              onClick={() => doAction(actState.is_liked ? 'unlike' : 'like')}
+              disabled={!accessToken || actLoading === 'like' || actLoading === 'unlike'}
+              title={!accessToken ? 'Войдите, чтобы добавить в избранное' : (actState.is_liked ? 'Убрать из избранного' : 'Добавить в избранное')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-lg text-base font-semibold transition-all',
+                'px-5 py-3 border',
+                actState.is_liked
+                  ? 'bg-pink-600 text-white border-pink-500 hover:bg-pink-500 shadow-md shadow-pink-900/40 ring-1 ring-pink-300/40'
+                  : 'bg-zinc-900 text-zinc-200 border-zinc-700 hover:border-pink-500 hover:text-pink-300',
+                (!accessToken) && 'opacity-60 cursor-not-allowed',
+              )}
+            >
               {(actLoading === 'like' || actLoading === 'unlike')
                 ? <Loader2 size={16} className="animate-spin" />
-                : <Heart size={16} className={actState.is_liked ? 'fill-pink-300 text-pink-200' : ''} />
+                : <Heart size={16} className={actState.is_liked ? 'fill-pink-200 text-pink-100' : ''} />
               }
-              <span className="tabular-nums">{formatNumber(likeCount)}</span>
-            </span>
-            <span>{actState.is_liked ? 'В избранном ✓' : 'В избранное'}</span>
-          </button>
-
-          {/* Подписаться */}
-          <button
-            type="button"
-            onClick={() => doAction(actState.is_followed ? 'unfollow' : 'follow')}
-            disabled={!accessToken || actLoading === 'follow' || actLoading === 'unfollow'}
-            title={!accessToken ? 'Войдите, чтобы подписаться' : (actState.is_followed ? 'Отписаться' : 'Подписаться')}
-            className={cn(
-              'flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-lg border text-xs font-medium transition-all',
-              actState.is_followed
-                ? 'bg-purple-900/60 text-purple-200 border-purple-600/60'
-                : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-purple-700/60 hover:text-purple-300',
-              (!accessToken) && 'opacity-60 cursor-not-allowed'
-            )}
-          >
-            <span className="flex items-center gap-1.5">
-              {(actLoading === 'follow' || actLoading === 'unfollow')
-                ? <Loader2 size={16} className="animate-spin" />
-                : actState.is_followed ? <BellOff size={16} /> : <Bell size={16} />
-              }
-            </span>
-            <span>{actState.is_followed ? 'Подписан' : 'Подписаться'}</span>
-          </button>
-
-          {/* Отзывы */}
-          <a
-            href={ficbookCommentsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-blue-700/60 hover:text-blue-300 text-xs font-medium transition-all"
-          >
-            <span className="flex items-center gap-1.5">
-              <MessageSquare size={16} />
-              <span className="tabular-nums">{formatNumber(fanfic.comments_count)}</span>
-            </span>
-            <span>Отзывы</span>
-          </a>
-
-          {/* В сборник */}
-          <a
-            href={ficbookUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Добавить в сборник на ficbook.net"
-            className="flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-amber-700/60 hover:text-amber-300 text-xs font-medium transition-all"
-          >
-            <span className="flex items-center gap-1.5">
-              <FolderPlus size={16} />
-            </span>
-            <span>В сборник</span>
-          </a>
-        </div>
+              <span>{actState.is_liked ? 'В избранном' : 'В избранное'}</span>
+              <span className="tabular-nums text-sm opacity-80">{formatNumber(likeCount)}</span>
+            </button>
+          </div>
+        )}
 
         {/* Fandoms · Pairings · Tags — each item is a real link into the
             corresponding ficbook.net search surface (same as the source
