@@ -82,22 +82,34 @@ export function AnchorButton({ fanficId, chapterId, chapterTitle }: AnchorButton
   return (
     <div
       ref={rootRef}
-      className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 z-40"
+      className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 z-40 flex flex-col items-end"
     >
       {menuOpen && hasAnchorHere && (
-        <div className="mb-2 min-w-[220px] rounded-xl bg-zinc-900 border border-zinc-700 shadow-xl shadow-black/60 overflow-hidden">
+        <div
+          className={cn(
+            'absolute right-0 bottom-full mb-2 min-w-[240px]',
+            'rounded-xl bg-zinc-900/95 backdrop-blur',
+            'border border-purple-800/50 shadow-2xl shadow-black/70 overflow-hidden',
+          )}
+        >
+          <div className="px-3 py-2 border-b border-zinc-800 bg-purple-950/30">
+            <p className="text-[11px] uppercase tracking-wider text-purple-300 font-medium">Якорь здесь</p>
+            {anchor?.chapterTitle && (
+              <p className="text-xs text-zinc-400 mt-0.5 truncate">{anchor.chapterTitle}</p>
+            )}
+          </div>
           <button
             type="button"
             onClick={doSave}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800 border-b border-zinc-800 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-zinc-100 hover:bg-purple-900/30 transition-colors"
           >
-            <Anchor size={14} className="text-purple-400" />
-            <span>Обновить якорь на этом месте</span>
+            <Anchor size={14} className="text-purple-400 fill-purple-400/30" />
+            <span>Обновить положение</span>
           </button>
           <button
             type="button"
             onClick={doRemove}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-300 hover:bg-red-900/30 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-300 hover:bg-red-900/30 transition-colors border-t border-zinc-800"
           >
             <X size={14} />
             <span>Убрать якорь</span>

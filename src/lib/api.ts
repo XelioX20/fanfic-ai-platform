@@ -109,3 +109,55 @@ export const ficbookProxyApi = {
       body: JSON.stringify({ login, password }),
     }).then(r => r.json()),
 }
+
+/* ─── Reading state (anchors + local history) ─────────────────────────
+ *
+ * User-scoped, cross-device. Client Zustand store mirrors these on-device
+ * for instant UX; a hydrator in providers.tsx does the initial pull and
+ * every mutation pushes to the server best-effort.
+ */
+
+export interface ServerAnchor {
+  fanfic_id: string
+  chapter_id: string
+  scroll_y: number
+  chapter_title: string | null
+  updated_at: string
+}
+
+export interface ServerHistoryEntry {
+  fanfic_id: string
+  title: string
+  author_name: string
+  author_id: string | null
+  cover_url: string | null
+  direction: string | null
+  rating: string | null
+  completion_status: string | null
+  fandoms: string[] | null
+  opened_at: string
+}
+
+export const readingStateApi = {
+  listAnchors: () => api.get<ServerAnchor[]>('/profile/anchors'),
+  upsertAnchor: (fanficId: string, body: { chapter_id: string; scroll_y: number; chapter_title?: string | null }) =>
+    api.put<ServerAnchor>(`/profile/anchors/${encodeURIComponent(fanficId)}`, body),
+  deleteAnchor: (fanficId: string) =>
+    api.delete(`/profile/anchors/${encodeURIComponent(fanficId)}`),
+
+  listHistory: (limit = 200) =>
+    api.get<ServerHistoryEntry[]>('/profile/local-history', { params: { limit } }),
+  upsertHistory: (fanficId: string, body: {
+    title: string
+    author_name?: string
+    author_id?: string | null
+    cover_url?: string | null
+    direction?: string | null
+    rating?: string | null
+    completion_status?: string | null
+    fandoms?: string[] | null
+  }) => api.put<ServerHistoryEntry>(`/profile/local-history/${encodeURIComponent(fanficId)}`, body),
+  deleteHistoryEntry: (fanficId: string) =>
+    api.delete(`/profile/local-history/${encodeURIComponent(fanficId)}`),
+  clearHistory: () => api.delete('/profile/local-history'),
+}

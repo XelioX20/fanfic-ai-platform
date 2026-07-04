@@ -100,6 +100,14 @@ EXPECTED_ROUTES = [
     ("GET",  "/api/v1/profile/history"),
     ("GET",  "/api/v1/profile/liked"),
     ("GET",  "/api/v1/profile/subscriptions"),
+    # New reading-state routes (anchors + local history, cross-device sync)
+    ("GET",    "/api/v1/profile/anchors"),
+    ("PUT",    "/api/v1/profile/anchors/{fanfic_id}"),
+    ("DELETE", "/api/v1/profile/anchors/{fanfic_id}"),
+    ("GET",    "/api/v1/profile/local-history"),
+    ("PUT",    "/api/v1/profile/local-history/{fanfic_id}"),
+    ("DELETE", "/api/v1/profile/local-history/{fanfic_id}"),
+    ("DELETE", "/api/v1/profile/local-history"),
 ]
 
 
@@ -185,3 +193,103 @@ def test_bad_jwt_rejected(client):
         headers={"Authorization": "Bearer garbage"},
     )
     assert r.status_code in (401, 404)
+
+
+# ── Anchors: full CRUD round-trip (user-scoped, no ficbook needed) ──
+def test_anchors_round_trip(client, auth_user):
+    _uid, token = auth_user
+    h = {"Authorization": f"Bearer {token}"}
+
+    # Empty initially
+    r = client.get("/api/v1/profile/anchors", headers=h)
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+    # Upsert
+    r = client.put(
+        "/api/v1/profile/anchors/fic-abc",
+        headers=h,
+        json={"chapter_id": "ch-1", "scroll_y": 1234, "chapter_title": "Глава 1"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["fanfic_id"] == "fic-abc"
+    assert body["chapter_id"] == "ch-1"
+    assert body["scroll_y"] == 1234
+    assert body["chapter_title"] == "Глава 1"
+
+    # List shows it
+    r = client.get("/api/v1/profile/anchors", headers=h)
+    assert r.status_code == 200
+    rows = r.json()
+    assert any(row["fanfic_id"] == "fic-abc" for row in rows)
+
+    # Upsert again — should overwrite, not duplicate
+    r = client.put(
+        "/api/v1/profile/anchors/fic-abc",
+        headers=h,
+        json={"chapter_id": "ch-2", "scroll_y": 999, "chapter_title": "Глава 2"},
+    )
+    assert r.status_code == 200
+    assert r.json()["chapter_id"] == "ch-2"
+    r = client.get("/api/v1/profile/anchors", headers=h)
+    matching = [row for row in r.json() if row["fanfic_id"] == "fic-abc"]
+    assert len(matching) == 1
+    assert matching[0]["scroll_y"] == 999
+
+    # Delete
+    r = client.delete("/api/v1/profile/anchors/fic-abc", headers=h)
+    assert r.status_code == 204
+    r = client.get("/api/v1/profile/anchors", headers=h)
+    assert not any(row["fanfic_id"] == "fic-abc" for row in r.json())
+
+
+def test_anchors_require_auth(client):
+    r = client.get("/api/v1/profile/anchors")
+    assert r.status_code == 401
+    r = client.put("/api/v1/profile/anchors/x", json={"chapter_id": "c", "scroll_y": 0})
+    assert r.status_code == 401
+
+
+# ── Local history: same shape ─────────────────────────────────
+def test_local_history_round_trip(client, auth_user):
+    _uid, token = auth_user
+    h = {"Authorization": f"Bearer {token}"}
+
+    r = client.put(
+        "/api/v1/profile/local-history/fic-hist",
+        headers=h,
+        json={
+            "title": "Тестовый фанфик",
+            "author_name": "Автор",
+            "cover_url": "https://example/cover.jpg",
+            "direction": "Слэш",
+            "rating": "NC-17",
+            "completion_status": "Завершён",
+            "fandoms": ["Гарри Поттер"],
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["fanfic_id"] == "fic-hist"
+    assert body["title"] == "Тестовый фанфик"
+    assert body["fandoms"] == ["Гарри Поттер"]
+
+    r = client.get("/api/v1/profile/local-history", headers=h)
+    assert r.status_code == 200
+    assert any(row["fanfic_id"] == "fic-hist" for row in r.json())
+
+    # Single-entry delete
+    r = client.delete("/api/v1/profile/local-history/fic-hist", headers=h)
+    assert r.status_code == 204
+
+    # Bulk clear (idempotent)
+    r = client.delete("/api/v1/profile/local-history", headers=h)
+    assert r.status_code == 204
+    r = client.get("/api/v1/profile/local-history", headers=h)
+    assert r.json() == []
+
+
+def test_local_history_requires_auth(client):
+    r = client.get("/api/v1/profile/local-history")
+    assert r.status_code == 401

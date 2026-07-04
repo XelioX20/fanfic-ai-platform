@@ -82,15 +82,91 @@ interface ReaderState {
   setReadingProgress: (key: string, scrollY: number) => void
   // One anchor per fanfic. Keyed by fanficId so setting a new anchor
   // in chapter 5 overwrites an anchor from chapter 2 of the same fic.
+  //
+  // Cross-device sync: setAnchor / clearAnchor also PUT/DELETE to
+  // /api/v1/profile/anchors on the backend if there's a JWT. Failures are
+  // swallowed — local state remains the source of truth for the current
+  // session. See providers.tsx for the initial pull on login.
   anchors: Record<string, ReadingAnchor>
   setAnchor: (anchor: ReadingAnchor) => void
   clearAnchor: (fanficId: string) => void
   // Local history — every fanfic detail page open updates this.
+  // Same cross-device sync policy as anchors.
   history: Record<string, HistoryEntry>
   recordHistory: (entry: Omit<HistoryEntry, 'openedAt'>) => void
   clearHistoryEntry: (fanficId: string) => void
   clearAllHistory: () => void
+  // Bulk import from server after login. Merges the server snapshot into the
+  // local map: server rows override same-key local rows.
+  hydrateAnchorsFromServer: (rows: ReadingAnchor[]) => void
+  hydrateHistoryFromServer: (rows: HistoryEntry[]) => void
 }
+
+/* ─── Sync helpers ────────────────────────────────────────────────────
+ *
+ * Fire-and-forget best-effort sync of anchors/history to the backend.
+ * Import from lib/api at call time (not top level) to avoid circular deps.
+ * If there's no JWT or the request fails, we swallow — local state stays
+ * the source of truth for this session.
+ */
+async function syncPutAnchor(fanficId: string, anchor: ReadingAnchor) {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem('access_token')) return
+  try {
+    const { readingStateApi } = await import('@/lib/api')
+    await readingStateApi.upsertAnchor(fanficId, {
+      chapter_id: anchor.chapterId,
+      scroll_y: Math.round(anchor.scrollY),
+      chapter_title: anchor.chapterTitle ?? null,
+    })
+  } catch { /* offline / not authed / server down — ignore */ }
+}
+
+async function syncDeleteAnchor(fanficId: string) {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem('access_token')) return
+  try {
+    const { readingStateApi } = await import('@/lib/api')
+    await readingStateApi.deleteAnchor(fanficId)
+  } catch { /* ignore */ }
+}
+
+async function syncPutHistory(entry: HistoryEntry) {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem('access_token')) return
+  try {
+    const { readingStateApi } = await import('@/lib/api')
+    await readingStateApi.upsertHistory(entry.fanficId, {
+      title: entry.title,
+      author_name: entry.author_name ?? '',
+      author_id: entry.author_id ?? null,
+      cover_url: entry.cover_url ?? null,
+      direction: entry.direction ?? null,
+      rating: entry.rating ?? null,
+      completion_status: entry.completion_status ?? null,
+      fandoms: entry.fandoms ?? null,
+    })
+  } catch { /* ignore */ }
+}
+
+async function syncDeleteHistoryEntry(fanficId: string) {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem('access_token')) return
+  try {
+    const { readingStateApi } = await import('@/lib/api')
+    await readingStateApi.deleteHistoryEntry(fanficId)
+  } catch { /* ignore */ }
+}
+
+async function syncClearHistory() {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem('access_token')) return
+  try {
+    const { readingStateApi } = await import('@/lib/api')
+    await readingStateApi.clearHistory()
+  } catch { /* ignore */ }
+}
+
 
 export const useReaderStore = create<ReaderState>()(
   persist(
@@ -119,28 +195,55 @@ export const useReaderStore = create<ReaderState>()(
           return { readingProgress: next }
         }),
       anchors: {},
-      setAnchor: (anchor) =>
+      setAnchor: (anchor) => {
+        const stamped: ReadingAnchor = { ...anchor, updatedAt: Date.now() }
         set((state) => ({
-          anchors: { ...(state.anchors ?? {}), [anchor.fanficId]: { ...anchor, updatedAt: Date.now() } },
-        })),
-      clearAnchor: (fanficId) =>
+          anchors: { ...(state.anchors ?? {}), [stamped.fanficId]: stamped },
+        }))
+        void syncPutAnchor(stamped.fanficId, stamped)
+      },
+      clearAnchor: (fanficId) => {
         set((state) => {
           const next = { ...(state.anchors ?? {}) }
           delete next[fanficId]
           return { anchors: next }
-        }),
+        })
+        void syncDeleteAnchor(fanficId)
+      },
       history: {},
-      recordHistory: (entry) =>
+      recordHistory: (entry) => {
+        const stamped: HistoryEntry = { ...entry, openedAt: Date.now() }
         set((state) => ({
-          history: { ...(state.history ?? {}), [entry.fanficId]: { ...entry, openedAt: Date.now() } },
-        })),
-      clearHistoryEntry: (fanficId) =>
+          history: { ...(state.history ?? {}), [entry.fanficId]: stamped },
+        }))
+        void syncPutHistory(stamped)
+      },
+      clearHistoryEntry: (fanficId) => {
         set((state) => {
           const next = { ...(state.history ?? {}) }
           delete next[fanficId]
           return { history: next }
-        }),
-      clearAllHistory: () => set({ history: {} }),
+        })
+        void syncDeleteHistoryEntry(fanficId)
+      },
+      clearAllHistory: () => {
+        set({ history: {} })
+        void syncClearHistory()
+      },
+      hydrateAnchorsFromServer: (rows) => {
+        set((state) => {
+          const map = { ...(state.anchors ?? {}) }
+          for (const r of rows) map[r.fanficId] = r
+          return { anchors: map }
+        })
+      },
+      hydrateHistoryFromServer: (rows) => {
+        set((state) => {
+          const map = { ...(state.history ?? {}) }
+          for (const r of rows) map[r.fanficId] = r
+          return { history: map }
+        })
+      },
     }),
     {
       name: 'reader-store',

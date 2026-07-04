@@ -107,68 +107,101 @@ function LocalHistoryTab() {
 
   if (entries.length === 0) {
     return (
-      <p className="text-center text-zinc-600 py-12 text-sm">
-        Пока пусто. Открытые фанфики появятся здесь автоматически.
-      </p>
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-14 px-6 text-center">
+        <Clock size={28} className="mx-auto text-zinc-700 mb-3" />
+        <p className="text-zinc-300 text-sm font-medium">История пока пуста</p>
+        <p className="text-xs text-zinc-500 mt-1">
+          Открытые фанфики появляются здесь автоматически. Синхронизируется между устройствами.
+        </p>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end mb-2">
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-zinc-500">
+          <span className="text-zinc-300 font-medium">{entries.length}</span> {entries.length === 1 ? 'фанфик' : 'фанфиков'}
+        </p>
         <button
           type="button"
           onClick={() => {
-            if (confirm('Очистить всю историю? Это удалит только локальную запись, ficbook не тронется.')) {
+            if (confirm('Очистить всю историю? Локальная запись + запись на сервере будут удалены.')) {
               clearAllHistory()
             }
           }}
           className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
         >
-          <Trash2 size={11} /> Очистить историю
+          <Trash2 size={12} /> Очистить историю
         </button>
       </div>
-      {entries.map(entry => (
-        <div
-          key={entry.fanficId}
-          className="flex items-start gap-3 p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-zinc-700 transition-colors group"
-        >
-          {entry.cover_url ? (
-            <Image
-              src={entry.cover_url}
-              alt=""
-              width={40}
-              height={56}
-              className="rounded object-cover shrink-0 bg-zinc-800"
-              unoptimized
-            />
-          ) : (
-            <div className="w-10 h-14 rounded bg-zinc-800 shrink-0" />
-          )}
-          <div className="flex-1 min-w-0">
+
+      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+        {entries.map(entry => (
+          <li key={entry.fanficId} className="relative group">
             <Link
               href={`/fanfic/${entry.fanficId}`}
-              className="text-sm font-medium text-zinc-100 hover:text-purple-400 line-clamp-2"
+              className={cn(
+                'flex gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-900/60',
+                'hover:border-purple-700/50 hover:bg-zinc-900 transition-all',
+              )}
             >
-              {entry.title}
+              {entry.cover_url ? (
+                <Image
+                  src={entry.cover_url}
+                  alt=""
+                  width={56}
+                  height={80}
+                  className="rounded-md object-cover shrink-0 bg-zinc-800 shadow-sm shadow-black/40"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0" />
+              )}
+              <div className="flex-1 min-w-0 pr-6">
+                <h3 className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug">
+                  {entry.title}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1 truncate">
+                  {entry.author_name || 'Автор неизвестен'}
+                </p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {entry.direction && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                      {entry.direction}
+                    </span>
+                  )}
+                  {entry.rating && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                      {entry.rating}
+                    </span>
+                  )}
+                  {entry.completion_status && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                      {entry.completion_status}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-600 mt-2 flex items-center gap-1">
+                  <Clock size={10} /> {relativeTime(entry.openedAt)}
+                </p>
+              </div>
             </Link>
-            <p className="text-xs text-zinc-500 mt-0.5 truncate">{entry.author_name || 'Автор неизвестен'}</p>
-            <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-600">
-              <span>{relativeTime(entry.openedAt)}</span>
-              {entry.direction && <span>· {entry.direction}</span>}
-              {entry.rating && <span>· {entry.rating}</span>}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => clearHistoryEntry(entry.fanficId)}
-            title="Убрать из истории"
-            className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      ))}
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); clearHistoryEntry(entry.fanficId) }}
+              title="Убрать из истории"
+              className={cn(
+                'absolute top-2 right-2 p-1.5 rounded-md bg-zinc-900/80 text-zinc-500',
+                'hover:text-red-400 hover:bg-red-900/40 transition-all',
+                'sm:opacity-0 sm:group-hover:opacity-100',
+              )}
+            >
+              <X size={14} />
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -188,80 +221,111 @@ function ContinueReadingTab() {
 
   if (entries.length === 0) {
     return (
-      <div className="text-center text-zinc-500 py-12 space-y-2">
-        <p className="text-sm">Нет активных якорей.</p>
-        <p className="text-xs text-zinc-600">
-          Открой фанфик, нажми <span className="inline-flex items-center gap-1 text-purple-400"><Anchor size={11}/> Якорь</span> в шапке ридера,
-          и он появится здесь.
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-14 px-6 text-center">
+        <Anchor size={28} className="mx-auto text-zinc-700 mb-3" />
+        <p className="text-zinc-300 text-sm font-medium">Ещё нет активных якорей</p>
+        <p className="text-xs text-zinc-500 mt-2 max-w-sm mx-auto">
+          Открой фанфик, нажми кнопку{' '}
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/50 text-purple-300 border border-purple-800/50 text-[10px] font-medium">
+            <Anchor size={10} /> Поставить якорь
+          </span>{' '}
+          в правом нижнем углу — и он появится здесь на всех твоих устройствах.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      {entries.map(anchor => {
-        const histEntry = history[anchor.fanficId]
-        // Build the "continue" href — restore-from-anchor via ?anchor=1
-        const href = anchor.chapterId === 'single'
-          ? `/fanfic/${anchor.fanficId}/read?anchor=1`
-          : `/fanfic/${anchor.fanficId}/read/${anchor.chapterId}?anchor=1`
-        return (
-          <div
-            key={anchor.fanficId}
-            className="flex items-start gap-3 p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-purple-700/40 transition-colors group"
-          >
-            {histEntry?.cover_url ? (
-              <Image
-                src={histEntry.cover_url}
-                alt=""
-                width={40}
-                height={56}
-                className="rounded object-cover shrink-0 bg-zinc-800"
-                unoptimized
-              />
-            ) : (
-              <div className="w-10 h-14 rounded bg-zinc-800 shrink-0 flex items-center justify-center">
-                <Anchor size={14} className="text-zinc-600" />
+    <div>
+      <p className="text-sm text-zinc-500 mb-4">
+        <span className="text-zinc-300 font-medium">{entries.length}</span> {entries.length === 1 ? 'фанфик с якорем' : 'фанфиков с якорями'}
+        {' · '}
+        <span className="text-zinc-600">синхронизировано между устройствами</span>
+      </p>
+
+      <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+        {entries.map(anchor => {
+          const histEntry = history[anchor.fanficId]
+          const continueHref = anchor.chapterId === 'single'
+            ? `/fanfic/${anchor.fanficId}/read?anchor=1`
+            : `/fanfic/${anchor.fanficId}/read/${anchor.chapterId}?anchor=1`
+          return (
+            <li key={anchor.fanficId} className="relative group">
+              <div className={cn(
+                'flex flex-col gap-3 p-3 rounded-xl border transition-all',
+                'border-purple-800/40 bg-gradient-to-br from-purple-950/25 via-zinc-900/70 to-zinc-900/60',
+                'hover:border-purple-600/60 hover:from-purple-900/30',
+              )}>
+                <div className="flex gap-3">
+                  {histEntry?.cover_url ? (
+                    <Image
+                      src={histEntry.cover_url}
+                      alt=""
+                      width={56}
+                      height={80}
+                      className="rounded-md object-cover shrink-0 bg-zinc-800 shadow-sm shadow-black/40"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-14 h-20 rounded-md bg-zinc-800 shrink-0 flex items-center justify-center">
+                      <Anchor size={16} className="text-purple-500/50" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0 pr-6">
+                    <Link
+                      href={`/fanfic/${anchor.fanficId}`}
+                      className="text-sm font-semibold text-zinc-100 line-clamp-2 leading-snug hover:text-purple-300 transition-colors"
+                    >
+                      {histEntry?.title || `Фанфик ${anchor.fanficId.slice(0, 8)}…`}
+                    </Link>
+                    {histEntry?.author_name && (
+                      <p className="text-xs text-zinc-500 mt-1 truncate">{histEntry.author_name}</p>
+                    )}
+                    {anchor.chapterTitle && (
+                      <p className="text-xs text-purple-300 mt-1.5 flex items-center gap-1">
+                        <Anchor size={10} className="fill-purple-400/40" />
+                        <span className="truncate">{anchor.chapterTitle}</span>
+                      </p>
+                    )}
+                    <p className="text-[11px] text-zinc-600 mt-1 flex items-center gap-1">
+                      <Clock size={10} /> {relativeTime(anchor.updatedAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href={continueHref}
+                  className={cn(
+                    'flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all',
+                    'bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white',
+                    'hover:from-indigo-400 hover:to-fuchsia-400',
+                    'shadow-md shadow-fuchsia-900/40',
+                  )}
+                >
+                  <Anchor size={14} /> Продолжить с якоря →
+                </Link>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <Link
-                href={`/fanfic/${anchor.fanficId}`}
-                className="text-sm font-medium text-zinc-100 hover:text-purple-400 line-clamp-2"
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Убрать якорь для этого фанфика?')) {
+                    clearAnchor(anchor.fanficId)
+                  }
+                }}
+                title="Убрать якорь"
+                className={cn(
+                  'absolute top-2 right-2 p-1.5 rounded-md bg-zinc-900/80 text-zinc-400',
+                  'hover:text-red-400 hover:bg-red-900/40 transition-all',
+                  'sm:opacity-0 sm:group-hover:opacity-100',
+                )}
               >
-                {histEntry?.title || `Фанфик ${anchor.fanficId.slice(0, 8)}…`}
-              </Link>
-              {anchor.chapterTitle && (
-                <p className="text-xs text-purple-300/80 mt-0.5 truncate">
-                  ⚑ {anchor.chapterTitle}
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-600">
-                <span>{relativeTime(anchor.updatedAt)}</span>
-              </div>
-              <Link
-                href={href}
-                className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300"
-              >
-                <Anchor size={11} /> Продолжить →
-              </Link>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Убрать якорь для этого фанфика?')) {
-                  clearAnchor(anchor.fanficId)
-                }
-              }}
-              title="Убрать якорь"
-              className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )
-      })}
+                <X size={14} />
+              </button>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }

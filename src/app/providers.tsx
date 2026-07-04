@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { useUIStore } from '@/store'
+import { ReadingStateHydrator } from '@/components/ReadingStateHydrator'
 
 function ThemeInitializer() {
   const theme = useUIStore(s => s.theme)
@@ -33,6 +34,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeInitializer />
+      <ReadingStateHydrator />
       {children}
     </QueryClientProvider>
   )
