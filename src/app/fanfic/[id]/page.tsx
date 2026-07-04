@@ -548,10 +548,9 @@ export default function FanficPage() {
           </div>
         )}
 
-        {/* Fandoms · Pairings · Tags — each item is a real link into the
-            corresponding ficbook.net search surface (same as the source
-            site's own behaviour: click a pairing → filter by that pairing).
-            We open in a new tab so users don't lose our page. */}
+        {/* Fandoms · Pairings · Tags — clicking any chip triggers OUR
+            in-app search (/search?q=…) rather than jumping out to ficbook.
+            Same behaviour as the search bar at the top of the site. */}
         <div className="mb-6 space-y-3">
           {fanfic.fandoms.length > 0 && (
             <div className="text-sm">
@@ -559,14 +558,12 @@ export default function FanficPage() {
               {fanfic.fandoms.map((f, i) => (
                 <span key={i}>
                   {i > 0 && <span className="text-zinc-600">, </span>}
-                  <a
-                    href={`https://ficbook.net/search?fandom=${encodeURIComponent(f)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/search?q=${encodeURIComponent(f)}`}
                     className="text-zinc-400 hover:text-purple-400 hover:underline transition-colors"
                   >
                     {f}
-                  </a>
+                  </Link>
                 </span>
               ))}
             </div>
@@ -577,40 +574,35 @@ export default function FanficPage() {
               <span className="text-zinc-600">Пэйринг и персонажи: </span>
               {fanfic.pairings.map((p, i) => {
                 const label = p.characters.join('/')
-                const href = `https://ficbook.net/pairings/${encodeURIComponent(p.characters.join('---'))}`
                 return (
                   <span key={i}>
                     {i > 0 && <span className="text-zinc-600">, </span>}
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      href={`/search?q=${encodeURIComponent(label)}`}
                       className={cn(
                         'hover:underline transition-colors',
                         p.is_highlight ? 'text-purple-400 hover:text-purple-300' : 'text-zinc-400 hover:text-purple-300',
                       )}
                     >
                       {label}
-                    </a>
+                    </Link>
                   </span>
                 )
               })}
             </div>
           )}
 
-          {/* Tags (метки) — moved to sit directly under pairings, matching
-              ficbook's own layout. Each tag chip is a link to the ficbook
-              tag page (real filtered search on the source). */}
+          {/* Tags (метки) — sit directly under pairings. Each tag chip is
+              an in-site search link, matching ficbook's own behaviour of
+              filtering by that tag. */}
           {fanfic.tags.length > 0 && (
             <div className="text-sm">
               <span className="text-zinc-600">Метки: </span>
               <span className="inline-flex flex-wrap gap-1.5 align-top">
                 {fanfic.tags.map((tag, i) => (
-                  <a
+                  <Link
                     key={i}
-                    href={`https://ficbook.net/tags?tags_search=${encodeURIComponent(tag.name)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`/search?q=${encodeURIComponent(tag.name)}`}
                     className={cn(
                       'inline-flex items-center px-2 py-0.5 rounded text-xs border transition-all',
                       tag.is_adult
@@ -620,7 +612,7 @@ export default function FanficPage() {
                   >
                     {tag.name}
                     {tag.is_adult && <span className="ml-1 text-red-500 font-bold text-[10px]">18+</span>}
-                  </a>
+                  </Link>
                 ))}
               </span>
             </div>
