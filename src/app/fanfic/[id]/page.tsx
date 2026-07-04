@@ -114,6 +114,7 @@ export default function FanficPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { accessToken } = useAuthStore()
+  const recordHistory = useReaderStore(s => s.recordHistory)
   const [fanfic, setFanfic] = useState<FanficFull | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -146,8 +147,27 @@ export default function FanficPage() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
       })
-      .then(data => { setFanfic(data); setLoading(false) })
+      .then(data => {
+        setFanfic(data)
+        setLoading(false)
+        // Record this fanfic in the local history so it shows up under
+        // /profile → История even for anonymous browsing.
+        if (data?.id && data?.title) {
+          recordHistory({
+            fanficId: data.id,
+            title: data.title,
+            author_name: data.authors?.[0]?.name ?? '',
+            author_id: data.authors?.[0]?.id,
+            cover_url: data.cover_url ?? null,
+            direction: data.direction,
+            rating: data.rating,
+            completion_status: data.completion_status,
+            fandoms: data.fandoms ?? [],
+          })
+        }
+      })
       .catch(e => { setError(e.message); setLoading(false) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   useEffect(() => {
@@ -171,25 +191,53 @@ export default function FanficPage() {
   const doAction = async (action: string) => {
     if (!accessToken || !id) return
     setActLoading(action)
+    // Optimistic update — flip the flag immediately so the button gives
+    // instant feedback even before the ficbook AJAX round-trip settles.
+    const prev = actState
+    const optimistic: ActionState = { ...prev }
+    if (action === 'like') optimistic.is_liked = true
+    else if (action === 'unlike') optimistic.is_liked = false
+    else if (action === 'mark-read') optimistic.is_read = true
+    else if (action === 'mark-unread') optimistic.is_read = false
+    else if (action === 'follow') optimistic.is_followed = true
+    else if (action === 'unfollow') optimistic.is_followed = false
+    setActState(optimistic)
+    actionCache.set(id, optimistic)
+
     try {
       const resp = await fetch(`${API_URL}/api/v1/actions/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ fanfic_id: id }),
       })
-      const data = await resp.json()
-      if (data.success) {
-        const newState = { ...actState }
-        if (action === 'like') newState.is_liked = true
-        if (action === 'unlike') newState.is_liked = false
-        if (action === 'mark-read') newState.is_read = true
-        if (action === 'mark-unread') newState.is_read = false
-        if (action === 'follow') newState.is_followed = true
-        if (action === 'unfollow') newState.is_followed = false
-        actionCache.set(id, newState)
-        setActState(newState)
+      if (!resp.ok) {
+        // Roll back on HTTP error (403 = no ficbook cookies, 429 = throttled, …)
+        setActState(prev)
+        actionCache.set(id, prev)
+        const err = await resp.json().catch(() => ({ detail: '' }))
+        const detail = (err.detail || '').toString()
+        if (resp.status === 403) {
+          alert(
+            detail.toLowerCase().includes('log in')
+              ? 'Нужно войти в ficbook через нашу форму логина, чтобы синхронизировать это действие.'
+              : (detail || 'Действие недоступно.'),
+          )
+        } else if (resp.status === 429) {
+          alert(detail || 'Ficbook ограничил частоту запросов. Попробуй через минуту.')
+        }
+        // 5xx / other: keep optimistic state (best-effort). Ficbook AJAX is
+        // notoriously flaky; forcing rollback on every network hiccup annoys
+        // users more than an occasional lag.
       }
-    } catch {}
+      // We intentionally do NOT read `data.success` — ficbook's /ajax/mark
+      // returns result:false when the fic is already in the target state
+      // (e.g. liking something that's already liked). Trusting the HTTP
+      // status is enough; the optimistic flip stays.
+    } catch {
+      // Network failure — roll back.
+      setActState(prev)
+      actionCache.set(id, prev)
+    }
     setActLoading(null)
   }
 
@@ -224,7 +272,7 @@ export default function FanficPage() {
   // Anchor for this fanfic. If set, we surface a "Продолжить с якоря" CTA
   // next to "Читать" that jumps straight to the anchor's chapter with a
   // ?anchor=1 query so ReaderContent knows to restore to anchor.scrollY.
-  const anchor = useReaderStore(s => s.anchors[id])
+  const anchor = useReaderStore(s => (s.anchors ?? {})[id])
   const anchorHref = (() => {
     if (!anchor) return null
     if (anchor.chapterId === 'single' || fanfic.is_single_chapter) {
@@ -373,16 +421,16 @@ export default function FanficPage() {
 
         {/* ACTION BAR — 4 buttons */}
         <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {/* Нравится */}
+          {/* В избранное (=like on ficbook — appears in profile → Избранное tab) */}
           <button
             type="button"
             onClick={() => doAction(actState.is_liked ? 'unlike' : 'like')}
             disabled={!accessToken || actLoading === 'like' || actLoading === 'unlike'}
-            title={!accessToken ? 'Войдите, чтобы поставить лайк' : (actState.is_liked ? 'Убрать лайк' : 'Поставить лайк')}
+            title={!accessToken ? 'Войдите, чтобы добавить в избранное' : (actState.is_liked ? 'Убрать из избранного' : 'Добавить в избранное')}
             className={cn(
               'flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-lg border text-xs font-medium transition-all',
               actState.is_liked
-                ? 'bg-pink-900/60 text-pink-200 border-pink-600/60'
+                ? 'bg-pink-900/60 text-pink-100 border-pink-500/70 ring-1 ring-pink-500/30'
                 : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-pink-700/60 hover:text-pink-300',
               (!accessToken) && 'opacity-60 cursor-not-allowed'
             )}
@@ -390,11 +438,11 @@ export default function FanficPage() {
             <span className="flex items-center gap-1.5">
               {(actLoading === 'like' || actLoading === 'unlike')
                 ? <Loader2 size={16} className="animate-spin" />
-                : <Heart size={16} className={actState.is_liked ? 'fill-pink-300 text-pink-300' : ''} />
+                : <Heart size={16} className={actState.is_liked ? 'fill-pink-300 text-pink-200' : ''} />
               }
               <span className="tabular-nums">{formatNumber(likeCount)}</span>
             </span>
-            <span>Нравится</span>
+            <span>{actState.is_liked ? 'В избранном ✓' : 'В избранное'}</span>
           </button>
 
           {/* Подписаться */}

@@ -71,7 +71,8 @@ export function ReaderContent({ content, chapterTitle, progressKey, restoreFromA
   useEffect(() => {
     if (!progressKey) return
 
-    const anchor = anchorFanficId ? anchors[anchorFanficId] : undefined
+    const anchorsMap = anchors ?? {}
+    const anchor = anchorFanficId ? anchorsMap[anchorFanficId] : undefined
     const anchorMatchesHere =
       restoreFromAnchor && anchor && anchor.chapterId === anchorChapterId
 

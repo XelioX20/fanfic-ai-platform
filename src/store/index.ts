@@ -52,6 +52,25 @@ export interface ReadingAnchor {
   updatedAt: number
 }
 
+/**
+ * Local-only history record. Written every time a user opens a fanfic detail
+ * page, so the /profile → История tab can show everything they've ever looked
+ * at (including anonymous browsing) without a round-trip to ficbook. Keyed by
+ * fanficId; visiting the same fic again just updates openedAt.
+ */
+export interface HistoryEntry {
+  fanficId: string
+  title: string
+  author_name: string
+  author_id?: string
+  cover_url?: string | null
+  direction?: string
+  rating?: string
+  completion_status?: string
+  fandoms?: string[]
+  openedAt: number
+}
+
 interface ReaderState {
   settings: ReaderSettings
   updateSettings: (partial: Partial<ReaderSettings>) => void
@@ -66,6 +85,11 @@ interface ReaderState {
   anchors: Record<string, ReadingAnchor>
   setAnchor: (anchor: ReadingAnchor) => void
   clearAnchor: (fanficId: string) => void
+  // Local history — every fanfic detail page open updates this.
+  history: Record<string, HistoryEntry>
+  recordHistory: (entry: Omit<HistoryEntry, 'openedAt'>) => void
+  clearHistoryEntry: (fanficId: string) => void
+  clearAllHistory: () => void
 }
 
 export const useReaderStore = create<ReaderState>()(
@@ -88,7 +112,7 @@ export const useReaderStore = create<ReaderState>()(
           // Rebuild the map so the touched key lands LAST — insertion order is
           // our recency fallback when updatedAt is missing on legacy entries.
           const next: Record<string, ReadingProgressValue> = {}
-          for (const [k, v] of Object.entries(state.readingProgress)) {
+          for (const [k, v] of Object.entries(state.readingProgress ?? {})) {
             if (k !== key) next[k] = v
           }
           next[key] = { scrollY, updatedAt: Date.now() }
@@ -97,16 +121,68 @@ export const useReaderStore = create<ReaderState>()(
       anchors: {},
       setAnchor: (anchor) =>
         set((state) => ({
-          anchors: { ...state.anchors, [anchor.fanficId]: { ...anchor, updatedAt: Date.now() } },
+          anchors: { ...(state.anchors ?? {}), [anchor.fanficId]: { ...anchor, updatedAt: Date.now() } },
         })),
       clearAnchor: (fanficId) =>
         set((state) => {
-          const next = { ...state.anchors }
+          const next = { ...(state.anchors ?? {}) }
           delete next[fanficId]
           return { anchors: next }
         }),
+      history: {},
+      recordHistory: (entry) =>
+        set((state) => ({
+          history: { ...(state.history ?? {}), [entry.fanficId]: { ...entry, openedAt: Date.now() } },
+        })),
+      clearHistoryEntry: (fanficId) =>
+        set((state) => {
+          const next = { ...(state.history ?? {}) }
+          delete next[fanficId]
+          return { history: next }
+        }),
+      clearAllHistory: () => set({ history: {} }),
     }),
-    { name: 'reader-store' }
+    {
+      name: 'reader-store',
+      version: 2,
+      // Old versions of this store didn't have `anchors` or `history`. Zustand
+      // rehydrates the persisted snapshot on top of our initial state, so
+      // returning users end up with those fields as `undefined`. Merge back to
+      // safe empty objects here — otherwise every selector like
+      // `s.anchors[fanficId]` throws at read time and the whole page crashes.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      migrate: (persisted: any, _version): ReaderState => {
+        const p = (persisted ?? {}) as Partial<ReaderState>
+        return {
+          settings: p.settings ?? {
+            font_size: 16, font_family: 'system-serif', line_height: 1.8, max_width: 680, theme: 'dark',
+          },
+          currentFanficId: p.currentFanficId ?? null,
+          readingProgress: p.readingProgress ?? {},
+          anchors: p.anchors ?? {},
+          history: p.history ?? {},
+          // Actions are provided by the store definition — pydantic-style
+          // stubs here just satisfy the type. Zustand replaces them with the
+          // real closures immediately after migrate() returns.
+          updateSettings: () => {},
+          setCurrentFanfic: () => {},
+          setReadingProgress: () => {},
+          setAnchor: () => {},
+          clearAnchor: () => {},
+          recordHistory: () => {},
+          clearHistoryEntry: () => {},
+          clearAllHistory: () => {},
+        }
+      },
+      // Belt-and-suspenders: also normalize inside onRehydrateStorage in case
+      // a user's snapshot skips the migrate path (e.g. bare version bump).
+      onRehydrateStorage: () => (state) => {
+        if (!state) return
+        if (!state.anchors) state.anchors = {}
+        if (!state.history) state.history = {}
+        if (!state.readingProgress) state.readingProgress = {}
+      },
+    }
   )
 )
 

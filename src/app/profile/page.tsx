@@ -1,26 +1,29 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { User, Heart, Clock, Users, Settings, ExternalLink, Loader2 } from 'lucide-react'
-import { useAuthStore, useReaderStore } from '@/store'
+import {
+  User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X,
+} from 'lucide-react'
+import { useAuthStore, useReaderStore, type HistoryEntry, type ReadingAnchor } from '@/store'
 import { profileApi } from '@/lib/api'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
 import { cn } from '@/lib/utils'
 import { FONT_OPTIONS, getFontCssVar } from '@/lib/fonts'
 import type { Fanfic } from '@/types'
 
-type Tab = 'profile' | 'favourites' | 'history' | 'liked' | 'subscriptions' | 'settings'
+type Tab = 'profile' | 'favourites' | 'history' | 'continue' | 'settings'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'profile', label: 'Профиль', icon: <User size={15} /> },
-  { id: 'favourites', label: 'Избранное', icon: <Heart size={15} /> },
-  { id: 'history', label: 'История', icon: <Clock size={15} /> },
-  { id: 'liked', label: 'Понравившееся', icon: <Heart size={15} /> },
-  { id: 'subscriptions', label: 'Подписки', icon: <Users size={15} /> },
-  { id: 'settings', label: 'Читалка', icon: <Settings size={15} /> },
+  { id: 'profile',    label: 'Профиль',            icon: <User size={15} /> },
+  { id: 'favourites', label: 'Избранное',          icon: <Heart size={15} /> },
+  { id: 'history',    label: 'История',            icon: <Clock size={15} /> },
+  { id: 'continue',   label: 'Продолжить чтение',  icon: <Anchor size={15} /> },
+  { id: 'settings',   label: 'Читалка',            icon: <Settings size={15} /> },
 ]
+
+/* ─── ficbook-backed sections (Избранное) ────────────────────────────── */
 
 function FanficSection({ fetcher }: { fetcher: (page: number) => Promise<{ data: { items: Fanfic[]; has_next: boolean } }> }) {
   const [fanfics, setFanfics] = useState<Fanfic[]>([])
@@ -39,12 +42,13 @@ function FanficSection({ fetcher }: { fetcher: (page: number) => Promise<{ data:
       })
       .catch(e => setError(e?.response?.data?.detail || 'Ошибка загрузки'))
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page])
 
   if (error) return (
     <div className="py-8 text-center text-zinc-500 text-sm">
-      {error.includes('auth') || error.includes('401')
-        ? 'Для просмотра нужно войти через ficbook.net'
+      {error.toLowerCase().includes('log in') || error.includes('401') || error.includes('403')
+        ? 'Для просмотра нужно войти через форму логина ficbook.net.'
         : error}
     </div>
   )
@@ -77,6 +81,192 @@ function FanficSection({ fetcher }: { fetcher: (page: number) => Promise<{ data:
     </div>
   )
 }
+
+/* ─── Local History (from useReaderStore.history) ─────────────────────── */
+
+function relativeTime(ts: number): string {
+  const diff = Date.now() - ts
+  if (diff < 60_000) return 'только что'
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} мин назад`
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} ч назад`
+  const days = Math.floor(diff / 86400_000)
+  if (days < 30) return `${days} дн назад`
+  return new Date(ts).toLocaleDateString('ru-RU')
+}
+
+function LocalHistoryTab() {
+  const history = useReaderStore(s => s.history)
+  const clearHistoryEntry = useReaderStore(s => s.clearHistoryEntry)
+  const clearAllHistory = useReaderStore(s => s.clearAllHistory)
+
+  const entries = useMemo(() => {
+    const arr = Object.values(history) as HistoryEntry[]
+    arr.sort((a, b) => b.openedAt - a.openedAt)
+    return arr
+  }, [history])
+
+  if (entries.length === 0) {
+    return (
+      <p className="text-center text-zinc-600 py-12 text-sm">
+        Пока пусто. Открытые фанфики появятся здесь автоматически.
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-end mb-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm('Очистить всю историю? Это удалит только локальную запись, ficbook не тронется.')) {
+              clearAllHistory()
+            }
+          }}
+          className="text-xs text-zinc-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+        >
+          <Trash2 size={11} /> Очистить историю
+        </button>
+      </div>
+      {entries.map(entry => (
+        <div
+          key={entry.fanficId}
+          className="flex items-start gap-3 p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-zinc-700 transition-colors group"
+        >
+          {entry.cover_url ? (
+            <Image
+              src={entry.cover_url}
+              alt=""
+              width={40}
+              height={56}
+              className="rounded object-cover shrink-0 bg-zinc-800"
+              unoptimized
+            />
+          ) : (
+            <div className="w-10 h-14 rounded bg-zinc-800 shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <Link
+              href={`/fanfic/${entry.fanficId}`}
+              className="text-sm font-medium text-zinc-100 hover:text-purple-400 line-clamp-2"
+            >
+              {entry.title}
+            </Link>
+            <p className="text-xs text-zinc-500 mt-0.5 truncate">{entry.author_name || 'Автор неизвестен'}</p>
+            <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-600">
+              <span>{relativeTime(entry.openedAt)}</span>
+              {entry.direction && <span>· {entry.direction}</span>}
+              {entry.rating && <span>· {entry.rating}</span>}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => clearHistoryEntry(entry.fanficId)}
+            title="Убрать из истории"
+            className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ─── Continue Reading tab (anchors) ──────────────────────────────────── */
+
+function ContinueReadingTab() {
+  const anchors = useReaderStore(s => s.anchors)
+  const history = useReaderStore(s => s.history)
+  const clearAnchor = useReaderStore(s => s.clearAnchor)
+
+  const entries = useMemo(() => {
+    const arr = Object.values(anchors) as ReadingAnchor[]
+    arr.sort((a, b) => b.updatedAt - a.updatedAt)
+    return arr
+  }, [anchors])
+
+  if (entries.length === 0) {
+    return (
+      <div className="text-center text-zinc-500 py-12 space-y-2">
+        <p className="text-sm">Нет активных якорей.</p>
+        <p className="text-xs text-zinc-600">
+          Открой фанфик, нажми <span className="inline-flex items-center gap-1 text-purple-400"><Anchor size={11}/> Якорь</span> в шапке ридера,
+          и он появится здесь.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {entries.map(anchor => {
+        const histEntry = history[anchor.fanficId]
+        // Build the "continue" href — restore-from-anchor via ?anchor=1
+        const href = anchor.chapterId === 'single'
+          ? `/fanfic/${anchor.fanficId}/read?anchor=1`
+          : `/fanfic/${anchor.fanficId}/read/${anchor.chapterId}?anchor=1`
+        return (
+          <div
+            key={anchor.fanficId}
+            className="flex items-start gap-3 p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-purple-700/40 transition-colors group"
+          >
+            {histEntry?.cover_url ? (
+              <Image
+                src={histEntry.cover_url}
+                alt=""
+                width={40}
+                height={56}
+                className="rounded object-cover shrink-0 bg-zinc-800"
+                unoptimized
+              />
+            ) : (
+              <div className="w-10 h-14 rounded bg-zinc-800 shrink-0 flex items-center justify-center">
+                <Anchor size={14} className="text-zinc-600" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`/fanfic/${anchor.fanficId}`}
+                className="text-sm font-medium text-zinc-100 hover:text-purple-400 line-clamp-2"
+              >
+                {histEntry?.title || `Фанфик ${anchor.fanficId.slice(0, 8)}…`}
+              </Link>
+              {anchor.chapterTitle && (
+                <p className="text-xs text-purple-300/80 mt-0.5 truncate">
+                  ⚑ {anchor.chapterTitle}
+                </p>
+              )}
+              <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-600">
+                <span>{relativeTime(anchor.updatedAt)}</span>
+              </div>
+              <Link
+                href={href}
+                className="inline-flex items-center gap-1 mt-2 text-xs text-purple-400 hover:text-purple-300"
+              >
+                <Anchor size={11} /> Продолжить →
+              </Link>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Убрать якорь для этого фанфика?')) {
+                  clearAnchor(anchor.fanficId)
+                }
+              }}
+              title="Убрать якорь"
+              className="p-1.5 text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ─── Reader settings tab ─────────────────────────────────────────────── */
 
 function ReaderSettingsTab() {
   const { settings, updateSettings } = useReaderStore()
@@ -144,6 +334,8 @@ function ReaderSettingsTab() {
   )
 }
 
+/* ─── Page ────────────────────────────────────────────────────────────── */
+
 function ProfileContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -157,7 +349,7 @@ function ProfileContent() {
       return
     }
     profileApi.me().then(r => setProfileData(r.data)).catch(() => {})
-  }, [accessToken])
+  }, [accessToken, router])
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)
@@ -193,7 +385,7 @@ function ProfileContent() {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-zinc-800 overflow-x-auto">
         {TABS.map(tab => (
-          <button key={tab.id} onClick={() => handleTabChange(tab.id)}
+          <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)}
             className={cn('flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px',
               activeTab === tab.id
                 ? 'border-purple-500 text-purple-400'
@@ -217,9 +409,8 @@ function ProfileContent() {
         </div>
       )}
       {activeTab === 'favourites' && <FanficSection fetcher={profileApi.favourites} />}
-      {activeTab === 'history' && <FanficSection fetcher={profileApi.history} />}
-      {activeTab === 'liked' && <FanficSection fetcher={profileApi.liked} />}
-      {activeTab === 'subscriptions' && <FanficSection fetcher={profileApi.subscriptions} />}
+      {activeTab === 'history' && <LocalHistoryTab />}
+      {activeTab === 'continue' && <ContinueReadingTab />}
       {activeTab === 'settings' && <ReaderSettingsTab />}
     </main>
   )

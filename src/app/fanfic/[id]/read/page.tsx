@@ -47,12 +47,11 @@ export default function SingleChapterReaderPage() {
     <div className="min-h-screen">
       {/* Top bar */}
       <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between gap-2">
-        <button onClick={() => router.push(`/fanfic/${id}`)} className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-sm min-w-0">
+        <button type="button" onClick={() => router.push(`/fanfic/${id}`)} className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors text-sm min-w-0">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline truncate max-w-xs">{title}</span>
         </button>
         <div className="flex items-center gap-2 shrink-0">
-          <AnchorButton fanficId={id} chapterId="single" chapterTitle={title} />
           <ReaderSettingsPanel />
         </div>
       </div>
@@ -63,6 +62,8 @@ export default function SingleChapterReaderPage() {
         anchorFanficId={id}
         anchorChapterId="single"
       />
+      {/* Anchor FAB — floats bottom-right, sits above content */}
+      <AnchorButton fanficId={id} chapterId="single" chapterTitle={title} />
     </div>
   )
 }

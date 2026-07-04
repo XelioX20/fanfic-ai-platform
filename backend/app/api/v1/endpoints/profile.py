@@ -19,13 +19,27 @@ WORKER_HEADERS = {
     "Accept-Language": "ru-RU,ru;q=0.9",
 }
 
-# Correct paths from B1ays/ficbook-reader reverse engineering
+# Correct paths from B1ays/ficbook-reader reverse engineering.
+#
+# UX policy: our "В избранное" heart button on the fanfic page calls
+# /actions/like → POST /ajax/mark on ficbook, which mutates the user's
+# "Понравившиеся" list (home/liked_fanfics). So we surface that list under
+# the /favourites endpoint too — a single "Избранное" tab in the UI that
+# stays in sync with the heart button. The legacy /liked endpoint is kept
+# for compatibility but points at the same list.
 SECTIONS = {
-    "favourites":    "home/favourites",
-    "history":       "home/readedList",
+    # UX-facing "Избранное" = ficbook's liked/hearted list
+    "favourites":    "home/liked_fanfics",
     "liked":         "home/liked_fanfics",
+    # Ficbook's own "recently read" list (populated when a signed-in user
+    # opens a chapter on ficbook itself). We ALSO keep a local `history`
+    # in the Zustand store on the client for anonymous browsing / offline
+    # coverage; this endpoint is the signed-in fallback.
+    "history":       "home/readedList",
     "subscriptions": "home/followList",
     "visited":       "home/visitedList",
+    # ficbook collections — separate feature, not linked to the heart btn
+    "collections":   "home/favourites",
 }
 
 

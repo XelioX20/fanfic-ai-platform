@@ -98,7 +98,6 @@ export default function ChapterReaderPage() {
                 <List size={16} />
               </button>
             )}
-            <AnchorButton fanficId={id} chapterId={chapter_id} chapterTitle={chapter.title} />
             <ReaderSettingsPanel />
           </div>
         </div>
@@ -111,6 +110,7 @@ export default function ChapterReaderPage() {
             {chapterIds.map((chapId, idx) => (
               <button
                 key={chapId}
+                type="button"
                 onClick={() => { goToChapter(chapId); setShowChapterList(false) }}
                 className={`w-full text-left px-4 py-2 text-sm transition-colors ${chapId === chapter_id ? 'text-purple-400 bg-purple-900/20' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
               >
@@ -139,10 +139,14 @@ export default function ChapterReaderPage() {
         anchorChapterId={chapter_id}
       />
 
+      {/* Anchor FAB — floats bottom-right, sits above content and bottom nav */}
+      <AnchorButton fanficId={id} chapterId={chapter_id} chapterTitle={chapter.title} />
+
       {/* Bottom navigation */}
       <div className="border-t border-zinc-800 py-6 px-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           <button
+            type="button"
             onClick={() => chapter.prev_chapter_id && goToChapter(chapter.prev_chapter_id)}
             disabled={!chapter.prev_chapter_id}
             className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-300 rounded-lg text-sm transition-colors"
@@ -151,6 +155,7 @@ export default function ChapterReaderPage() {
           </button>
 
           <button
+            type="button"
             onClick={() => router.push(`/fanfic/${id}`)}
             className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
           >
@@ -158,6 +163,7 @@ export default function ChapterReaderPage() {
           </button>
 
           <button
+            type="button"
             onClick={() => chapter.next_chapter_id && goToChapter(chapter.next_chapter_id)}
             disabled={!chapter.next_chapter_id}
             className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed text-zinc-300 rounded-lg text-sm transition-colors"
