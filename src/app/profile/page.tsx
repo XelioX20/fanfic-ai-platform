@@ -95,7 +95,7 @@ function relativeTime(ts: number): string {
 }
 
 function LocalHistoryTab() {
-  const history = useReaderStore(s => s.history)
+  const history = useReaderStore(s => s.history ?? {})
   const clearHistoryEntry = useReaderStore(s => s.clearHistoryEntry)
   const clearAllHistory = useReaderStore(s => s.clearAllHistory)
 
@@ -176,8 +176,8 @@ function LocalHistoryTab() {
 /* ─── Continue Reading tab (anchors) ──────────────────────────────────── */
 
 function ContinueReadingTab() {
-  const anchors = useReaderStore(s => s.anchors)
-  const history = useReaderStore(s => s.history)
+  const anchors = useReaderStore(s => s.anchors ?? {})
+  const history = useReaderStore(s => s.history ?? {})
   const clearAnchor = useReaderStore(s => s.clearAnchor)
 
   const entries = useMemo(() => {

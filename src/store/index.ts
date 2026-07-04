@@ -145,42 +145,26 @@ export const useReaderStore = create<ReaderState>()(
     {
       name: 'reader-store',
       version: 2,
-      // Old versions of this store didn't have `anchors` or `history`. Zustand
-      // rehydrates the persisted snapshot on top of our initial state, so
-      // returning users end up with those fields as `undefined`. Merge back to
-      // safe empty objects here — otherwise every selector like
-      // `s.anchors[fanficId]` throws at read time and the whole page crashes.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      migrate: (persisted: any, _version): ReaderState => {
-        const p = (persisted ?? {}) as Partial<ReaderState>
+      // Legacy snapshots (v1 and earlier) didn't have `anchors` or `history`.
+      // Zustand's default persist behaviour is to shallow-merge the persisted
+      // snapshot on top of the initial state, so those fields end up
+      // `undefined` for returning users, and every selector like
+      // `s.anchors[fanficId]` throws at read time → the whole page crashes.
+      //
+      // Custom `merge` gives us the safe merge: we start from the initial
+      // state (which HAS anchors:{} and history:{}), then layer the persisted
+      // fields on top. We deliberately do NOT touch action closures — those
+      // stay bound to the create() scope.
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<ReaderState>
         return {
-          settings: p.settings ?? {
-            font_size: 16, font_family: 'system-serif', line_height: 1.8, max_width: 680, theme: 'dark',
-          },
-          currentFanficId: p.currentFanficId ?? null,
-          readingProgress: p.readingProgress ?? {},
-          anchors: p.anchors ?? {},
-          history: p.history ?? {},
-          // Actions are provided by the store definition — pydantic-style
-          // stubs here just satisfy the type. Zustand replaces them with the
-          // real closures immediately after migrate() returns.
-          updateSettings: () => {},
-          setCurrentFanfic: () => {},
-          setReadingProgress: () => {},
-          setAnchor: () => {},
-          clearAnchor: () => {},
-          recordHistory: () => {},
-          clearHistoryEntry: () => {},
-          clearAllHistory: () => {},
+          ...currentState,
+          settings: persisted.settings ?? currentState.settings,
+          currentFanficId: persisted.currentFanficId ?? currentState.currentFanficId,
+          readingProgress: persisted.readingProgress ?? {},
+          anchors: persisted.anchors ?? {},
+          history: persisted.history ?? {},
         }
-      },
-      // Belt-and-suspenders: also normalize inside onRehydrateStorage in case
-      // a user's snapshot skips the migrate path (e.g. bare version bump).
-      onRehydrateStorage: () => (state) => {
-        if (!state) return
-        if (!state.anchors) state.anchors = {}
-        if (!state.history) state.history = {}
-        if (!state.readingProgress) state.readingProgress = {}
       },
     }
   )

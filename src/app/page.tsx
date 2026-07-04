@@ -170,7 +170,7 @@ function extractRecentProgress(
 export default function HomePage() {
   const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
-  const readingProgress = useReaderStore((s) => s.readingProgress)
+  const readingProgress = useReaderStore((s) => s.readingProgress ?? {})
 
   // Avoid hydration mismatches — persisted stores start empty on the server.
   const [hydrated, setHydrated] = useState(false)
