@@ -5,7 +5,6 @@ import { ArrowLeft, ChevronLeft, ChevronRight, List } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
-import { FloatingBookmark } from '@/components/fanfic/FloatingBookmark'
 import { Loader } from '@/components/ui/Loader'
 import { formatWordCount } from '@/lib/utils'
 
@@ -148,8 +147,6 @@ export default function ChapterReaderPage() {
 
       {/* Anchor FAB — floats bottom-right, sits above content and bottom nav */}
       <AnchorButton fanficId={id} chapterId={chapter_id} chapterTitle={chapter.title} />
-      {/* Bookmark FAB — stacks above the anchor FAB */}
-      <FloatingBookmark fanficId={id} meta={{ title: chapter.title }} />
 
       {/* Bottom navigation */}
       <div className="border-t border-zinc-800 py-6 px-4">

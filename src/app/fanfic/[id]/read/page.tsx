@@ -5,7 +5,6 @@ import { ArrowLeft } from 'lucide-react'
 import { ReaderContent } from '@/components/reader/ReaderContent'
 import { ReaderSettingsPanel } from '@/components/reader/ReaderSettings'
 import { AnchorButton } from '@/components/reader/AnchorButton'
-import { FloatingBookmark } from '@/components/fanfic/FloatingBookmark'
 import { Loader } from '@/components/ui/Loader'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -17,7 +16,6 @@ export default function SingleChapterReaderPage() {
   const useAnchor = searchParams.get('anchor') === '1'
   const [html, setHtml] = useState<string | null>(null)
   const [title, setTitle] = useState('')
-  const [cover, setCover] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +25,6 @@ export default function SingleChapterReaderPage() {
       .then(r => r.json())
       .then(data => {
         setTitle(data.title)
-        setCover(data.cover_url ?? null)
         setHtml(data.single_chapter_html || '<p>Содержимое недоступно</p>')
         setLoading(false)
       })
@@ -67,8 +64,6 @@ export default function SingleChapterReaderPage() {
       />
       {/* Anchor FAB — floats bottom-right, sits above content */}
       <AnchorButton fanficId={id} chapterId="single" chapterTitle={title} />
-      {/* Bookmark FAB — stacks above the anchor FAB */}
-      <FloatingBookmark fanficId={id} meta={{ title, cover_url: cover }} />
     </div>
   )
 }

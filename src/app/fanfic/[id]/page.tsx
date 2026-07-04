@@ -502,11 +502,18 @@ export default function FanficPage() {
             {/* В избранное — the only surviving action-bar button. Writes the
                 local bookmark (cross-device via /profile/bookmarks) and, for
                 users with a linked ficbook account, mirrors to their ficbook
-                like list via /actions/like as a best-effort side effect. */}
+                like list via /actions/like as a best-effort side effect.
+
+                We intentionally do NOT show a loading spinner while the
+                ficbook mirror is in flight — the optimistic state already
+                flipped, and the mirror takes 1-3s on ficbook's AJAX which
+                would visually override the Check icon and feel like lag.
+                Repeat clicks are still safe: the button is idempotent
+                (setBookmark/removeBookmark deduplicate on the store side). */}
             <button
               type="button"
               onClick={() => doAction(actState.is_liked ? 'unlike' : 'like')}
-              disabled={!accessToken || actLoading === 'like' || actLoading === 'unlike'}
+              disabled={!accessToken}
               title={!accessToken ? 'Войдите, чтобы добавить в избранное' : (actState.is_liked ? 'Убрать из избранного' : 'Добавить в избранное')}
               className={cn(
                 'inline-flex items-center gap-2 rounded-lg text-base font-semibold transition-all',
@@ -518,12 +525,7 @@ export default function FanficPage() {
                 (!accessToken) && 'opacity-60 cursor-not-allowed',
               )}
             >
-              {(actLoading === 'like' || actLoading === 'unlike')
-                ? <Loader2 size={16} className="animate-spin" />
-                : actState.is_liked
-                  ? <Check size={16} />
-                  : <Bookmark size={16} />
-              }
+              {actState.is_liked ? <Check size={16} /> : <Bookmark size={16} />}
               <span>{actState.is_liked ? 'В избранном' : 'В избранное'}</span>
             </button>
 
