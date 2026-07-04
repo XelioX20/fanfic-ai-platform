@@ -385,3 +385,18 @@ body {
 [data-reader-font] * {
   font-family: var(--reader-font-family, inherit) !important;
 }
+
+/* Utility: hide scrollbar but keep scroll functionality (for horizontal rails) */
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Utility: smooth momentum scroll for iOS */
+.overflow-x-scroll,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
