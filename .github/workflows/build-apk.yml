@@ -119,8 +119,12 @@ jobs:
           }
           EOF
 
-          # Feed keystore + key passwords via stdin (build prompts twice).
-          printf '%s\n%s\n' "$KS_PW" "$KEY_PW" | \
+          # Bubblewrap build prompts (in order):
+          #   1. "Would you like to regenerate your project?" — answer: No
+          #   2. "Password for the Key Store" — our keystore pw
+          #   3. "Password for the Key" — our key pw
+          # Feed all three via stdin.
+          printf 'No\n%s\n%s\n' "$KS_PW" "$KEY_PW" | \
             bubblewrap build \
               --skipPwaValidation \
               --signingKeyPath ./android.keystore \
