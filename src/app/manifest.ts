@@ -7,6 +7,15 @@ import { MetadataRoute } from 'next'
  * Screen" gets an app-like icon + splash) and desktop. Standalone display
  * removes the browser chrome so the reader feels like a native app.
  *
+ * theme_color note: bubblewrap/PWABuilder use this value as
+ * `navigationColor` in the generated TWA APK — it paints the Android
+ * gesture-navigation bar at the bottom. A bright brand colour there
+ * looks garish on the reader canvas. Keep it dark (matches our default
+ * dark reader theme) so the bar visually merges into the app content
+ * on modern Android. Users on the light site theme will still see a
+ * dark bar, which reads as "app is running edge-to-edge" rather than
+ * a coloured band.
+ *
  * Icons live at /public/icon-*.png. Both a 192px and 512px raster are
  * declared with `purpose: 'any'` (used verbatim) and a 512px maskable
  * variant (safe-area padded, so Android's adaptive icon can crop it
@@ -23,7 +32,10 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#09090b', // zinc-950 — matches dark theme
-    theme_color: '#7c3aed',      // violet-600 — brand accent
+    // Deliberately dark: this ends up as the TWA navigationColor and
+    // stops the bright violet Android nav bar. Brand accent is still
+    // available inline via CSS.
+    theme_color: '#09090b',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
@@ -33,3 +45,4 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['books', 'entertainment'],
   }
 }
+
