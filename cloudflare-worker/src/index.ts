@@ -49,6 +49,28 @@ const ALLOWED_PREFIXES = [
 ]
 
 export default {
+  /**
+   * Cron trigger — fires on the schedule in wrangler.toml (every 10 min).
+   * Hits Render's /health endpoint so the free-tier dyno never spins
+   * down. Cheaper than UptimeRobot (no external service, no extra token
+   * management) and gives us the same guarantee: no 30-second cold-start
+   * on the first user visit after a quiet period.
+   *
+   * Cron invocations are free on Cloudflare Workers even on the free
+   * plan (up to 3 schedules per account). This is one of them.
+   */
+  async scheduled(_event: ScheduledEvent, _env: unknown, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      fetch('https://fanfic-ai-platform.onrender.com/health', {
+        headers: { 'User-Agent': 'cf-worker-keep-alive/1.0' },
+      })
+        .then(r => {
+          if (!r.ok) console.warn('keep-alive: /health returned', r.status)
+        })
+        .catch(err => console.warn('keep-alive failed:', err)),
+    )
+  },
+
   async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url)
 
