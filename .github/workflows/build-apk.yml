@@ -1,0 +1,120 @@
+name: Build Android APK
+
+# Trigger:
+# 1. Push to main affecting the twa/ config or manifest — rebuild
+# 2. Manual dispatch — useful for release builds
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'twa/**'
+      - 'frontend/src/app/manifest.ts'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install bubblewrap
+        run: npm install -g @bubblewrap/cli
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Generate a fresh signing keystore on first run, then reuse it.
+      # Secrets store it base64-encoded so we can rotate without rebuilding.
+      - name: Restore or create keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p twa
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > twa/android.keystore
+            echo "Restored keystore from secret"
+          else
+            echo "No keystore secret set — generating a NEW one (first build)."
+            echo "Save the base64 output at the bottom of this log to GitHub Secrets"
+            echo "as ANDROID_KEYSTORE_B64 to reuse in future builds."
+            KS_PW="${KEYSTORE_PASSWORD:-fanfic-ai-$(date +%s)}"
+            KEY_PW="${KEY_PASSWORD:-$KS_PW}"
+            ALIAS="${KEY_ALIAS:-android}"
+            keytool -genkeypair -v \
+              -keystore twa/android.keystore \
+              -alias "$ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$KS_PW" -keypass "$KEY_PW" \
+              -dname "CN=Fanfic AI, O=Fanfic AI, C=RU"
+            echo "=========== SAVE THESE TO GITHUB SECRETS ==========="
+            echo "ANDROID_KEYSTORE_B64 (paste value below):"
+            base64 -w0 twa/android.keystore
+            echo ""
+            echo "ANDROID_KEYSTORE_PASSWORD: $KS_PW"
+            echo "ANDROID_KEY_PASSWORD: $KEY_PW"
+            echo "ANDROID_KEY_ALIAS: $ALIAS"
+            echo "===================================================="
+          fi
+
+      - name: Print SHA-256 fingerprint (for /.well-known/assetlinks.json)
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          KS_PW="${KEYSTORE_PASSWORD:-$(cat twa/keystore.pw 2>/dev/null || echo fanfic-ai)}"
+          ALIAS="${KEY_ALIAS:-android}"
+          echo "SHA-256 fingerprint (put this in frontend/public/.well-known/assetlinks.json):"
+          keytool -list -v -keystore twa/android.keystore -alias "$ALIAS" -storepass "$KS_PW" \
+            | grep 'SHA256:' | head -1
+
+      - name: bubblewrap init
+        run: |
+          cd twa
+          if [ ! -f twa-manifest.json ]; then
+            # Non-interactive init from our live web manifest
+            bubblewrap init \
+              --manifest https://fanfic-ai-platform.vercel.app/manifest.webmanifest \
+              --directory . || true
+          fi
+
+      - name: bubblewrap build
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd twa
+          bubblewrap build \
+            --skipPwaValidation \
+            --signingKeyPath ./android.keystore \
+            --signingKeyAlias "${{ secrets.ANDROID_KEY_ALIAS || 'android' }}" \
+            || echo "Build may have prompted for input — see logs"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fanfic-ai-apk
+          path: twa/*.apk
+          if-no-files-found: warn
+
+      - name: Upload AAB artifact (for Play Store)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fanfic-ai-aab
+          path: twa/*.aab
+          if-no-files-found: warn

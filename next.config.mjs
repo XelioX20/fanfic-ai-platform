@@ -40,6 +40,16 @@ const nextConfig = {
           },
         ],
       },
+      {
+        // Digital Asset Links — Chrome fetches this to verify that our
+        // Android TWA app is allowed to render our origin without the URL
+        // bar. Must be served as application/json.
+        source: '/.well-known/assetlinks.json',
+        headers: [
+          { key: 'Content-Type', value: 'application/json' },
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
     ]
   },
 
