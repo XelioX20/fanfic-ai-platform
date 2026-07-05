@@ -1,8 +1,5 @@
 name: Build Android APK
 
-# Trigger:
-# 1. Push to main affecting the twa/ config or manifest — rebuild
-# 2. Manual dispatch — useful for release builds
 on:
   push:
     branches: [main]
@@ -31,14 +28,12 @@ jobs:
           node-version: '20'
 
       - name: Install bubblewrap
-        run: npm install -g @bubblewrap/cli
+        run: npm install -g @bubblewrap/cli@1.24.1
 
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
 
-      # Generate a fresh signing keystore on first run, then reuse it.
-      # Secrets store it base64-encoded so we can rotate without rebuilding.
-      - name: Restore or create keystore
+      - name: Restore or create signing keystore
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -46,71 +41,105 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           mkdir -p twa
+          cd twa
           if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > twa/android.keystore
+            echo "$KEYSTORE_B64" | base64 -d > android.keystore
             echo "Restored keystore from secret"
           else
             echo "No keystore secret set — generating a NEW one (first build)."
-            echo "Save the base64 output at the bottom of this log to GitHub Secrets"
-            echo "as ANDROID_KEYSTORE_B64 to reuse in future builds."
             KS_PW="${KEYSTORE_PASSWORD:-fanfic-ai-$(date +%s)}"
             KEY_PW="${KEY_PASSWORD:-$KS_PW}"
             ALIAS="${KEY_ALIAS:-android}"
             keytool -genkeypair -v \
-              -keystore twa/android.keystore \
+              -keystore android.keystore \
               -alias "$ALIAS" \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass "$KS_PW" -keypass "$KEY_PW" \
               -dname "CN=Fanfic AI, O=Fanfic AI, C=RU"
             echo "=========== SAVE THESE TO GITHUB SECRETS ==========="
             echo "ANDROID_KEYSTORE_B64 (paste value below):"
-            base64 -w0 twa/android.keystore
+            base64 -w0 android.keystore
             echo ""
             echo "ANDROID_KEYSTORE_PASSWORD: $KS_PW"
             echo "ANDROID_KEY_PASSWORD: $KEY_PW"
             echo "ANDROID_KEY_ALIAS: $ALIAS"
             echo "===================================================="
+            # Cache the pw for the next step
+            echo "$KS_PW" > .keystore_pw
           fi
 
-      - name: Print SHA-256 fingerprint (for /.well-known/assetlinks.json)
+      - name: Print SHA-256 fingerprint (paste into assetlinks.json)
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          KS_PW="${KEYSTORE_PASSWORD:-$(cat twa/keystore.pw 2>/dev/null || echo fanfic-ai)}"
+          cd twa
+          KS_PW="${KEYSTORE_PASSWORD:-$(cat .keystore_pw 2>/dev/null)}"
           ALIAS="${KEY_ALIAS:-android}"
-          echo "SHA-256 fingerprint (put this in frontend/public/.well-known/assetlinks.json):"
-          keytool -list -v -keystore twa/android.keystore -alias "$ALIAS" -storepass "$KS_PW" \
+          echo "SHA-256 fingerprint:"
+          keytool -list -v -keystore android.keystore -alias "$ALIAS" -storepass "$KS_PW" \
             | grep 'SHA256:' | head -1
 
-      - name: bubblewrap init
+      # bubblewrap init would be interactive; we ship a pre-generated
+      # twa/twa-manifest.json in the repo so init is unnecessary. If the
+      # file is missing we bail — it's cheaper to hand-edit the JSON than
+      # to fight bubblewrap's stdin prompts on CI.
+      - name: Verify twa-manifest.json exists
         run: |
           cd twa
           if [ ! -f twa-manifest.json ]; then
-            # Non-interactive init from our live web manifest
-            bubblewrap init \
-              --manifest https://fanfic-ai-platform.vercel.app/manifest.webmanifest \
-              --directory . || true
+            echo "ERROR: twa/twa-manifest.json missing. Commit the file to the repo."
+            exit 1
           fi
+          echo "twa-manifest.json OK"
+          cat twa-manifest.json
 
+      # `bubblewrap build` also prompts for JDK/SDK install and keystore
+      # passwords. Set BUBBLEWRAP_JDK_PATH / BUBBLEWRAP_ANDROID_SDK_PATH
+      # env vars to point at the runner's tools so bubblewrap doesn't ask,
+      # and feed passwords via stdin.
       - name: bubblewrap build
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           cd twa
-          bubblewrap build \
-            --skipPwaValidation \
-            --signingKeyPath ./android.keystore \
-            --signingKeyAlias "${{ secrets.ANDROID_KEY_ALIAS || 'android' }}" \
-            || echo "Build may have prompted for input — see logs"
+          KS_PW="${KEYSTORE_PASSWORD:-$(cat .keystore_pw 2>/dev/null)}"
+          KEY_PW="${KEY_PASSWORD:-$KS_PW}"
+          ALIAS="${KEY_ALIAS:-android}"
+
+          # Write bubblewrap's llama.config so it skips the "install JDK?"
+          # and "install Android SDK?" prompts entirely.
+          mkdir -p "$HOME/.bubblewrap"
+          cat > "$HOME/.bubblewrap/config.json" <<EOF
+          {
+            "jdkPath": "$JAVA_HOME",
+            "androidSdkPath": "$ANDROID_HOME"
+          }
+          EOF
+
+          # Feed keystore + key passwords via stdin (build prompts twice).
+          printf '%s\n%s\n' "$KS_PW" "$KEY_PW" | \
+            bubblewrap build \
+              --skipPwaValidation \
+              --signingKeyPath ./android.keystore \
+              --signingKeyAlias "$ALIAS"
+
+          echo ""
+          echo "=== Generated files ==="
+          ls -la *.apk *.aab 2>/dev/null || {
+            echo "No APK/AAB produced. Directory listing:"
+            ls -la
+            exit 1
+          }
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: fanfic-ai-apk
           path: twa/*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Upload AAB artifact (for Play Store)
         uses: actions/upload-artifact@v4
