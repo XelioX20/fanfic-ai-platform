@@ -182,6 +182,12 @@ CONTENT_TYPES = {
 }
 
 
+def _extract_balance(html: str) -> str:
+    """Best-effort read of the coin balance from the embedded userInfo JS."""
+    m = re.search(r'balance\s*:\s*(\d+)', html)
+    return m.group(1) if m else "?"
+
+
 def _extract_download_link(html: str, fmt: str) -> Optional[str]:
     """
     Extract the download link for the given format from the /readfic/{id}/download page.
@@ -276,6 +282,21 @@ async def download_fanfic(
         if 'window.ficbook' in page_html and '"isLoggedIn":false' in page_html.replace(" ", ""):
             raise HTTPException(status_code=403, detail="Ficbook session not authenticated. Please log in again.")
 
+        # Diagnostic — helps figure out why direct downloads 404 even when
+        # the landing page renders. Look for premium/coin flags in the
+        # embedded userInfo payload.
+        try:
+            logger.info(
+                "Download landing for %s (%s): isLoggedIn=%s isPremium=%s balance=%s len=%d",
+                fanfic_id, fmt,
+                "true" if '"isLoggedIn":true' in page_html.replace(" ", "") else "false",
+                "true" if '"isPremium":true' in page_html.replace(" ", "") else "false",
+                _extract_balance(page_html),
+                len(page_html),
+            )
+        except Exception:
+            pass
+
         # Step 2: extract the direct download link for this format
         link = _extract_download_link(page_html, fmt)
         if not link:
@@ -285,26 +306,32 @@ async def download_fanfic(
             )
         logger.info(f"Download link for {fanfic_id}.{fmt}: {link}")
 
-        # Step 3: GET the actual download via Worker
+        # Step 3: GET the actual download.
         # link is e.g. "/fanfic_download/{uuid}/Title.txt"
-        download_url = f"{WORKER_URL}{link}"
-        try:
-            dl_resp = await client.get(
-                download_url,
+        # We try the Worker first (bypasses IP blocking for the Render dyno),
+        # then fall back to direct ficbook.net on 404 — the Worker
+        # occasionally strips Cookie headers on certain paths.
+        async def _try_download(via: str) -> httpx.Response:
+            base = WORKER_URL if via == "worker" else FICBOOK_BASE
+            return await client.get(
+                f"{base}{link}",
                 headers={
                     "User-Agent": UA,
-                    "x-ficbook-cookie": cookie_str,
+                    **({"x-ficbook-cookie": cookie_str} if via == "worker" else {"Cookie": cookie_str}),
                     "Referer": f"{FICBOOK_BASE}/readfic/{fanfic_id}/download",
                     "Accept": "*/*",
                 },
             )
+
+        try:
+            dl_resp = await _try_download("worker")
         except httpx.HTTPError as e:
             raise HTTPException(status_code=502, detail=f"Failed to fetch download file: {e}")
 
         if dl_resp.status_code != 200:
             logger.warning(
                 f"Ficbook download failed for {fanfic_id}.{fmt}: "
-                f"url={download_url}, status={dl_resp.status_code}, "
+                f"url={WORKER_URL}{link}, status={dl_resp.status_code}, "
                 f"body={dl_resp.content[:300]!r}"
             )
             # 429 = rate limit from ficbook (throttles downloads per session)
@@ -319,36 +346,39 @@ async def download_fanfic(
                     status_code=403,
                     detail="Скачивание недоступно (возможно нужна авторизация или премиум на ficbook).",
                 )
-            # 404 — ficbook lazily generates download files on demand. The
-            # first hit sometimes just triggers generation and comes back
-            # empty. Retry once after a short delay before giving up.
+            # 404 — try three recovery paths in order:
+            #   a) Wait 1.5s + retry via Worker (ficbook lazily generates
+            #      download files on first hit)
+            #   b) Bypass the Worker and hit ficbook.net directly (Worker
+            #      may be stripping cookies on this path)
+            # If both fail we surface a helpful message.
             if dl_resp.status_code == 404:
                 import asyncio
                 await asyncio.sleep(1.5)
                 try:
-                    retry_resp = await client.get(
-                        download_url,
-                        headers={
-                            "User-Agent": UA,
-                            "x-ficbook-cookie": cookie_str,
-                            "Referer": f"{FICBOOK_BASE}/readfic/{fanfic_id}/download",
-                            "Accept": "*/*",
-                        },
-                    )
+                    retry_resp = await _try_download("worker")
                     if retry_resp.status_code == 200:
                         dl_resp = retry_resp
                     else:
                         logger.warning(
-                            f"Retry after 404 for {fanfic_id}.{fmt} still returned "
-                            f"{retry_resp.status_code}"
+                            f"Worker retry after 404 for {fanfic_id}.{fmt} still returned "
+                            f"{retry_resp.status_code} — trying direct ficbook"
                         )
-                        raise HTTPException(
-                            status_code=502,
-                            detail=(
-                                "Ficbook не отдал файл для скачивания. "
-                                "Возможно фанфик слишком большой или временный сбой — попробуй позже."
-                            ),
-                        )
+                        direct_resp = await _try_download("direct")
+                        if direct_resp.status_code == 200:
+                            dl_resp = direct_resp
+                        else:
+                            logger.warning(
+                                f"Direct ficbook download for {fanfic_id}.{fmt} returned "
+                                f"{direct_resp.status_code}: {direct_resp.content[:300]!r}"
+                            )
+                            raise HTTPException(
+                                status_code=502,
+                                detail=(
+                                    "Ficbook не отдал файл для скачивания. "
+                                    "Возможно фанфик слишком большой, требует premium или временный сбой."
+                                ),
+                            )
                 except httpx.HTTPError:
                     raise HTTPException(
                         status_code=502,
