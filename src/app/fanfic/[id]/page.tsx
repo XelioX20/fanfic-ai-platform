@@ -147,8 +147,13 @@ export default function FanficPage() {
 
   // Fanfic detail: read via React Query so prefetches from CompactFanficCard
   // (rail hover/focus) land in the same cache and the page renders instantly
-  // when the prefetch has already completed. 5-min staleTime matches the
-  // backend Cache-Control: max-age=300 on /fanfics/{id}/full.
+  // when the prefetch has already completed.
+  //
+  // Persistence: this query key is whitelisted in providers.tsx's
+  // dehydrateOptions, so the last successful response survives across
+  // sessions in IndexedDB. On re-open the page renders IMMEDIATELY from
+  // the cached data (even during Render cold-starts), then quietly
+  // refetches in the background — stale-while-revalidate.
   const detailQuery = useQuery<FanficFull>({
     queryKey: ['fanfic-full', id],
     queryFn: async () => {
@@ -158,6 +163,10 @@ export default function FanficPage() {
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
+    // Show cached data instantly, but always kick off a background
+    // refetch on mount — the visible content reflects the persisted
+    // snapshot while the network response replaces it once it arrives.
+    refetchOnMount: 'always',
   })
 
   const fanfic = detailQuery.data ?? null

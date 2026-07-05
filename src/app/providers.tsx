@@ -1,8 +1,11 @@
 'use client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, useEffect } from 'react'
+import { QueryClient } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
+import { useState, useEffect, useRef } from 'react'
 import { useUIStore } from '@/store'
 import { ReadingStateHydrator } from '@/components/ReadingStateHydrator'
+import { idbStorage } from '@/lib/idb-storage'
 
 function ThemeInitializer() {
   const theme = useUIStore(s => s.theme)
@@ -24,19 +27,29 @@ function ThemeInitializer() {
   return null
 }
 
+// Cache-persistence policy:
+// - gcTime: 7 days for anything persistable (fic details, chapters, rails).
+//   React Query only writes queries older than staleTime AND still within
+//   gcTime to the persistent store — 7 days means a fic re-opened next
+//   week still renders instantly from device cache.
+// - Persisted cache is keyed by our build hash so a schema change doesn't
+//   accidentally render stale data with a new UI expecting new fields.
+const BUSTER = 'v1'
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 60 * 1000,
-        // Don't hammer the API on window focus — most of our reads are
-        // long-lived (fic details, chapter lists). The user can pull to
-        // refresh if they really want to.
+        // Reads are long-lived — no need to hammer the API on tab focus.
+        // The persister-driven revalidation already handles freshness.
         refetchOnWindowFocus: false,
-        // Render's free tier cold-starts take 15–30s and often surface as
-        // 502s or timeouts on the first request. Retry up to 3× with
+        // 7 days in the async storage; queries GC'd before that reload
+        // from IDB into memory on next visit.
+        gcTime: 7 * 24 * 60 * 60 * 1000,
+        // Render's free tier cold-starts take 15-30s. Retry up to 3× with
         // exponential backoff so the second/third call rides on a warm
-        // instance — but never retry 4xx (bad request / auth / not found).
+        // instance. Never retry 4xx (bad request / auth / not found).
         retry: (failureCount, err: unknown) => {
           const status = (err as { response?: { status?: number }; status?: number })?.response?.status
                        ?? (err as { status?: number })?.status
@@ -49,11 +62,50 @@ export function Providers({ children }: { children: React.ReactNode }) {
     },
   }))
 
+  // Persister must only be created on the client (window / IndexedDB).
+  // The `useRef` + effect pattern gives us `undefined` during SSR so
+  // PersistQueryClientProvider skips persistence server-side.
+  const persisterRef = useRef<ReturnType<typeof createAsyncStoragePersister> | null>(null)
+  if (typeof window !== 'undefined' && !persisterRef.current) {
+    persisterRef.current = createAsyncStoragePersister({
+      storage: idbStorage,
+      key: `fanfic-rq:${BUSTER}`,
+      // Throttle IDB writes — chapter reads can update the cache many
+      // times per second during scroll-driven prefetches; batching every
+      // 1s keeps IDB from becoming a hot path.
+      throttleTime: 1000,
+    })
+  }
+
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: persisterRef.current!,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        buster: BUSTER,
+        // Only persist queries whose keys are safe to survive across
+        // sessions. Personal/authed lists (profile me, subscriptions,
+        // recommendations) go through Zustand and change fast — skip.
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => {
+            const key = query.queryKey[0]
+            if (typeof key !== 'string') return false
+            // Persist: fic details, chapters, public rails, cover fallbacks.
+            // Skip: profile/*, subscriptions, for-me, actions/state.
+            return (
+              key === 'fanfic-full' ||
+              key === 'chapter' ||
+              key === 'home-rail' ||
+              key === 'card-cover-fallback'
+            ) && query.state.status === 'success'
+          },
+        },
+      }}
+    >
       <ThemeInitializer />
       <ReadingStateHydrator />
       {children}
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   )
 }
