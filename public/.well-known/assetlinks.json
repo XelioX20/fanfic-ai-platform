@@ -1,12 +1,8 @@
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "app.vercel.fanfic_ai_platform.twa",
-      "sha256_cert_fingerprints": [
-        "PLACEHOLDER_REPLACE_WITH_KEYSTORE_SHA256_FROM_CI_LOGS"
-      ]
-    }
-  }
-]
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.fanfic_ai_platform.twa",
+        "sha256_cert_fingerprints": ["3F:C1:88:76:7F:CC:DB:A2:08:3C:73:36:4F:48:EE:03:EA:E8:AF:13:66:74:C6:44:F5:84:58:65:09:F8:26:25"]
+      }
+    }]
