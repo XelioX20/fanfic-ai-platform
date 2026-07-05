@@ -1,11 +1,11 @@
 'use client'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, User, Heart, Clock, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
+import { BookOpen, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/store'
 import { SearchBar } from '@/components/search/SearchBar'
+import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/lib/utils'
 
 const THEMES = [
@@ -217,20 +217,11 @@ export function Header() {
                   href="/profile"
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
                 >
-                  {(user?.custom_avatar_url || user?.ficbook_avatar_url) ? (
-                    <Image
-                      src={user.custom_avatar_url || user.ficbook_avatar_url!}
-                      alt={user.ficbook_username || 'avatar'}
-                      width={28}
-                      height={28}
-                      className="rounded-full object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-purple-700 flex items-center justify-center shrink-0">
-                      <User size={14} className="text-white" />
-                    </div>
-                  )}
+                  <Avatar
+                    src={user?.custom_avatar_url || user?.ficbook_avatar_url}
+                    alt={user?.ficbook_username || 'avatar'}
+                    size={28}
+                  />
                   <span className="text-zinc-300 text-sm hidden sm:block max-w-[120px] truncate">
                     {user?.ficbook_username || 'Профиль'}
                   </span>

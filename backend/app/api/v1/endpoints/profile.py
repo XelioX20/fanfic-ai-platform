@@ -237,8 +237,11 @@ async def upload_avatar(
         user.custom_avatar_url = new_url  # type: ignore[attr-defined]
         await db.commit()
 
-    # Best-effort cleanup of the previous R2 object.
-    if r2_storage.is_enabled() and previous_url:
+    # Cleanup of the previous R2 object — ONLY if the key differs from the
+    # new upload's key. Same key means the PUT above already overwrote the
+    # bytes; a DELETE here would erase the fresh file we just uploaded (bug
+    # we hit in prod when the extension didn't change between uploads).
+    if r2_storage.is_enabled() and previous_url and previous_url != new_url:
         try:
             await r2_storage.delete_avatar(user_id, previous_url)
         except Exception:

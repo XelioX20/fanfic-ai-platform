@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { Avatar } from '@/components/ui/Avatar'
 import Link from 'next/link'
 import {
   User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X, Bookmark, LogOut,
@@ -759,14 +760,12 @@ function ProfileContent() {
             <label className="relative cursor-pointer group block w-fit mb-3" title="Нажми чтобы изменить фото">
               <input type="file" accept="image/*" className="sr-only"
                 onChange={handleAvatarChange} disabled={avatarUploading} />
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt={displayName} width={64} height={64}
-                  className="rounded-full object-cover ring-2 ring-transparent group-hover:ring-purple-500 transition-all" unoptimized />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-700 to-purple-900 flex items-center justify-center ring-2 ring-transparent group-hover:ring-purple-500 transition-all">
-                  <User size={28} className="text-white" />
-                </div>
-              )}
+              <Avatar
+                src={avatarUrl}
+                alt={displayName}
+                size={64}
+                className="ring-2 ring-transparent group-hover:ring-purple-500 transition-all"
+              />
               <div className={cn('absolute inset-0 rounded-full bg-black/50 flex items-center justify-center transition-opacity',
                 avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                 {avatarUploading ? <Loader2 size={16} className="text-white animate-spin" />
@@ -839,14 +838,12 @@ function ProfileContent() {
             <label className="relative cursor-pointer group shrink-0" title="Изменить фото">
               <input type="file" accept="image/*" className="sr-only"
                 onChange={handleAvatarChange} disabled={avatarUploading} />
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt={displayName} width={48} height={48}
-                  className="rounded-full object-cover ring-2 ring-transparent group-hover:ring-purple-500 transition-all" unoptimized />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-700 to-purple-900 flex items-center justify-center">
-                  <User size={20} className="text-white" />
-                </div>
-              )}
+              <Avatar
+                src={avatarUrl}
+                alt={displayName}
+                size={48}
+                className="ring-2 ring-transparent group-hover:ring-purple-500 transition-all"
+              />
               <div className={cn('absolute inset-0 rounded-full bg-black/50 flex items-center justify-center transition-opacity',
                 avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                 {avatarUploading ? <Loader2 size={14} className="text-white animate-spin" /> : <span className="text-[8px] text-white">✏</span>}

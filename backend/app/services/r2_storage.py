@@ -82,6 +82,12 @@ async def delete_avatar(user_id: str, previous_url: Optional[str]) -> None:
     Best-effort — if the object is already gone or R2 is unreachable
     we log and continue; the DB row is what actually controls what the
     UI displays. Never raises.
+
+    IMPORTANT: this is meant for cleaning up a truly obsolete object.
+    Do NOT call this after a fresh upload that overwrote the previous
+    file at the same key — you'd delete the very file you just uploaded.
+    Callers must ensure the previous_url points to a different key than
+    the current one (e.g. because the extension changed jpg → png).
     """
     if not is_enabled() or not previous_url:
         return
