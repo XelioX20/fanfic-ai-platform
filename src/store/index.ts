@@ -229,6 +229,7 @@ export const useReaderStore = create<ReaderState>()(
         max_width: 680,
         theme: 'dark' as Theme,
         custom_text_color: null,
+        text_align: 'original',
       },
       updateSettings: (partial) =>
         set((state) => ({ settings: { ...state.settings, ...partial } })),
@@ -337,7 +338,10 @@ export const useReaderStore = create<ReaderState>()(
         const persisted = (persistedState ?? {}) as Partial<ReaderState>
         return {
           ...currentState,
-          settings: persisted.settings ?? currentState.settings,
+          // Shallow-merge settings so newly-added fields (like text_align)
+          // get their default value for returning users instead of being
+          // undefined. Persisted values still win where they exist.
+          settings: { ...currentState.settings, ...(persisted.settings ?? {}) },
           currentFanficId: persisted.currentFanficId ?? currentState.currentFanficId,
           readingProgress: persisted.readingProgress ?? {},
           anchors: persisted.anchors ?? {},

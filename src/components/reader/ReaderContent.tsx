@@ -154,6 +154,7 @@ export function ReaderContent({ content, chapterTitle, progressKey, restoreFromA
             fontSize: settings.font_size,
             lineHeight: settings.line_height,
           }}
+          data-text-align={settings.text_align ?? 'original'}
         >
           {/* Inject paragraph styles and theme colors that Tailwind arbitrary variants can't cover */}
           <style>{`
@@ -201,6 +202,18 @@ export function ReaderContent({ content, chapterTitle, progressKey, restoreFromA
             .reader-content a:hover { text-decoration: underline; }
             .reader-content hr { margin: 1.5rem 0; }
             .reader-content blockquote { padding-left: 1rem; font-style: italic; }
+
+            /* Text-align override — data-text-align="original" leaves the
+               HTML alone. Any other value beats ficbook's inline styles via
+               attribute selector + !important. */
+            [data-text-align="left"] .reader-content p,
+            [data-text-align="left"] .reader-content div { text-align: left !important; }
+            [data-text-align="justify"] .reader-content p,
+            [data-text-align="justify"] .reader-content div { text-align: justify !important; text-align-last: left; hyphens: auto; }
+            [data-text-align="center"] .reader-content p,
+            [data-text-align="center"] .reader-content div { text-align: center !important; text-indent: 0 !important; }
+            [data-text-align="right"] .reader-content p,
+            [data-text-align="right"] .reader-content div { text-align: right !important; text-indent: 0 !important; }
           `}</style>
           <div
             className={`reader-content reader-${theme}`}

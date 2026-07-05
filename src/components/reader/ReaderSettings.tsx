@@ -92,6 +92,41 @@ export function ReaderSettingsPanel() {
             </div>
 
             <div>
+              <label className="text-xs text-zinc-500 block mb-2">Выравнивание текста</label>
+              <div className="grid grid-cols-5 gap-1">
+                {([
+                  { value: 'original', label: 'Как в оригинале', icon: 'A' },
+                  { value: 'left',     label: 'По левому краю',  icon: '⇤' },
+                  { value: 'justify',  label: 'По ширине',       icon: '☰' },
+                  { value: 'center',   label: 'По центру',       icon: '⇎' },
+                  { value: 'right',    label: 'По правому краю', icon: '⇥' },
+                ] as const).map(a => {
+                  const active = (settings.text_align ?? 'original') === a.value
+                  return (
+                    <button
+                      key={a.value}
+                      type="button"
+                      title={a.label}
+                      aria-label={a.label}
+                      onClick={() => updateSettings({ text_align: a.value })}
+                      className={cn(
+                        'py-1.5 text-sm rounded border transition-all',
+                        active
+                          ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
+                          : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                      )}
+                    >
+                      {a.icon}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[10px] text-zinc-600 mt-1">
+                «Как в оригинале» — сохраняет разметку от автора
+              </p>
+            </div>
+
+            <div>
               <label className="text-xs text-zinc-500 block mb-2">Шрифт</label>
 
               <p className="text-[10px] uppercase tracking-wider text-zinc-600 mb-1 mt-1">С засечками (для книг)</p>

@@ -86,6 +86,15 @@ export type Theme = 'light' | 'dark' | 'amoled'
 
 export type ReaderTheme = 'light' | 'dark' | 'amoled' | 'sepia' | 'paper'
 
+/**
+ * Text alignment override for the reader canvas.
+ * - 'original' (default): don't touch the HTML — ficbook's <p style="…">
+ *   or class-based alignment stays as the author intended.
+ * - Any other value: force that alignment on every paragraph via CSS,
+ *   overriding whatever the source HTML had.
+ */
+export type TextAlign = 'original' | 'left' | 'justify' | 'center' | 'right'
+
 export interface ReaderSettings {
   font_size: number
   font_family: 'system-serif' | 'system-sans' | 'merriweather' | 'lora' | 'pt-serif' | 'roboto-slab' | 'literata' | 'inter' | 'roboto' | 'pt-sans'
@@ -94,4 +103,6 @@ export interface ReaderSettings {
   theme: ReaderTheme
   /** Optional hex colour override for body text. null = use theme default. */
   custom_text_color?: string | null
+  /** Paragraph text alignment. 'original' preserves the source HTML. */
+  text_align?: TextAlign
 }
