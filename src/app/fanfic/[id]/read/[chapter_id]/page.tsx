@@ -51,6 +51,22 @@ export default function ChapterReaderPage() {
   const chapterIds = allChapters ? allChapters.split(',') : []
   const currentIdx = chapterIds.indexOf(chapter_id)
 
+  // Fanfic title — pulled from the React Query cache warmed up on the
+  // detail page (or hover-prefetch from rail cards). If it's not there,
+  // the useQuery below still runs against the shared ['fanfic-full', id]
+  // key, so the second reader open on the same fic is instant.
+  const fanficQuery = useQuery<{ title?: string; chapters?: Array<{ id: string; title: string }> }>({
+    queryKey: ['fanfic-full', id],
+    queryFn: async () => {
+      const r = await fetch(`${API_URL}/api/v1/fanfics/${id}/full`)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json()
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  })
+  const fanficTitle = fanficQuery.data?.title ?? ''
+
   const chapterQuery = useQuery<Chapter>({
     queryKey: ['chapter', id, chapter_id],
     queryFn: async () => {
@@ -132,11 +148,25 @@ export default function ChapterReaderPage() {
             <ArrowLeft size={16} />
           </button>
 
-          <div className="flex-1 min-w-0 text-center">
-            <p className="text-sm font-medium truncate opacity-90">{chapter.title}</p>
-            {currentIdx >= 0 && (
-              <p className="text-xs opacity-40">{currentIdx + 1} / {chapterIds.length}</p>
+          <div className="flex-1 min-w-0 text-center px-2">
+            {/* Two-line topbar: fic title (bold) + chapter title / index.
+                Both truncate individually so a long fic name doesn't push
+                the chapter title off screen. */}
+            {fanficTitle && (
+              <p className="text-sm font-semibold truncate leading-tight opacity-95">
+                {fanficTitle}
+              </p>
             )}
+            <p className="text-xs truncate leading-tight opacity-60 mt-0.5">
+              {chapter.title && chapter.title !== fanficTitle
+                ? chapter.title
+                : currentIdx >= 0
+                  ? `Глава ${currentIdx + 1} из ${chapterIds.length}`
+                  : ''}
+              {chapter.title && currentIdx >= 0 && (
+                <span className="opacity-70"> · {currentIdx + 1}/{chapterIds.length}</span>
+              )}
+            </p>
           </div>
 
           <div className="flex items-center gap-1 flex-shrink-0">
