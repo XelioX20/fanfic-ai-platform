@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Play } from 'lucide-react'
 import type { Fanfic } from '@/types'
 import { cn } from '@/lib/utils'
@@ -88,12 +89,15 @@ export function ContinueReadingHero({
               {loading ? (
                 <div className="absolute inset-0 bg-zinc-800 animate-pulse" />
               ) : fanfic?.cover_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={fanfic.cover_url}
                   alt={fanfic.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  loading="eager"
+                  fill
+                  // Hero cover is the LCP element for returning users.
+                  // priority triggers fetchpriority=high + preloaded link.
+                  sizes="(max-width: 768px) 100px, 200px"
+                  priority
+                  className="object-cover"
                 />
               ) : null}
             </div>

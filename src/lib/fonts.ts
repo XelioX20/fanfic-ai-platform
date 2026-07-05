@@ -11,19 +11,26 @@ import {
 
 // next/font requires each option to be a literal expression, not a variable.
 // All fonts include 'cyrillic' subset — Russian text is fully supported.
-export const merriweather = Merriweather({ subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-merriweather', display: 'swap' })
-export const lora         = Lora({         subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-lora',         display: 'swap' })
-export const ptSerif      = PT_Serif({     subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-pt-serif',     display: 'swap' })
-export const robotoSlab   = Roboto_Slab({  subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-roboto-slab',  display: 'swap' })
-export const literata     = Literata({     subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-literata',     display: 'swap' })
+//
+// Preload policy: only preload the default UI font (PT Sans). Every other
+// family is a reader-only choice — most users never see them, and preloading
+// all 8 previously downloaded ~0.6-1MB of WOFF2 files on every visit even
+// though only one is rendered at a time. `preload: false` still lets
+// next/font serve the CSS variable and swap in the font when the reader
+// picks it — just without the render-blocking <link rel="preload"> header.
+export const ptSans       = PT_Sans({      subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-pt-sans',     display: 'swap' })
 
-export const inter    = Inter({    subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-inter',    display: 'swap' })
-export const roboto   = Roboto({   subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-roboto',   display: 'swap' })
-export const ptSans   = PT_Sans({  subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-pt-sans',  display: 'swap' })
+export const merriweather = Merriweather({ subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-merriweather', display: 'swap', preload: false })
+export const lora         = Lora({         subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-lora',         display: 'swap', preload: false })
+export const ptSerif      = PT_Serif({     subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-pt-serif',     display: 'swap', preload: false })
+export const robotoSlab   = Roboto_Slab({  subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-roboto-slab',  display: 'swap', preload: false })
+export const literata     = Literata({     subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-literata',     display: 'swap', preload: false })
+export const inter        = Inter({        subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-inter',        display: 'swap', preload: false })
+export const roboto       = Roboto({       subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-roboto',       display: 'swap', preload: false })
 
 export const allFontVariables = [
-  merriweather.variable, lora.variable, ptSerif.variable, robotoSlab.variable, literata.variable,
-  inter.variable, roboto.variable, ptSans.variable,
+  ptSans.variable, merriweather.variable, lora.variable, ptSerif.variable, robotoSlab.variable, literata.variable,
+  inter.variable, roboto.variable,
 ].join(' ')
 
 export type FontFamily =

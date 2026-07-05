@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Heart, BookOpen } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Fanfic } from '@/types'
@@ -10,6 +11,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 interface CompactFanficCardProps {
   fanfic: Fanfic
   className?: string
+  /** Mark the first few above-the-fold covers as high priority so the
+   *  browser prioritises them and LCP is measured correctly. */
+  priority?: boolean
 }
 
 const RATING_COLOR: Record<string, string> = {
@@ -34,7 +38,7 @@ const RATING_COLOR: Record<string, string> = {
  * detail page renders instantly when the user clicks. Backend caches the
  * response for 15 min so prefetch is essentially free.
  */
-export function CompactFanficCard({ fanfic, className }: CompactFanficCardProps) {
+export function CompactFanficCard({ fanfic, className, priority = false }: CompactFanficCardProps) {
   const primaryAuthor = fanfic.author_name
   const primaryFandom = fanfic.fandoms?.[0]
   const ratingCls = RATING_COLOR[fanfic.rating] ?? 'bg-zinc-800/80 text-zinc-300'
@@ -67,12 +71,17 @@ export function CompactFanficCard({ fanfic, className }: CompactFanficCardProps)
     >
       <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden bg-zinc-800 border border-zinc-800 group-hover:border-zinc-600 transition-colors">
         {fanfic.cover_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={fanfic.cover_url}
             alt={fanfic.title}
-            loading="lazy"
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+            fill
+            // Give the optimizer the actual rendered sizes so it can
+            // request AVIF/WebP variants of the right resolution instead
+            // of the full 900×1200 source. 60-80% payload cut on rails.
+            sizes="(max-width: 768px) 160px, 180px"
+            priority={priority}
+            loading={priority ? 'eager' : 'lazy'}
+            className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black p-3">

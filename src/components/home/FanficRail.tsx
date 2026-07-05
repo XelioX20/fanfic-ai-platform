@@ -16,6 +16,10 @@ interface FanficRailProps {
   emptyLabel?: string
   className?: string
   skeletonCount?: number
+  /** If true, the first few cards in this rail get priority=true so the
+   *  browser fetches their cover images eagerly. Set on the top-of-page
+   *  rail for a strong LCP; keep off on below-the-fold rails. */
+  priority?: boolean
 }
 
 /**
@@ -35,6 +39,7 @@ export function FanficRail({
   emptyLabel,
   className,
   skeletonCount = 6,
+  priority = false,
 }: FanficRailProps) {
   // Hide rail entirely when finished loading and no items and no error
   const isEmpty = !loading && !error && fanfics.length === 0
@@ -78,8 +83,12 @@ export function FanficRail({
             'scrollbar-hidden'
           )}
         >
-          {fanfics.map((fic) => (
-            <CompactFanficCard key={fic.id} fanfic={fic} />
+          {fanfics.map((fic, idx) => (
+            <CompactFanficCard
+              key={fic.id}
+              fanfic={fic}
+              priority={priority && idx < 5}
+            />
           ))}
         </div>
       )}

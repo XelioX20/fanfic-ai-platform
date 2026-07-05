@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 export interface FandomItem {
@@ -76,11 +77,12 @@ export function FandomStrip({ fandoms = DEFAULT_FANDOMS, className }: FandomStri
               style={{ height: '110px' }}
             >
               {f.cover ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={f.cover}
                   alt={f.name}
-                  className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity"
+                  fill
+                  sizes="(max-width: 640px) 50vw, 200px"
+                  className="object-cover opacity-40 group-hover:opacity-60 transition-opacity"
                   loading="lazy"
                 />
               ) : (

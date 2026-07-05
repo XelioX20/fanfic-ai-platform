@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Heart, Sparkles } from 'lucide-react'
 import type { Fanfic } from '@/types'
 import { cn, formatNumber } from '@/lib/utils'
@@ -71,11 +72,12 @@ export function EditorialCollection({
             >
               <div className="relative aspect-[16/10] bg-zinc-800 overflow-hidden">
                 {fic.cover_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={fic.cover_url}
                     alt={fic.title}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
                 ) : (

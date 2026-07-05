@@ -329,7 +329,7 @@ export default function HomePage() {
           />
         )}
 
-        {/* 5 — Trending (always) */}
+        {/* 5 — Trending (always) — top rail, first 5 covers get priority */}
         <FanficRail
           title="🔥 Горячее сегодня"
           subtitle="Что читают прямо сейчас"
@@ -338,6 +338,7 @@ export default function HomePage() {
           error={trendingQuery.isError}
           seeAllHref="/search"
           emptyLabel="Пусто — попробуйте обновить страницу."
+          priority
         />
 
         {/* 6 — For you (auth) OR beginner rail (guests) */}
