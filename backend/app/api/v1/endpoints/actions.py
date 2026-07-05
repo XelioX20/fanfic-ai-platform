@@ -282,6 +282,25 @@ async def download_fanfic(
         if 'window.ficbook' in page_html and '"isLoggedIn":false' in page_html.replace(" ", ""):
             raise HTTPException(status_code=403, detail="Ficbook session not authenticated. Please log in again.")
 
+        # Ficbook removed web downloads for regular accounts in ~2026. The
+        # landing page still renders the Скачать TXT/ePUB/PDF/FB2 buttons,
+        # but clicking any of them shows a modal:
+        #   "Скачивание работ недоступно на сайте.
+        #    Перейдите в мобильное приложение или улучшите аккаунт"
+        # and the direct /fanfic_download/... URLs return 404 for everyone
+        # except premium subscribers. There's no bypass — ficbook simply
+        # doesn't serve the files. Detect the modal text and surface a
+        # helpful error to the user.
+        if "Скачивание работ недоступно" in page_html:
+            raise HTTPException(
+                status_code=451,   # Unavailable For Legal Reasons — closest match
+                detail=(
+                    "Скачивание отключено в веб-версии ficbook. "
+                    "Файлы доступны только в мобильном приложении ficbook "
+                    "или для premium-аккаунтов."
+                ),
+            )
+
         # Diagnostic — helps figure out why direct downloads 404 even when
         # the landing page renders. Look for premium/coin flags in the
         # embedded userInfo payload.

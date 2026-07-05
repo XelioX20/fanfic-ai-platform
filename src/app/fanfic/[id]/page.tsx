@@ -734,6 +734,28 @@ export default function FanficPage() {
                           let message = detail
                           if (res.status === 401) {
                             message = 'Сессия истекла. Перелогинься через кнопку "Войти".'
+                          } else if (res.status === 451) {
+                            // Backend detected the "Скачивание работ недоступно"
+                            // modal on ficbook.net. Web downloads are disabled
+                            // for non-premium accounts; only mobile app or
+                            // premium works. There is nothing our server can
+                            // do — surface the two real options ficbook offers.
+                            const go = confirm(
+                              'Скачивание в веб-версии ficbook отключено самим сайтом.\n\n' +
+                              'Файлы доступны только:\n' +
+                              '• через мобильное приложение ficbook\n' +
+                              '• для premium-аккаунтов\n\n' +
+                              'Открыть страницу приложения?'
+                            )
+                            if (go) {
+                              // Auto-pick the store based on the platform.
+                              const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+                              const url = ios
+                                ? 'https://apps.apple.com/us/app/фикбук/id6739503607'
+                                : 'https://play.google.com/store/apps/details?id=com.breakpoint.ficbook'
+                              window.open(url, '_blank', 'noopener,noreferrer')
+                            }
+                            return
                           } else if (res.status === 403) {
                             // Backend says: "Not logged in to ficbook. Please log in again."
                             // — that's the case when the JWT is fine but there are no
