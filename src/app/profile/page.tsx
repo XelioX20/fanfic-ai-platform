@@ -643,15 +643,16 @@ function ProfileContent() {
     ficbook_profile_url?: string
   } | null>(null)
 
-  // Redirect unauthenticated visitors to login. The profile data itself
-  // is already loaded by ReadingStateHydrator (which writes to auth store),
-  // so we seed profileData from the store and only refetch after an avatar
-  // upload — no duplicate /profile/me on every mount.
+  // Redirect unauthenticated visitors to login. We ALWAYS refetch /profile/me
+  // on mount to pick up cross-device changes (avatar uploaded on phone must
+  // appear when opening on desktop), then seed from the store while the
+  // request is in flight so the UI paints instantly.
   useEffect(() => {
     if (!accessToken) {
       router.push('/login')
       return
     }
+    // Instant paint from persisted auth store
     if (user && !profileData) {
       setProfileData({
         ficbook_username: user.ficbook_username,
@@ -661,8 +662,24 @@ function ProfileContent() {
         ficbook_profile_url: user.ficbook_profile_url,
       })
     }
+    // Background refetch — always, so cross-device avatar changes land.
+    profileApi.me().then(r => {
+      setProfileData(r.data)
+      if (user && accessToken) {
+        // Sync auth store so header <Avatar> reflects the fresh URL.
+        setAuth(
+          {
+            ...user,
+            ficbook_username: r.data.ficbook_username || user.ficbook_username,
+            custom_avatar_url: r.data.custom_avatar_url ?? undefined,
+            ficbook_avatar_url: r.data.ficbook_avatar_url || user.ficbook_avatar_url,
+          },
+          accessToken,
+        )
+      }
+    }).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, user])
+  }, [accessToken])
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)

@@ -2,6 +2,7 @@ import base64
 import io
 import logging
 import os
+import time
 import httpx
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -227,6 +228,15 @@ async def upload_avatar(
     else:
         b64 = base64.b64encode(processed).decode("ascii")
         new_url = f"data:{ct};base64,{b64}"
+
+    # Cache-busting: R2 always overwrites the same key (avatars/{user_id}.{ext})
+    # so the URL is stable across uploads — the browser then serves the OLD
+    # bytes from disk cache and users have to hard-refresh to see the new
+    # avatar. Append ?v={epoch} on every write so the URL changes each upload
+    # and browsers refetch. Data-URLs (base64 fallback) already vary by
+    # content and don't need this.
+    if new_url.startswith("http"):
+        new_url = f"{new_url}?v={int(time.time())}"
 
     async with AsyncSessionLocal() as db:
         repo = UserRepository(db)
