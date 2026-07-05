@@ -34,7 +34,12 @@ function ThemeInitializer() {
 //   week still renders instantly from device cache.
 // - Persisted cache is keyed by our build hash so a schema change doesn't
 //   accidentally render stale data with a new UI expecting new fields.
-const BUSTER = 'v1'
+//
+// Bump BUSTER whenever the shape of a persisted query result changes
+// (e.g. added required field, renamed key) so old device caches are
+// nuked instead of hydrating into a UI that now crashes on the new
+// shape. Cheaper than migrating.
+const BUSTER = 'v2'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({

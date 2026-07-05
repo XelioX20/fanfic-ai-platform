@@ -159,7 +159,19 @@ export default function FanficPage() {
     queryFn: async () => {
       const r = await fetch(`${API_URL}/api/v1/fanfics/${id}/full`)
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      return r.json()
+      const raw = await r.json()
+      // Defensive normalization — an old persisted cache from a previous
+      // schema version, or a partial backend response, may be missing the
+      // array fields we then map/.length over. Coerce every array-typed
+      // field to [] so downstream renders can't crash on `undefined.length`.
+      return {
+        ...raw,
+        authors: Array.isArray(raw.authors) ? raw.authors : [],
+        fandoms: Array.isArray(raw.fandoms) ? raw.fandoms : [],
+        pairings: Array.isArray(raw.pairings) ? raw.pairings : [],
+        tags: Array.isArray(raw.tags) ? raw.tags : [],
+        chapters: Array.isArray(raw.chapters) ? raw.chapters : [],
+      } as FanficFull
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
