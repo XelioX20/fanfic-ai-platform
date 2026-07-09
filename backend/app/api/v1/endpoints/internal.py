@@ -181,10 +181,13 @@ async def enrich_run(
             async with AsyncSessionLocal() as db:
                 if vec is not None:
                     # halfvec accepts the '[..]' string form. tags/pairings/
-                    # fandoms are Postgres varchar[] arrays — asyncpg binds a
-                    # Python list directly (no json.dumps, no cast).
+                    # fandoms are Postgres varchar[] arrays — bind them with an
+                    # explicit ARRAY(String) bindparam so asyncpg serializes the
+                    # Python list correctly (a bare :param confuses its codec).
+                    from sqlalchemy import bindparam, String as SAString
+                    from sqlalchemy.dialects.postgresql import ARRAY as PGARRAY
                     vec_literal = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
-                    await db.execute(text(
+                    stmt = text(
                         "UPDATE fanfics SET "
                         "  embedding_vec = :vec, "
                         "  tags = :tags, pairings = :pairings, fandoms = :fandoms, "
@@ -195,7 +198,12 @@ async def enrich_run(
                         "  embed_text_hash=:hash, embedded_at=now(), "
                         "  enrichment_status='enriched', enrichment_error=NULL "
                         "WHERE id = :id"
-                    ), {
+                    ).bindparams(
+                        bindparam("tags", type_=PGARRAY(SAString)),
+                        bindparam("pairings", type_=PGARRAY(SAString)),
+                        bindparam("fandoms", type_=PGARRAY(SAString)),
+                    )
+                    await db.execute(stmt, {
                         "vec": vec_literal, "id": fid,
                         "tags": tags, "pairings": pairings, "fandoms": fandoms,
                         "descr": description[:4000],

@@ -49,7 +49,9 @@ async def upsert_stub(
 
             # ficbook_url is NOT NULL + unique in the schema — synthesize it.
             ficbook_url = f"https://ficbook.net/readfic/{fanfic_id}"
-            await db.execute(text(
+            from sqlalchemy import bindparam, String as SAString
+            from sqlalchemy.dialects.postgresql import ARRAY as PGARRAY
+            stmt = text(
                 "INSERT INTO fanfics "
                 "  (id, title, author_name, author_id, cover_url, direction, rating, "
                 "   completion_status, fandoms, ficbook_url, enrichment_status, "
@@ -58,7 +60,8 @@ async def upsert_stub(
                 "  (:id, :title, :author_name, :author_id, :cover_url, :direction, :rating, "
                 "   :completion_status, :fandoms, :ficbook_url, 'pending', 0, now()) "
                 "ON CONFLICT (id) DO NOTHING"
-            ), {
+            ).bindparams(bindparam("fandoms", type_=PGARRAY(SAString)))
+            await db.execute(stmt, {
                 "id": fanfic_id,
                 "title": (title or f"Фанфик {fanfic_id[:8]}")[:500],
                 "author_name": (author_name or "")[:200],
@@ -67,7 +70,7 @@ async def upsert_stub(
                 "direction": (direction or "Неизвестно")[:50],
                 "rating": (rating or "Неизвестно")[:20],
                 "completion_status": (completion_status or "Неизвестно")[:50],
-                # fandoms is a Postgres varchar[] — bind a Python list directly.
+                # fandoms is a Postgres varchar[] — typed bindparam serializes it.
                 "fandoms": fandoms or [],
                 "ficbook_url": ficbook_url,
             })
