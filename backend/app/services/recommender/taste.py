@@ -43,11 +43,11 @@ async def build_taste_vector(user_id: str) -> Optional[dict]:
         # (embedding_vec::vector::text gives '[a,b,...]').
         rows = (await db.execute(text("""
             WITH signals AS (
-                SELECT fanfic_id, :w_bookmark AS engage, added_at   AS ts FROM user_bookmarks     WHERE user_id = :uid
+                SELECT fanfic_id, CAST(:w_bookmark AS float) AS engage, added_at   AS ts FROM user_bookmarks     WHERE user_id = :uid
                 UNION ALL
-                SELECT fanfic_id, :w_anchor   AS engage, updated_at AS ts FROM user_anchors       WHERE user_id = :uid
+                SELECT fanfic_id, CAST(:w_anchor AS float)   AS engage, updated_at AS ts FROM user_anchors       WHERE user_id = :uid
                 UNION ALL
-                SELECT fanfic_id, :w_history  AS engage, opened_at  AS ts FROM user_local_history WHERE user_id = :uid
+                SELECT fanfic_id, CAST(:w_history AS float)  AS engage, opened_at  AS ts FROM user_local_history WHERE user_id = :uid
             ),
             agg AS (
                 SELECT fanfic_id, MAX(engage) AS engage, MAX(ts) AS ts
