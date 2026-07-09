@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import fanfics, search, recommendations, users, interactions, scraper, reader, auth, profile, discover, actions, reading_state
+from app.api.v1.endpoints import fanfics, search, recommendations, users, interactions, scraper, reader, auth, profile, discover, actions, reading_state, internal
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -15,3 +15,5 @@ api_router.include_router(discover.router, prefix="/discover", tags=["discover"]
 api_router.include_router(actions.router, prefix="/actions", tags=["actions"])
 # Cross-device sync of anchors + local history — see reading_state.py
 api_router.include_router(reading_state.router, prefix="/profile", tags=["reading-state"])
+# Recommendation pipeline internal/diagnostic endpoints (secret-gated)
+api_router.include_router(internal.router, prefix="/internal", tags=["internal"])

@@ -55,6 +55,16 @@ class Settings(BaseSettings):
     # bucket. No trailing slash.
     R2_PUBLIC_URL: str = ""
 
+    # ── Recommendation pipeline (Phase 2+) ────────────────────────────
+    # Cloudflare Worker /embed endpoint (bge-m3) + shared secret so only
+    # our backend can call it. ENRICH_SECRET gates the /internal/* cron
+    # endpoints. All optional — pipeline degrades gracefully if unset.
+    EMBED_WORKER_URL: str = ""
+    EMBED_WORKER_SECRET: str = ""
+    ENRICH_SECRET: str = ""
+    ENRICH_BATCH_SIZE: int = 15
+    EMBEDDING_DIM: int = 1024
+
     def get_cors_origins(self) -> list[str]:
         if isinstance(self.CORS_ORIGINS, str):
             try:
