@@ -29,7 +29,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Читалка фанфиков с ficbook.net — синхронизация якорей и избранного между устройствами',
     lang: 'ru',
     start_url: '/',
-    display: 'standalone',
+    // fullscreen → TWA edge-to-edge, no navigation bar visible.
+    // Gesture navigation still works on Android 10+.
+    display: 'fullscreen',
     orientation: 'portrait',
     background_color: '#09090b', // zinc-950 — matches dark theme
     // Deliberately dark: this ends up as the TWA navigationColor and
