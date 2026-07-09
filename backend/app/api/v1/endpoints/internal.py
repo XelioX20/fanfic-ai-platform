@@ -100,6 +100,21 @@ def _build_embed_text(title: str, fandoms, pairings, tags, description: str) -> 
     return ". ".join(p for p in parts if p)[:6000]
 
 
+@router.post("/enrich/reset-failed")
+async def reset_failed(x_internal_secret: Optional[str] = Header(None)):
+    """Reset failed/errored fics back to pending (attempts=0) so they get
+    retried — used after fixing an enrichment bug."""
+    _check_secret(x_internal_secret)
+    async with AsyncSessionLocal() as db:
+        r = await db.execute(text(
+            "UPDATE fanfics SET enrichment_status='pending', enrichment_attempts=0, "
+            "enrichment_error=NULL "
+            "WHERE enrichment_status='failed' OR enrichment_attempts > 0"
+        ))
+        await db.commit()
+        return {"reset": r.rowcount}
+
+
 @router.post("/enrich/run")
 async def enrich_run(
     request: Request,
@@ -165,17 +180,14 @@ async def enrich_run(
 
             async with AsyncSessionLocal() as db:
                 if vec is not None:
-                    # halfvec accepts the '[..]' string form. JSON columns
-                    # (tags/pairings/fandoms) are cast from a JSON string via
-                    # ::json so asyncpg doesn't reject a Python str for a JSON
-                    # column (it expects a list otherwise).
+                    # halfvec accepts the '[..]' string form. tags/pairings/
+                    # fandoms are Postgres varchar[] arrays — asyncpg binds a
+                    # Python list directly (no json.dumps, no cast).
                     vec_literal = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
-                    import json as _json
                     await db.execute(text(
                         "UPDATE fanfics SET "
                         "  embedding_vec = :vec, "
-                        "  tags = CAST(:tags AS json), pairings = CAST(:pairings AS json), "
-                        "  fandoms = CAST(:fandoms AS json), "
+                        "  tags = :tags, pairings = :pairings, fandoms = :fandoms, "
                         "  description = :descr, "
                         "  romance_score=:romance, angst_score=:angst, fluff_score=:fluff, "
                         "  drama_score=:drama, humor_score=:humor, adventure_score=:adventure, "
@@ -185,9 +197,7 @@ async def enrich_run(
                         "WHERE id = :id"
                     ), {
                         "vec": vec_literal, "id": fid,
-                        "tags": _json.dumps(tags, ensure_ascii=False),
-                        "pairings": _json.dumps(pairings, ensure_ascii=False),
-                        "fandoms": _json.dumps(fandoms, ensure_ascii=False),
+                        "tags": tags, "pairings": pairings, "fandoms": fandoms,
                         "descr": description[:4000],
                         "romance": scores["romance"], "angst": scores["angst"],
                         "fluff": scores["fluff"], "drama": scores["drama"],

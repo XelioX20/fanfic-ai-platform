@@ -56,7 +56,7 @@ async def upsert_stub(
                 "   enrichment_attempts, scraped_at) "
                 "VALUES "
                 "  (:id, :title, :author_name, :author_id, :cover_url, :direction, :rating, "
-                "   :completion_status, CAST(:fandoms AS json), :ficbook_url, 'pending', 0, now()) "
+                "   :completion_status, :fandoms, :ficbook_url, 'pending', 0, now()) "
                 "ON CONFLICT (id) DO NOTHING"
             ), {
                 "id": fanfic_id,
@@ -67,7 +67,8 @@ async def upsert_stub(
                 "direction": (direction or "Неизвестно")[:50],
                 "rating": (rating or "Неизвестно")[:20],
                 "completion_status": (completion_status or "Неизвестно")[:50],
-                "fandoms": json.dumps(fandoms or [], ensure_ascii=False),
+                # fandoms is a Postgres varchar[] — bind a Python list directly.
+                "fandoms": fandoms or [],
                 "ficbook_url": ficbook_url,
             })
             await db.commit()
