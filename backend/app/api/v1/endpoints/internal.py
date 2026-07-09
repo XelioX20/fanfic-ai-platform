@@ -72,6 +72,17 @@ async def reco_status(x_internal_secret: Optional[str] = Header(None)):
         except Exception as e:
             out["fics_with_vector"] = f"error: {e}"
 
+        # 5. Recent enrichment errors (diagnostics)
+        try:
+            r = await db.execute(text(
+                "SELECT id, enrichment_attempts, LEFT(enrichment_error, 200) "
+                "FROM fanfics WHERE enrichment_error IS NOT NULL "
+                "ORDER BY embedded_at DESC NULLS LAST LIMIT 5"
+            ))
+            out["recent_errors"] = [{"id": a, "attempts": b, "error": c} for a, b, c in r.all()]
+        except Exception as e:
+            out["recent_errors"] = f"error: {e}"
+
     return out
 
 
@@ -108,6 +119,7 @@ async def enrich_run(
     from ficbook_parser.parsers.fanfic_page import FanficPageParser
 
     processed, enriched, failed = 0, 0, 0
+    first_error = None
 
     # 1. Pick pending fics (attempts < 3). Do this in its own session so the
     #    row lock is short; we re-open per-write below.
@@ -192,6 +204,8 @@ async def enrich_run(
                     failed += 1
         except Exception as e:
             logger.warning("enrich failed for %s: %s", fid, e)
+            if first_error is None:
+                first_error = f"{type(e).__name__}: {str(e)[:300]}"
             try:
                 async with AsyncSessionLocal() as db:
                     await db.execute(text(
@@ -201,8 +215,9 @@ async def enrich_run(
                         "WHERE id = :id"
                     ), {"id": fid, "err": str(e)[:500]})
                     await db.commit()
-            except Exception:
-                pass
+            except Exception as e2:
+                if first_error is None:
+                    first_error = f"write-error {type(e2).__name__}: {str(e2)[:300]}"
             failed += 1
 
-    return {"processed": processed, "enriched": enriched, "failed": failed}
+    return {"processed": processed, "enriched": enriched, "failed": failed, "first_error": first_error}
