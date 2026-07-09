@@ -126,6 +126,59 @@ async def reset_failed(x_internal_secret: Optional[str] = Header(None)):
         return {"reset": r.rowcount}
 
 
+@router.get("/reco/taste-debug/{user_id}")
+async def taste_debug(user_id: str, x_internal_secret: Optional[str] = Header(None)):
+    """Diagnose why a user's taste vector is (or isn't) built: how many of
+    their signalled fics exist in the catalog and how many have embeddings."""
+    _check_secret(x_internal_secret)
+    async with AsyncSessionLocal() as db:
+        signalled = (await db.execute(text("""
+            SELECT COUNT(DISTINCT fanfic_id) FROM (
+                SELECT fanfic_id FROM user_bookmarks WHERE user_id = :uid
+                UNION SELECT fanfic_id FROM user_anchors WHERE user_id = :uid
+                UNION SELECT fanfic_id FROM user_local_history WHERE user_id = :uid
+            ) s
+        """), {"uid": user_id})).scalar()
+
+        in_catalog = (await db.execute(text("""
+            WITH sig AS (
+                SELECT fanfic_id FROM user_bookmarks WHERE user_id = :uid
+                UNION SELECT fanfic_id FROM user_anchors WHERE user_id = :uid
+                UNION SELECT fanfic_id FROM user_local_history WHERE user_id = :uid
+            )
+            SELECT COUNT(*) FROM sig JOIN fanfics f ON f.id = sig.fanfic_id
+        """), {"uid": user_id})).scalar()
+
+        with_vec = (await db.execute(text("""
+            WITH sig AS (
+                SELECT fanfic_id FROM user_bookmarks WHERE user_id = :uid
+                UNION SELECT fanfic_id FROM user_anchors WHERE user_id = :uid
+                UNION SELECT fanfic_id FROM user_local_history WHERE user_id = :uid
+            )
+            SELECT COUNT(*) FROM sig JOIN fanfics f ON f.id = sig.fanfic_id
+            WHERE f.embedding_vec IS NOT NULL
+        """), {"uid": user_id})).scalar()
+
+        tv = (await db.execute(text(
+            "SELECT n_signals, built_at FROM user_taste_vectors WHERE user_id = :uid"
+        ), {"uid": user_id})).first()
+
+        # Try building it now and capture any error.
+        from app.services.recommender import taste
+        try:
+            build_result = await taste.build_taste_vector(user_id)
+        except Exception as e:
+            build_result = f"error: {type(e).__name__}: {str(e)[:300]}"
+
+        return {
+            "signalled_fics": signalled,
+            "signalled_in_catalog": in_catalog,
+            "signalled_with_vector": with_vec,
+            "taste_vector_row": {"n_signals": tv[0], "built_at": str(tv[1])} if tv else None,
+            "rebuild_result": build_result,
+        }
+
+
 @router.post("/enrich/run")
 async def enrich_run(
     request: Request,
