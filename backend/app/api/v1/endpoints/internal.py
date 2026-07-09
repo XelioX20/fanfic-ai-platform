@@ -83,6 +83,17 @@ async def reco_status(x_internal_secret: Optional[str] = Header(None)):
         except Exception as e:
             out["recent_errors"] = f"error: {e}"
 
+        # 6. Actual column types for the array/json fields (schema drift check)
+        try:
+            r = await db.execute(text(
+                "SELECT column_name, data_type, udt_name FROM information_schema.columns "
+                "WHERE table_name='fanfics' AND column_name IN "
+                "('tags','pairings','fandoms','description')"
+            ))
+            out["column_types"] = {a: (b, c) for a, b, c in r.all()}
+        except Exception as e:
+            out["column_types"] = f"error: {e}"
+
     return out
 
 
