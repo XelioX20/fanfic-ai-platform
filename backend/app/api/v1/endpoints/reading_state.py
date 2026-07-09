@@ -252,7 +252,18 @@ async def upsert_local_history(
             row.opened_at = datetime.utcnow()
         await db.commit()
         await db.refresh(row)
-        return _hist_to_read(row)
+        result = _hist_to_read(row)
+
+    # Reactive catalog ingestion — best-effort, never blocks the write.
+    # Feeds the recommendation enrichment queue with fics as they're read.
+    from app.services.recommender.ingest import upsert_stub
+    await upsert_stub(
+        fanfic_id,
+        title=payload.title, author_name=payload.author_name, author_id=payload.author_id,
+        cover_url=payload.cover_url, direction=payload.direction, rating=payload.rating,
+        completion_status=payload.completion_status, fandoms=payload.fandoms,
+    )
+    return result
 
 
 @router.delete("/local-history/{fanfic_id}", status_code=204)
@@ -387,7 +398,17 @@ async def upsert_bookmark(
             row.fandoms = fandoms_str
         await db.commit()
         await db.refresh(row)
-        return _bookmark_to_read(row)
+        result = _bookmark_to_read(row)
+
+    # Reactive catalog ingestion (bookmark = strong positive signal).
+    from app.services.recommender.ingest import upsert_stub
+    await upsert_stub(
+        fanfic_id,
+        title=payload.title, author_name=payload.author_name, author_id=payload.author_id,
+        cover_url=payload.cover_url, direction=payload.direction, rating=payload.rating,
+        completion_status=payload.completion_status, fandoms=payload.fandoms,
+    )
+    return result
 
 
 @router.delete("/bookmarks/{fanfic_id}", status_code=204)

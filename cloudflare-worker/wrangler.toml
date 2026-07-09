@@ -3,15 +3,18 @@ main = "src/index.ts"
 compatibility_date = "2024-01-01"
 workers_dev = true
 
-# Keep-alive pings for the Render free-tier backend.
-# Render spins down free-tier services after 15 min of no traffic. The
-# first request after spin-down takes 15-30 seconds to warm up. Public
-# reads have been moved to CF Worker cache, so Render sees very little
-# traffic — auth/login endpoints would suffer 30s cold-starts every
-# time users don't visit for a while.
-#
-# We schedule a cron to hit /health every 10 minutes so the dyno stays
-# awake continuously. Render's free tier allows this — the /health
-# endpoint is dirt cheap and doesn't count against any quotas.
+# Workers AI binding — powers the /embed endpoint (bge-m3, 1024-dim) that
+# the Render backend calls to vectorize fanfics for the recommendation
+# system. Free tier renews its neuron budget daily.
+[ai]
+binding = "AI"
+
+# Keep-alive + enrichment crons for the Render free-tier backend.
+# - */10 : ping /health so the dyno never cold-starts (public reads are
+#          edge-cached, so Render sees little traffic otherwise).
+# - */15 : POST /internal/enrich/run to drain the enrichment queue
+#          (parse + embed pending fics). Idempotent; doubles as a wake-up.
+# Free plan allows 3 cron schedules; we use 2.
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["*/10 * * * *", "*/15 * * * *"]
+

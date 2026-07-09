@@ -25,6 +25,19 @@ const UA = 'AppleWebKit/605.1'
 // chapter shows up on the next tick.
 const CACHE_TTL_S = 600
 
+// Environment bindings (wrangler.toml). AI = Workers AI binding for embeddings.
+// Secrets (RENDER_ENRICH_URL, ENRICH_SECRET, EMBED_WORKER_SECRET) are set via
+// `wrangler secret put`.
+interface Env {
+  AI: { run: (model: string, input: unknown) => Promise<unknown> }
+  RENDER_ENRICH_URL?: string
+  ENRICH_SECRET?: string
+  EMBED_WORKER_SECRET?: string
+}
+
+// bge-m3: 1024-dim multilingual embedding, tops ruMTEB for Russian.
+const EMBED_MODEL = '@cf/baai/bge-m3'
+
 // Allowed path prefixes to prevent open proxy abuse
 const ALLOWED_PREFIXES = [
   '/fanfiction',
@@ -50,29 +63,64 @@ const ALLOWED_PREFIXES = [
 
 export default {
   /**
-   * Cron trigger — fires on the schedule in wrangler.toml (every 10 min).
-   * Hits Render's /health endpoint so the free-tier dyno never spins
-   * down. Cheaper than UptimeRobot (no external service, no extra token
-   * management) and gives us the same guarantee: no 30-second cold-start
-   * on the first user visit after a quiet period.
-   *
-   * Cron invocations are free on Cloudflare Workers even on the free
-   * plan (up to 3 schedules per account). This is one of them.
+   * Cron triggers (wrangler.toml):
+   *   every 10 min: ping Render /health so the free-tier dyno never cold-starts.
+   *   every 15 min: POST Render /internal/enrich/run to drain the enrichment
+   *          queue (parse + embed pending fics). Idempotent; also a wake-up.
+   * event.cron tells us which schedule fired.
    */
-  async scheduled(_event: ScheduledEvent, _env: unknown, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(
-      fetch('https://fanfic-ai-platform.onrender.com/health', {
-        headers: { 'User-Agent': 'cf-worker-keep-alive/1.0' },
-      })
-        .then(r => {
-          if (!r.ok) console.warn('keep-alive: /health returned', r.status)
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (event.cron === '*/15 * * * *') {
+      // Enrichment drive
+      const url = env.RENDER_ENRICH_URL
+      const secret = env.ENRICH_SECRET
+      if (url && secret) {
+        ctx.waitUntil(
+          fetch(url, {
+            method: 'POST',
+            headers: { 'X-Internal-Secret': secret, 'User-Agent': 'cf-worker-enrich/1.0' },
+          })
+            .then(r => { if (!r.ok) console.warn('enrich run returned', r.status) })
+            .catch(err => console.warn('enrich run failed:', err)),
+        )
+      }
+    } else {
+      // Keep-alive (*/10 and any other schedule)
+      ctx.waitUntil(
+        fetch('https://fanfic-ai-platform.onrender.com/health', {
+          headers: { 'User-Agent': 'cf-worker-keep-alive/1.0' },
         })
-        .catch(err => console.warn('keep-alive failed:', err)),
-    )
+          .then(r => { if (!r.ok) console.warn('keep-alive: /health returned', r.status) })
+          .catch(err => console.warn('keep-alive failed:', err)),
+      )
+    }
   },
 
-  async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url)
+
+    // ── Embedding endpoint ────────────────────────────────────────────
+    // POST /embed  { texts: string[] }  →  { vectors: number[][] }
+    // Secret-gated (X-Embed-Secret == EMBED_WORKER_SECRET). Called
+    // server-to-server from Render's enrichment job. Runs bge-m3 on
+    // Workers AI at the edge — no cold start, daily-renewing neuron budget.
+    if (url.pathname === '/embed' && request.method === 'POST') {
+      if (!env.EMBED_WORKER_SECRET || request.headers.get('x-embed-secret') !== env.EMBED_WORKER_SECRET) {
+        return jsonResponse({ error: 'unauthorized' }, 403)
+      }
+      try {
+        const body = (await request.json()) as { texts?: string[] }
+        const texts = Array.isArray(body.texts) ? body.texts.filter(t => typeof t === 'string' && t.length) : []
+        if (!texts.length) return jsonResponse({ error: 'no texts' }, 400)
+        // bge-m3 accepts an array; returns { data: number[][] }.
+        const out = (await env.AI.run(EMBED_MODEL, { text: texts })) as { data?: number[][] }
+        const vectors = out?.data ?? []
+        return jsonResponse({ vectors, model: EMBED_MODEL, dim: vectors[0]?.length ?? 0 })
+      } catch (e) {
+        return jsonResponse({ error: String(e) }, 500)
+      }
+    }
+
 
     // CORS preflight
     if (request.method === 'OPTIONS') {
