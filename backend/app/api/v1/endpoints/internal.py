@@ -165,12 +165,17 @@ async def enrich_run(
 
             async with AsyncSessionLocal() as db:
                 if vec is not None:
-                    # Write the vector (halfvec accepts the '[..]' string form)
+                    # halfvec accepts the '[..]' string form. JSON columns
+                    # (tags/pairings/fandoms) are cast from a JSON string via
+                    # ::json so asyncpg doesn't reject a Python str for a JSON
+                    # column (it expects a list otherwise).
                     vec_literal = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
+                    import json as _json
                     await db.execute(text(
                         "UPDATE fanfics SET "
                         "  embedding_vec = :vec, "
-                        "  tags = :tags, pairings = :pairings, fandoms = :fandoms, "
+                        "  tags = CAST(:tags AS json), pairings = CAST(:pairings AS json), "
+                        "  fandoms = CAST(:fandoms AS json), "
                         "  description = :descr, "
                         "  romance_score=:romance, angst_score=:angst, fluff_score=:fluff, "
                         "  drama_score=:drama, humor_score=:humor, adventure_score=:adventure, "
@@ -180,9 +185,9 @@ async def enrich_run(
                         "WHERE id = :id"
                     ), {
                         "vec": vec_literal, "id": fid,
-                        "tags": __import__("json").dumps(tags, ensure_ascii=False),
-                        "pairings": __import__("json").dumps(pairings, ensure_ascii=False),
-                        "fandoms": __import__("json").dumps(fandoms, ensure_ascii=False),
+                        "tags": _json.dumps(tags, ensure_ascii=False),
+                        "pairings": _json.dumps(pairings, ensure_ascii=False),
+                        "fandoms": _json.dumps(fandoms, ensure_ascii=False),
                         "descr": description[:4000],
                         "romance": scores["romance"], "angst": scores["angst"],
                         "fluff": scores["fluff"], "drama": scores["drama"],

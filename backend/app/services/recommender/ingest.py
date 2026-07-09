@@ -56,7 +56,7 @@ async def upsert_stub(
                 "   enrichment_attempts, scraped_at) "
                 "VALUES "
                 "  (:id, :title, :author_name, :author_id, :cover_url, :direction, :rating, "
-                "   :completion_status, :fandoms, :ficbook_url, 'pending', 0, now()) "
+                "   :completion_status, CAST(:fandoms AS json), :ficbook_url, 'pending', 0, now()) "
                 "ON CONFLICT (id) DO NOTHING"
             ), {
                 "id": fanfic_id,
