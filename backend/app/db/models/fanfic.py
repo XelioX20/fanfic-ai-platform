@@ -41,6 +41,16 @@ class Fanfic(Base):
     narrative_depth: Mapped[Optional[float]] = mapped_column(Float)
     writing_quality: Mapped[Optional[float]] = mapped_column(Float)
     embedding: Mapped[Optional[list]] = mapped_column(JSON)
+    # ── Recommendation enrichment pipeline (Phase 1) ──────────────────
+    # The real semantic vector lives in a Postgres-only `embedding_vec
+    # halfvec(1024)` column created via raw DDL in session.py (SQLAlchemy
+    # + SQLite can't model the pgvector type). These flat columns drive
+    # the enrichment state machine and work on both Postgres and SQLite.
+    enrichment_status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    enrichment_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    enrichment_error: Mapped[Optional[str]] = mapped_column(Text)
+    embed_text_hash: Mapped[Optional[str]] = mapped_column(String(64))
+    embedded_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

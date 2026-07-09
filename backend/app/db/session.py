@@ -49,6 +49,7 @@ async def create_tables():
         # ALTER TABLE ... ADD COLUMN IF NOT EXISTS keeps prod schema in sync
         # without pulling in Alembic. Idempotent on both Postgres and SQLite.
         await _ensure_columns(conn)
+        await _ensure_pgvector(conn)
 
 
 async def _ensure_columns(conn) -> None:
@@ -57,6 +58,14 @@ async def _ensure_columns(conn) -> None:
     # Postgres and SQLite both accept "ADD COLUMN IF NOT EXISTS".
     statements = (
         "ALTER TABLE platform_users ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT",
+        # Recommendation enrichment columns on fanfics (also declared in the
+        # ORM model so create_all makes them on a fresh DB; this covers the
+        # already-existing-table case in prod).
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS enrichment_status VARCHAR(20) DEFAULT 'pending'",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS enrichment_attempts INTEGER DEFAULT 0",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS enrichment_error TEXT",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS embed_text_hash VARCHAR(64)",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS embedded_at TIMESTAMP",
     )
     for sql in statements:
         try:
@@ -65,3 +74,37 @@ async def _ensure_columns(conn) -> None:
             import logging
             logging.getLogger(__name__).warning("_ensure_columns skipped: %s", e)
             pass
+
+
+async def _ensure_pgvector(conn) -> None:
+    """Postgres-only: enable pgvector, add the halfvec embedding columns
+    (which SQLAlchemy can't model for the SQLite test path), and build the
+    HNSW ANN index. All statements are idempotent. Silently no-ops on
+    SQLite (tests) where the vector type doesn't exist.
+    """
+    from sqlalchemy import text
+    # Only attempt on Postgres — asyncpg dialect. SQLite has no pgvector.
+    if conn.dialect.name != "postgresql":
+        return
+
+    import logging
+    logger = logging.getLogger(__name__)
+    statements = (
+        "CREATE EXTENSION IF NOT EXISTS vector",
+        # 1024-dim to match Cloudflare Workers AI bge-m3. halfvec = 2 bytes/dim,
+        # halves storage + index size with negligible recall loss.
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS embedding_vec halfvec(1024)",
+        "ALTER TABLE user_taste_vectors ADD COLUMN IF NOT EXISTS vec halfvec(1024)",
+        # HNSW index for cosine ANN. Built once; cheap while the table is small.
+        "CREATE INDEX IF NOT EXISTS ix_fanfics_embedding_hnsw "
+        "ON fanfics USING hnsw (embedding_vec halfvec_cosine_ops)",
+    )
+    for sql in statements:
+        try:
+            await conn.execute(text(sql))
+        except Exception as e:
+            # First-time CREATE EXTENSION may fail if the Neon role lacks
+            # privileges; log loudly so we notice, but don't crash boot —
+            # the reco pipeline degrades to "no vectors" and the feed falls
+            # back to trending.
+            logger.warning("_ensure_pgvector step failed (%s): %s", sql[:60], e)

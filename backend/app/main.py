@@ -21,6 +21,9 @@ from app.api.v1.router import api_router
 from app.db.session import create_tables, AsyncSessionLocal
 from app.db.repositories.fanfics import FanficRepository
 from app.db.models.fanfic import Fanfic
+# Import reco models so Base.metadata.create_all() creates their tables
+# (user_taste_vectors, user_recommendations) on boot.
+from app.db.models import reco as _reco_models  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
