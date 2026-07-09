@@ -191,17 +191,19 @@ async def enrich_run(
 
             async with AsyncSessionLocal() as db:
                 if vec is not None:
-                    # halfvec accepts the '[..]' string form. tags/pairings/
-                    # fandoms are Postgres varchar[] arrays — bind them with an
-                    # explicit ARRAY(String) bindparam so asyncpg serializes the
-                    # Python list correctly (a bare :param confuses its codec).
+                    # Schema drift: tags & pairings are `json` columns,
+                    # fandoms is `varchar[]`. Bind each to its real type —
+                    # json columns get a JSON string via ::json cast, the
+                    # array column gets a typed ARRAY(String) bindparam.
+                    import json as _json
                     from sqlalchemy import bindparam, String as SAString
                     from sqlalchemy.dialects.postgresql import ARRAY as PGARRAY
                     vec_literal = "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
                     stmt = text(
                         "UPDATE fanfics SET "
                         "  embedding_vec = :vec, "
-                        "  tags = :tags, pairings = :pairings, fandoms = :fandoms, "
+                        "  tags = CAST(:tags AS json), pairings = CAST(:pairings AS json), "
+                        "  fandoms = :fandoms, "
                         "  description = :descr, "
                         "  romance_score=:romance, angst_score=:angst, fluff_score=:fluff, "
                         "  drama_score=:drama, humor_score=:humor, adventure_score=:adventure, "
@@ -209,14 +211,12 @@ async def enrich_run(
                         "  embed_text_hash=:hash, embedded_at=now(), "
                         "  enrichment_status='enriched', enrichment_error=NULL "
                         "WHERE id = :id"
-                    ).bindparams(
-                        bindparam("tags", type_=PGARRAY(SAString)),
-                        bindparam("pairings", type_=PGARRAY(SAString)),
-                        bindparam("fandoms", type_=PGARRAY(SAString)),
-                    )
+                    ).bindparams(bindparam("fandoms", type_=PGARRAY(SAString)))
                     await db.execute(stmt, {
                         "vec": vec_literal, "id": fid,
-                        "tags": tags, "pairings": pairings, "fandoms": fandoms,
+                        "tags": _json.dumps(tags, ensure_ascii=False),
+                        "pairings": _json.dumps(pairings, ensure_ascii=False),
+                        "fandoms": fandoms,
                         "descr": description[:4000],
                         "romance": scores["romance"], "angst": scores["angst"],
                         "fluff": scores["fluff"], "drama": scores["drama"],
