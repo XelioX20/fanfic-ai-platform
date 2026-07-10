@@ -34,6 +34,17 @@ _BETA = 1.0
 _ENGAGE = {"bookmark": 1.0, "anchor": 0.7, "history": 0.3}
 
 
+def _scroll_weight(p: float) -> float:
+    """Map max scroll depth (0..1) → an additive engagement weight.
+    Bounce deadzone below 10% returns 0; a concave curve rewards depth so
+    'read to the end' dominates 'skimmed a bit'; +0.25 completion bonus."""
+    if p < 0.10:
+        return 0.0
+    core = (p - 0.10) / 0.90
+    base = core ** 0.6
+    return base + (0.25 if p >= 0.95 else 0.0)
+
+
 async def build_taste_vector(user_id: str) -> Optional[dict]:
     """Compute + persist the user's taste vector. Returns {n_signals, dim}
     or None on cold start (no signalled fics with embeddings yet)."""
@@ -52,11 +63,19 @@ async def build_taste_vector(user_id: str) -> Optional[dict]:
             agg AS (
                 SELECT fanfic_id, MAX(engage) AS engage, MAX(ts) AS ts
                 FROM signals GROUP BY fanfic_id
+            ),
+            -- Per-fic scroll depth: strongest chapter progress + total visits.
+            prog AS (
+                SELECT fanfic_id, MAX(max_progress) AS max_p, SUM(visits) AS visits
+                FROM user_reading_progress WHERE user_id = :uid GROUP BY fanfic_id
             )
             SELECT a.engage,
                    EXTRACT(EPOCH FROM (now() - a.ts)) / 86400.0 AS age_days,
+                   COALESCE(p.max_p, 0.0) AS max_p,
+                   COALESCE(p.visits, 0)  AS visits,
                    (f.embedding_vec::vector)::text AS vec
             FROM agg a
+            LEFT JOIN prog p ON p.fanfic_id = a.fanfic_id
             JOIN fanfics f ON f.id = a.fanfic_id
             WHERE f.embedding_vec IS NOT NULL
         """), {
@@ -72,7 +91,7 @@ async def build_taste_vector(user_id: str) -> Optional[dict]:
         # Weighted sum in Python (tens of vectors, cheap).
         dim = 0
         acc: list[float] = []
-        for engage, age_days, vec_text in rows:
+        for engage, age_days, max_p, visits, vec_text in rows:
             vals = [float(x) for x in vec_text.strip("[]").split(",")]
             if not acc:
                 dim = len(vals)
@@ -80,7 +99,12 @@ async def build_taste_vector(user_id: str) -> Optional[dict]:
             elif len(vals) != dim:
                 continue  # skip a malformed row
             recency = math.exp(-_LAMBDA * max(0.0, float(age_days)))
-            w = recency * (1.0 + _BETA * float(engage))
+            # Scroll depth folded in: concave reward for depth + completion
+            # bonus. A bounce (p < 0.10) contributes 0 (not negative — "not
+            # in the mood" ≠ "dislikes the genre").
+            sw = _scroll_weight(float(max_p or 0.0))
+            visit_bonus = 0.6 * math.log1p(float(visits or 0))
+            w = (float(engage) + sw + visit_bonus) * recency
             for i in range(dim):
                 acc[i] += w * vals[i]
 

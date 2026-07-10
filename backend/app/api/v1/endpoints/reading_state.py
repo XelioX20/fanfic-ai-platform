@@ -33,7 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import verify_token
 from app.db.session import AsyncSessionLocal
-from app.db.models.reading_state import UserAnchor, UserLocalHistory, UserBookmark
+from app.db.models.reading_state import UserAnchor, UserLocalHistory, UserBookmark, UserReadingProgress
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -422,3 +422,70 @@ async def delete_bookmark(fanfic_id: str, user_id: str = Depends(_get_current_us
         )
         await db.commit()
     return None
+
+
+# ─── Reading progress (scroll depth) ────────────────────────────────────
+
+class ReadingProgressPayload(BaseModel):
+    chapter_id: str = Field(default="single")
+    progress: float = Field(ge=0.0, le=1.0)  # 0..1 max scroll depth this session
+
+
+class ReadingProgressRead(BaseModel):
+    fanfic_id: str
+    chapter_id: str
+    max_progress: float
+    visits: int
+    updated_at: datetime
+
+
+@router.get("/reading-progress", response_model=list[ReadingProgressRead])
+async def list_reading_progress(user_id: str = Depends(_get_current_user_id)):
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(UserReadingProgress)
+            .where(UserReadingProgress.user_id == user_id)
+            .order_by(UserReadingProgress.updated_at.desc())
+        )).scalars().all()
+        return [
+            ReadingProgressRead(
+                fanfic_id=r.fanfic_id, chapter_id=r.chapter_id,
+                max_progress=r.max_progress, visits=r.visits, updated_at=r.updated_at,
+            ) for r in rows
+        ]
+
+
+@router.put("/reading-progress/{fanfic_id}", response_model=ReadingProgressRead)
+async def upsert_reading_progress(
+    fanfic_id: str,
+    payload: ReadingProgressPayload,
+    user_id: str = Depends(_get_current_user_id),
+):
+    """Record scroll depth for a chapter. max_progress only ever increases;
+    visits increments each call. Fire-and-forget from the reader — degrades
+    silently if it fails (local readingProgress is the source of truth for
+    resume; this row only feeds recommendations)."""
+    async with AsyncSessionLocal() as db:
+        row = (await db.execute(
+            select(UserReadingProgress).where(
+                UserReadingProgress.user_id == user_id,
+                UserReadingProgress.fanfic_id == fanfic_id,
+                UserReadingProgress.chapter_id == payload.chapter_id,
+            )
+        )).scalar_one_or_none()
+        if row is None:
+            row = UserReadingProgress(
+                user_id=user_id, fanfic_id=fanfic_id, chapter_id=payload.chapter_id,
+                max_progress=payload.progress, visits=1,
+            )
+            db.add(row)
+        else:
+            row.max_progress = max(row.max_progress, payload.progress)
+            row.visits = (row.visits or 0) + 1
+            row.updated_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(row)
+        return ReadingProgressRead(
+            fanfic_id=row.fanfic_id, chapter_id=row.chapter_id,
+            max_progress=row.max_progress, visits=row.visits, updated_at=row.updated_at,
+        )

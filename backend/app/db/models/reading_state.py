@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey, UniqueConstraint, Text
+from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, UniqueConstraint, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -85,3 +85,24 @@ class UserBookmark(Base):
     fandoms: Mapped[Optional[str]] = mapped_column(Text)  # JSON-encoded list of strings
     added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
+
+
+class UserReadingProgress(Base):
+    """Per-chapter scroll depth — the highest-fidelity implicit engagement
+    signal. max_progress (0..1) distinguishes "read to the end" from
+    "opened & bounced"; visits counts repeat opens. Feeds the taste-vector
+    engagement weight (see recommender/taste.py).
+    """
+
+    __tablename__ = "user_reading_progress"
+    __table_args__ = (
+        UniqueConstraint("user_id", "fanfic_id", "chapter_id", name="uq_user_reading_progress"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("platform_users.id", ondelete="CASCADE"), index=True)
+    fanfic_id: Mapped[str] = mapped_column(String(64), index=True)
+    chapter_id: Mapped[str] = mapped_column(String(64), default="single")
+    max_progress: Mapped[float] = mapped_column(Float, default=0.0)  # 0..1, MAX across sessions
+    visits: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)

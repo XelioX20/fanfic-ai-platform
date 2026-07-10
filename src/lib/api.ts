@@ -166,6 +166,11 @@ export const readingStateApi = {
   deleteAnchor: (fanficId: string) =>
     api.delete(`/profile/anchors/${encodeURIComponent(fanficId)}`),
 
+  // Scroll-depth sync — feeds recommendation engagement weight. Fire-and-
+  // forget; failures are swallowed by the caller.
+  upsertReadingProgress: (fanficId: string, body: { chapter_id: string; progress: number }) =>
+    api.put(`/profile/reading-progress/${encodeURIComponent(fanficId)}`, body),
+
   listHistory: (limit = 200) =>
     api.get<ServerHistoryEntry[]>('/profile/local-history', { params: { limit } }),
   upsertHistory: (fanficId: string, body: {

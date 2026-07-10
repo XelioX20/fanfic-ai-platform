@@ -93,29 +93,67 @@ export function ReaderContent({ content, chapterTitle, progressKey, restoreFromA
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressKey, restoreFromAnchor])
 
-  // Save scroll position (throttled)
+  // Save scroll position (throttled) + sync normalized depth for recs.
   useEffect(() => {
     if (!progressKey) return
     let raf = 0
     let lastSave = 0
+    let maxDepth = 0            // max fraction scrolled this mount (0..1)
+    let lastSync = 0
+
+    const depthNow = () => {
+      const doc = document.documentElement
+      const scrollable = doc.scrollHeight - window.innerHeight
+      if (scrollable <= 0) return 1  // page fits without scrolling = fully seen
+      return Math.min(1, Math.max(0, window.scrollY / scrollable))
+    }
+
+    const syncDepth = () => {
+      // Fire-and-forget scroll-depth sync for recommendations. Heavily
+      // throttled (10s) — this feeds taste weighting, not resume position.
+      if (!anchorFanficId) return
+      const now = Date.now()
+      if (now - lastSync < 10_000) return
+      lastSync = now
+      const chapterId = anchorChapterId || 'single'
+      import('@/lib/api').then(({ readingStateApi }) => {
+        readingStateApi.upsertReadingProgress(anchorFanficId, {
+          chapter_id: chapterId, progress: maxDepth,
+        }).catch(() => {})
+      }).catch(() => {})
+    }
+
     const onScroll = () => {
       if (raf) return
       raf = requestAnimationFrame(() => {
         raf = 0
+        maxDepth = Math.max(maxDepth, depthNow())
         const now = Date.now()
         if (now - lastSave < 500) return
         lastSave = now
         setReadingProgress(progressKey, window.scrollY)
+        syncDepth()
       })
     }
     window.addEventListener('scroll', onScroll, { passive: true })
+
+    // Flush the final depth when the user leaves (tab hidden or unmount) —
+    // captures "read to the end" even if they never triggered the 10s tick.
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') { lastSync = 0; syncDepth() }
+    }
+    document.addEventListener('visibilitychange', onHide)
+
     return () => {
       window.removeEventListener('scroll', onScroll)
+      document.removeEventListener('visibilitychange', onHide)
       if (raf) cancelAnimationFrame(raf)
-      // Final save on unmount
       setReadingProgress(progressKey, window.scrollY)
+      maxDepth = Math.max(maxDepth, depthNow())
+      lastSync = 0
+      syncDepth()
     }
-  }, [progressKey, setReadingProgress])
+  }, [progressKey, setReadingProgress, anchorFanficId, anchorChapterId])
 
   return (
     <div className={cn('reader-theme-root min-h-screen transition-colors duration-200', `reader-${theme}`)}>
