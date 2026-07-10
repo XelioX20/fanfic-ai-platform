@@ -124,6 +124,15 @@ export function CompactFanficCard({ fanfic, className, priority = false }: Compa
         {primaryFandom && (
           <p className="text-xs text-zinc-600 truncate mt-0.5">{primaryFandom}</p>
         )}
+        {fanfic.because_title && (
+          <p
+            className="text-[11px] text-purple-400/80 truncate mt-1"
+            title={`Похоже на «${fanfic.because_title}», которое вы читали`}
+          >
+            <span className="text-zinc-600">т.к. вы читали </span>
+            {fanfic.because_title}
+          </p>
+        )}
       </div>
     </Link>
   )

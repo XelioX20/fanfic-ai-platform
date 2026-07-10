@@ -46,6 +46,9 @@ export interface Fanfic {
   updated_at?: string
   size?: string
   update_date?: string
+  // Recommendation feed only — "потому что вы читали {because_title}".
+  because_title?: string | null
+  because_id?: string | null
 }
 
 export interface FanficListResponse {

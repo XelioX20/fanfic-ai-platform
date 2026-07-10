@@ -15,6 +15,56 @@ from app.db.session import AsyncSessionLocal
 logger = logging.getLogger(__name__)
 
 
+async def because_you_read(
+    user_id: str,
+    candidate_ids: list[str],
+) -> dict[str, dict]:
+    """For each candidate fic, find the user's most-similar already-read fic
+    → {candidate_id: {"because_id", "because_title", "sim"}}.
+
+    Powers the "потому что вы читали X" line. Pure pgvector: a LATERAL join
+    picks the nearest read fic per candidate in one query — no LLM, no
+    per-card round-trip. Only returns entries where a read fic with an
+    embedding exists and similarity clears a floor (0.30) so we never show
+    a spurious reason."""
+    if not candidate_ids:
+        return {}
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(text("""
+            WITH read_fics AS (
+                SELECT DISTINCT s.fanfic_id
+                FROM (
+                    SELECT fanfic_id FROM user_bookmarks     WHERE user_id = :uid
+                    UNION SELECT fanfic_id FROM user_anchors       WHERE user_id = :uid
+                    UNION SELECT fanfic_id FROM user_local_history WHERE user_id = :uid
+                ) s
+            )
+            SELECT c.id AS cand_id, nn.rid AS because_id, nn.rtitle AS because_title,
+                   nn.sim AS sim
+            FROM fanfics c
+            CROSS JOIN LATERAL (
+                SELECT rf_f.id AS rid, rf_f.title AS rtitle,
+                       1 - (c.embedding_vec <=> rf_f.embedding_vec) AS sim
+                FROM read_fics rf
+                JOIN fanfics rf_f ON rf_f.id = rf.fanfic_id
+                WHERE rf_f.embedding_vec IS NOT NULL
+                  AND rf_f.id <> c.id
+                ORDER BY c.embedding_vec <=> rf_f.embedding_vec
+                LIMIT 1
+            ) nn
+            WHERE c.id = ANY(:cids) AND c.embedding_vec IS NOT NULL
+        """), {"uid": user_id, "cids": candidate_ids})).mappings().all()
+        out: dict[str, dict] = {}
+        for r in rows:
+            if float(r["sim"] or 0.0) >= 0.30:
+                out[r["cand_id"]] = {
+                    "because_id": r["because_id"],
+                    "because_title": r["because_title"],
+                    "sim": round(float(r["sim"]), 4),
+                }
+        return out
+
+
 async def retrieve_by_centroid(
     centroid: list[float],
     *,

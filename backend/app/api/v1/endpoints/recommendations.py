@@ -56,6 +56,8 @@ def _card_from_candidate(c: dict) -> dict:
         "likes": int(c.get("likes") or 0),
         "trophies": int(c.get("trophies") or 0),
         "score": round(float(c.get("score") or 0.0), 4),
+        "because_title": c.get("because_title"),
+        "because_id": c.get("because_id"),
         "ficbook_url": f"https://ficbook.net/readfic/{c['id']}",
     }
 
@@ -126,6 +128,13 @@ async def _build_rows(user_id: str, per_row: int = 15) -> list[dict]:
             continue
         rerank.rerank(cands)
         picked = rerank.mmr_diversify(cands, k=per_row)
+        # "потому что вы читали X" — nearest read fic per pick (pure pgvector).
+        reasons = await retrieval.because_you_read(user_id, [c["id"] for c in picked])
+        for c in picked:
+            r = reasons.get(c["id"])
+            if r:
+                c["because_title"] = r["because_title"]
+                c["because_id"] = r["because_id"]
         items = [_card_from_candidate(c) for c in picked]
         # Cross-row dedupe: reserve these ids so later rows don't repeat them.
         for it in items:
