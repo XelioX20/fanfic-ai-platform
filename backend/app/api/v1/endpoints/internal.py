@@ -292,6 +292,139 @@ async def llm_probe(
     return {"configured": True, "result": result}
 
 
+# ── Autonomous discovery crawler ─────────────────────────────────────────
+#
+# The catalog is no longer built purely reactively (from what users read).
+# This crawler autonomously walks ficbook listing sections page-by-page via
+# the CF proxy, upserts every fic it finds as a `pending` stub, and lets the
+# enrichment cron embed them. A per-section cursor in `crawl_state` makes it
+# resume where it left off, so over days it builds a broad catalog.
+
+_CRAWL_SECTIONS = (
+    "fanfiction/originals",
+    "fanfiction/slash",
+    "fanfiction/het",
+    "fanfiction/gen",
+    "fanfiction/femslash",
+    "fanfiction/mixed",
+    "fanfiction/article",
+)
+# Cap pages per section before wrapping back to page 1 — keeps the crawler
+# on fresh/popular listings rather than crawling into the deep archive.
+_CRAWL_MAX_PAGE = 50
+
+
+@router.post("/discover/crawl")
+async def discover_crawl(
+    request: Request,
+    sections: int = Query(2, ge=1, le=len(_CRAWL_SECTIONS)),
+    pages_each: int = Query(1, ge=1, le=5),
+    x_internal_secret: Optional[str] = Header(None),
+):
+    """Autonomously discover new fics: fetch the next listing page(s) for a
+    rotating subset of sections, upsert each card as a `pending` stub, and
+    advance the per-section cursor. Idempotent (upsert_stub skips existing
+    rows). Called by the Worker cron; the enrichment cron then embeds them.
+
+    Picks the `sections` least-recently-crawled sections each call so the
+    whole set is swept fairly over time."""
+    _check_secret(x_internal_secret)
+    http = request.app.state.http
+    from ficbook_parser.parsers.fanfic_list import FanficListParser
+    from app.services.recommender.ingest import upsert_stub
+
+    async with AsyncSessionLocal() as db:
+        for sec in _CRAWL_SECTIONS:
+            await db.execute(text(
+                "INSERT INTO crawl_state (section, next_page) VALUES (:s, 1) "
+                "ON CONFLICT (section) DO NOTHING"
+            ), {"s": sec})
+        await db.commit()
+        rows = (await db.execute(text(
+            "SELECT section, next_page FROM crawl_state "
+            "ORDER BY updated_at ASC NULLS FIRST LIMIT :lim"
+        ), {"lim": sections})).all()
+
+    summary = []
+    for section, next_page in rows:
+        discovered = 0
+        pages_done = 0
+        page = int(next_page or 1)
+        has_next = True
+        for _ in range(pages_each):
+            try:
+                url = f"{WORKER_URL}/{section}?p={page}"
+                resp = await http.get(url)
+                resp.raise_for_status()
+                raw = resp.content.decode("utf-8", errors="replace")
+                try:
+                    import ftfy
+                    html = ftfy.fix_text(raw)
+                except ImportError:
+                    html = raw
+                cards, has_next = FanficListParser().parse(html)
+            except Exception as e:
+                logger.info("crawl fetch failed %s p%d: %s", section, page, e)
+                break
+
+            for c in cards:
+                fid = getattr(c, "id", "") or ""
+                if not fid:
+                    continue
+                author = getattr(c, "author", None)
+                st = getattr(c, "status", None)
+                direction = (st.direction.value if st and getattr(st, "direction", None) else None)
+                rating = (st.rating.value if st and getattr(st, "rating", None) else None)
+                await upsert_stub(
+                    fid,
+                    title=getattr(c, "title", None),
+                    author_name=getattr(author, "name", None) if author else None,
+                    author_id=getattr(author, "id", None) if author else None,
+                    cover_url=getattr(c, "cover_url", None),
+                    direction=direction,
+                    rating=rating,
+                    fandoms=getattr(c, "fandoms", None),
+                )
+                discovered += 1
+            pages_done += 1
+            page = 1 if (page >= _CRAWL_MAX_PAGE or not has_next) else page + 1
+
+        async with AsyncSessionLocal() as db:
+            await db.execute(text(
+                "UPDATE crawl_state SET next_page = :p, last_seen_new = :n, "
+                "total_discovered = total_discovered + :n, updated_at = now() "
+                "WHERE section = :s"
+            ), {"p": page, "n": discovered, "s": section})
+            await db.commit()
+        summary.append({"section": section, "pages": pages_done, "cards_seen": discovered, "next_page": page})
+
+    return {"crawled": summary}
+
+
+@router.get("/discover/status")
+async def discover_status(x_internal_secret: Optional[str] = Header(None)):
+    """Report crawl cursors + catalog size — monitors autonomous discovery."""
+    _check_secret(x_internal_secret)
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(text(
+            "SELECT section, next_page, last_seen_new, total_discovered, updated_at "
+            "FROM crawl_state ORDER BY section"
+        ))).all()
+        total = (await db.execute(text("SELECT COUNT(*) FROM fanfics"))).scalar()
+        pending = (await db.execute(text(
+            "SELECT COUNT(*) FROM fanfics WHERE enrichment_status='pending'"
+        ))).scalar()
+        return {
+            "catalog_total": total,
+            "pending_enrichment": pending,
+            "sections": [
+                {"section": s, "next_page": p, "last_seen_new": n,
+                 "total_discovered": t, "updated_at": str(u)}
+                for s, p, n, t, u in rows
+            ],
+        }
+
+
 @router.post("/enrich/run")
 async def enrich_run(
     request: Request,

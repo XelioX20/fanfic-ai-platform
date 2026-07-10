@@ -73,6 +73,16 @@ async def _ensure_columns(conn) -> None:
         "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS llm_mood VARCHAR(64)",
         "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS llm_audience VARCHAR(200)",
         "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS llm_enriched_at TIMESTAMP",
+        # Autonomous discovery crawler cursor (one row per section). Tracks
+        # which listing page to fetch next so the cron resumes where it left
+        # off. Created here (not an ORM model) — tiny bookkeeping table.
+        "CREATE TABLE IF NOT EXISTS crawl_state ("
+        "  section VARCHAR(120) PRIMARY KEY, "
+        "  next_page INTEGER DEFAULT 1, "
+        "  last_seen_new INTEGER DEFAULT 0, "
+        "  total_discovered INTEGER DEFAULT 0, "
+        "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        ")",
     )
     for sql in statements:
         try:

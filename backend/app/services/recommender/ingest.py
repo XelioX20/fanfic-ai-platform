@@ -1,11 +1,14 @@
-"""Reactive catalog ingestion for the recommendation system.
+"""Catalog ingestion for the recommendation system.
 
-Fanfics live on ficbook — we never crawl. Instead the catalog is built
-from platform activity: every time a user opens or bookmarks a fic, we
-upsert a lightweight `fanfics` stub from the card metadata already on the
-request payload, marked `enrichment_status='pending'`. The background
-enrichment cron then fetches the full page, computes genre scores, and
-embeds it.
+Two sources feed the `fanfics` catalog, both via `upsert_stub`:
+  1. Reactive — every time a user opens or bookmarks a fic, we upsert a
+     lightweight stub from the card metadata on the request payload.
+  2. Autonomous discovery — the crawler in internal.py (`/discover/crawl`,
+     Worker-cron driven) walks ficbook listing sections and upserts every
+     card it finds, so the catalog grows independently of what users read.
+
+Both mark rows `enrichment_status='pending'`; the background enrichment
+cron then fetches the full page, scores genres, and embeds it.
 
 `upsert_stub` is best-effort and MUST NOT raise into the caller — a
 failure here can never block the user's read/bookmark write.
