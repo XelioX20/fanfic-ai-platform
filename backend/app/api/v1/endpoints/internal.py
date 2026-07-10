@@ -201,6 +201,32 @@ async def facets_debug(user_id: str, x_internal_secret: Optional[str] = Header(N
     }
 
 
+@router.post("/enrich/llm-probe")
+async def llm_probe(
+    request: Request,
+    x_internal_secret: Optional[str] = Header(None),
+):
+    """Smoke-test the LLM enrichment path on a fixed sample fic's metadata —
+    proves the Worker /enrich-llm endpoint + Llama 3.3 70B round-trip works
+    (including on adult content) without waiting for the cron."""
+    _check_secret(x_internal_secret)
+    from app.services.recommender import llm_enrich
+    http = request.app.state.http
+    if not llm_enrich.is_configured():
+        return {"configured": False, "note": "EMBED_WORKER_URL/SECRET unset"}
+    result = await llm_enrich.enrich_llm(
+        title="Тени над Хогвартсом",
+        fandoms=["Гарри Поттер"],
+        pairings=["Гарри Поттер / Драко Малфой"],
+        tags=["Слэш", "Ангст", "Хёрт/комфорт", "Драма", "Насилие"],
+        description="Мрачная история о том, как война меняет людей. Гарри и Драко "
+                    "оказываются по одну сторону баррикад, и им приходится научиться "
+                    "доверять друг другу, преодолевая боль прошлого.",
+        http=http,
+    )
+    return {"configured": True, "result": result}
+
+
 @router.post("/enrich/run")
 async def enrich_run(
     request: Request,
@@ -258,7 +284,37 @@ async def enrich_run(
             direction = page.direction.value if hasattr(page.direction, "value") else str(page.direction or "")
 
             scores = tag_genre.score_from_tags(tags, direction, description)
-            embed_text = _build_embed_text(page.name, fandoms, pairings, tags, description)
+
+            # ── LLM refinement tier (5.1) — best-effort ──────────────────
+            # Llama 3.3 70B surfaces untagged tropes + refines genre scores.
+            # On any failure llm=None and we keep the deterministic scores.
+            from app.services.recommender import llm_enrich
+            llm = await llm_enrich.enrich_llm(
+                title=page.name, fandoms=fandoms, pairings=pairings,
+                tags=tags, description=description, http=http,
+            )
+            derived_tags: list[str] = []
+            llm_mood = None
+            llm_audience = None
+            if llm:
+                derived_tags = llm.get("derived_tags") or []
+                llm_mood = llm.get("mood") or None
+                llm_audience = llm.get("audience") or None
+                # Blend: average deterministic + LLM where both cover a genre.
+                # LLM adds hurt_comfort + dark which the lexicon doesn't score.
+                g = llm.get("genres") or {}
+                for key in ("romance", "angst", "fluff", "drama", "humor", "adventure", "mystery"):
+                    if key in g:
+                        scores[key] = round((float(scores.get(key, 0.0)) + g[key]) / 2.0, 4)
+                hurt_comfort = float(g.get("hurt_comfort", 0.0))
+                dark = float(g.get("dark", 0.0))
+            else:
+                hurt_comfort = 0.0
+                dark = 0.0
+
+            # Derived tags enrich the embed text → better semantic vector.
+            embed_tags = tags + [t for t in derived_tags if t not in tags]
+            embed_text = _build_embed_text(page.name, fandoms, pairings, embed_tags, description)
             text_hash = hashlib.sha256(embed_text.encode("utf-8")).hexdigest()
 
             vectors = await embed_client.embed_texts([embed_text], http=http)
@@ -283,6 +339,10 @@ async def enrich_run(
                         "  romance_score=:romance, angst_score=:angst, fluff_score=:fluff, "
                         "  drama_score=:drama, humor_score=:humor, adventure_score=:adventure, "
                         "  mystery_score=:mystery, emotional_intensity=:ei, narrative_depth=:nd, "
+                        "  hurt_comfort_score=:hc, dark_score=:dark, "
+                        "  derived_tags=CAST(:derived AS json), llm_mood=:mood, "
+                        "  llm_audience=:audience, "
+                        "  llm_enriched_at = CASE WHEN :llm_ok THEN now() ELSE llm_enriched_at END, "
                         "  embed_text_hash=:hash, embedded_at=now(), "
                         "  enrichment_status='enriched', enrichment_error=NULL "
                         "WHERE id = :id"
@@ -298,6 +358,10 @@ async def enrich_run(
                         "humor": scores["humor"], "adventure": scores["adventure"],
                         "mystery": scores["mystery"], "ei": scores["emotional_intensity"],
                         "nd": scores["narrative_depth"], "hash": text_hash,
+                        "hc": hurt_comfort, "dark": dark,
+                        "derived": _json.dumps(derived_tags, ensure_ascii=False),
+                        "mood": llm_mood, "audience": llm_audience,
+                        "llm_ok": llm is not None,
                     })
                     await db.commit()
                     enriched += 1

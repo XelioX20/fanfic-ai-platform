@@ -40,6 +40,15 @@ class Fanfic(Base):
     emotional_intensity: Mapped[Optional[float]] = mapped_column(Float)
     narrative_depth: Mapped[Optional[float]] = mapped_column(Float)
     writing_quality: Mapped[Optional[float]] = mapped_column(Float)
+    # ── LLM enrichment tier (Phase 5.1) ───────────────────────────────
+    # Llama 3.3 70B refines the deterministic tag_genre scores and surfaces
+    # tropes the author didn't tag. Two extra genres beyond the base seven.
+    hurt_comfort_score: Mapped[Optional[float]] = mapped_column(Float)
+    dark_score: Mapped[Optional[float]] = mapped_column(Float)
+    derived_tags: Mapped[Optional[list]] = mapped_column(JSON)
+    llm_mood: Mapped[Optional[str]] = mapped_column(String(64))
+    llm_audience: Mapped[Optional[str]] = mapped_column(String(200))
+    llm_enriched_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     embedding: Mapped[Optional[list]] = mapped_column(JSON)
     # ── Recommendation enrichment pipeline (Phase 1) ──────────────────
     # The real semantic vector lives in a Postgres-only `embedding_vec

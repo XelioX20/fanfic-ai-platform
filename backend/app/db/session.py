@@ -66,6 +66,13 @@ async def _ensure_columns(conn) -> None:
         "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS enrichment_error TEXT",
         "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS embed_text_hash VARCHAR(64)",
         "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS embedded_at TIMESTAMP",
+        # LLM enrichment tier (Phase 5.1) — two extra genres + derived tags.
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS hurt_comfort_score DOUBLE PRECISION",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS dark_score DOUBLE PRECISION",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS derived_tags JSON",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS llm_mood VARCHAR(64)",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS llm_audience VARCHAR(200)",
+        "ALTER TABLE fanfics ADD COLUMN IF NOT EXISTS llm_enriched_at TIMESTAMP",
     )
     for sql in statements:
         try:
