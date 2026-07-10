@@ -10,7 +10,7 @@ import logging
 import os
 from fastapi import APIRouter, HTTPException, Header, Request, Query
 from typing import Optional
-from sqlalchemy import text
+from sqlalchemy import text, bindparam
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.services.recommender import embed_client, tag_genre, text_embed
@@ -300,14 +300,18 @@ async def llm_probe(
 # enrichment cron embed them. A per-section cursor in `crawl_state` makes it
 # resume where it left off, so over days it builds a broad catalog.
 
+# Direction filters to sweep, round-robin. On ficbook the direction is a
+# QUERY PARAM on /fanfiction (?direction=slash) — the path-segment form
+# (/fanfiction/slash) renders client-side via Vue and yields no static
+# cards, so we must use the query form. Each returns ~20 cards/page.
 _CRAWL_SECTIONS = (
-    "fanfiction/originals",
-    "fanfiction/slash",
-    "fanfiction/het",
-    "fanfiction/gen",
-    "fanfiction/femslash",
-    "fanfiction/mixed",
-    "fanfiction/article",
+    "slash",
+    "het",
+    "gen",
+    "femslash",
+    "mixed",
+    "other",
+    "article",
 )
 # Cap pages per section before wrapping back to page 1 — keeps the crawler
 # on fresh/popular listings rather than crawling into the deep archive.
@@ -334,6 +338,10 @@ async def discover_crawl(
     from app.services.recommender.ingest import upsert_stub
 
     async with AsyncSessionLocal() as db:
+        # Drop any stale section rows from a previous crawler schema.
+        await db.execute(text(
+            "DELETE FROM crawl_state WHERE section NOT IN :valid"
+        ).bindparams(bindparam("valid", expanding=True)), {"valid": list(_CRAWL_SECTIONS)})
         for sec in _CRAWL_SECTIONS:
             await db.execute(text(
                 "INSERT INTO crawl_state (section, next_page) VALUES (:s, 1) "
@@ -353,7 +361,7 @@ async def discover_crawl(
         has_next = True
         for _ in range(pages_each):
             try:
-                url = f"{WORKER_URL}/{section}?p={page}"
+                url = f"{WORKER_URL}/fanfiction?direction={section}&p={page}"
                 resp = await http.get(url)
                 resp.raise_for_status()
                 raw = resp.content.decode("utf-8", errors="replace")
