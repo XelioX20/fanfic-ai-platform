@@ -336,7 +336,6 @@ async def discover_crawl(
     http = request.app.state.http
     from ficbook_parser.parsers.fanfic_list import FanficListParser
     from app.services.recommender.ingest import upsert_stub
-    _crawl_probe: dict = {"err": None, "done": False}
 
     async with AsyncSessionLocal() as db:
         # Drop any stale section rows from a previous crawler schema.
@@ -384,39 +383,6 @@ async def discover_crawl(
                 st = getattr(c, "status", None)
                 direction = (st.direction.value if st and getattr(st, "direction", None) else None)
                 rating = (st.rating.value if st and getattr(st, "rating", None) else None)
-                if _crawl_probe is not None and _crawl_probe.get("err") is None and not _crawl_probe.get("done"):
-                    # One-shot diagnostic: run the exact insert and surface any error.
-                    try:
-                        async with AsyncSessionLocal() as pdb:
-                            existed = (await pdb.execute(
-                                text("SELECT 1 FROM fanfics WHERE id = :id"), {"id": fid}
-                            )).first()
-                            _crawl_probe["first_id"] = fid
-                            _crawl_probe["already_existed"] = bool(existed)
-                            if not existed:
-                                from sqlalchemy import String as SAString
-                                from sqlalchemy.dialects.postgresql import ARRAY as PGARRAY
-                                stmt = text(
-                                    "INSERT INTO fanfics (id, title, author_name, ficbook_url, "
-                                    "enrichment_status, enrichment_attempts, scraped_at, fandoms, "
-                                    "direction, rating, completion_status) "
-                                    "VALUES (:id, :t, :a, :u, 'pending', 0, now(), :f, :d, :r, 'Неизвестно') "
-                                    "ON CONFLICT (id) DO NOTHING"
-                                ).bindparams(bindparam("f", type_=PGARRAY(SAString)))
-                                await pdb.execute(stmt, {
-                                    "id": fid, "t": (getattr(c, "title", "") or "x")[:500],
-                                    "a": (getattr(author, "name", "") or "")[:200],
-                                    "u": f"https://ficbook.net/readfic/{fid}",
-                                    "f": getattr(c, "fandoms", None) or [],
-                                    "d": (direction or "Неизвестно")[:50], "r": (rating or "Неизвестно")[:20],
-                                })
-                                await pdb.commit()
-                                _crawl_probe["inserted"] = True
-                        _crawl_probe["done"] = True
-                    except Exception as pe:
-                        _crawl_probe["err"] = f"{type(pe).__name__}: {str(pe)[:400]}"
-                        _crawl_probe["done"] = True
-                    continue  # probe row handled; don't double-insert
                 await upsert_stub(
                     fid,
                     title=getattr(c, "title", None),
@@ -440,7 +406,7 @@ async def discover_crawl(
             await db.commit()
         summary.append({"section": section, "pages": pages_done, "cards_seen": discovered, "next_page": page})
 
-    return {"crawled": summary, "probe": _crawl_probe}
+    return {"crawled": summary}
 
 
 @router.get("/discover/status")

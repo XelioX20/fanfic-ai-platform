@@ -57,11 +57,12 @@ async def upsert_stub(
             stmt = text(
                 "INSERT INTO fanfics "
                 "  (id, title, author_name, author_id, cover_url, direction, rating, "
-                "   completion_status, fandoms, ficbook_url, enrichment_status, "
-                "   enrichment_attempts, scraped_at) "
+                "   completion_status, fandoms, pairings, tags, ficbook_url, "
+                "   enrichment_status, enrichment_attempts, scraped_at) "
                 "VALUES "
                 "  (:id, :title, :author_name, :author_id, :cover_url, :direction, :rating, "
-                "   :completion_status, :fandoms, :ficbook_url, 'pending', 0, now()) "
+                "   :completion_status, :fandoms, CAST('[]' AS json), CAST('[]' AS json), "
+                "   :ficbook_url, 'pending', 0, now()) "
                 "ON CONFLICT (id) DO NOTHING"
             ).bindparams(bindparam("fandoms", type_=PGARRAY(SAString)))
             await db.execute(stmt, {
