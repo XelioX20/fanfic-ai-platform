@@ -11,18 +11,26 @@ function ThemeInitializer() {
   const theme = useUIStore(s => s.theme)
   const themeUserSet = useUIStore(s => s.themeUserSet)
 
-  // On first mount, if user never touched the theme picker and the device is mobile-width,
-  // default to the light theme (looks better outdoors / on daylight).
+  // Swap ONLY the theme token on <html>, preserving the next/font variable
+  // classes (…__variable_xxx) that layout.tsx set server-side. Assigning
+  // `className = theme` outright would wipe those and break --font-playfair
+  // (Fable serif headlines) and every reader font var.
   useEffect(() => {
+    if (typeof document === 'undefined') return
+    const el = document.documentElement
+    const THEME_CLASSES = ['light', 'dark', 'amoled', 'fable']
+
+    let next = theme
+    // On first mount, if user never touched the theme picker and the device
+    // is mobile-width, default to light (looks better in daylight). Don't
+    // persist — flips back on desktop.
     if (!themeUserSet && typeof window !== 'undefined' && window.matchMedia) {
       const isMobile = window.matchMedia('(max-width: 640px)').matches
-      if (isMobile && theme !== 'light') {
-        // Directly mutate DOM — don't persist as "user set" so it flips back on desktop
-        document.documentElement.className = 'light'
-        return
-      }
+      if (isMobile && theme !== 'light') next = 'light'
     }
-    document.documentElement.className = theme
+
+    el.classList.remove(...THEME_CLASSES)
+    el.classList.add(next)
   }, [theme, themeUserSet])
   return null
 }

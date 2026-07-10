@@ -366,7 +366,13 @@ export const useUIStore = create<UIState>()(
       themeUserSet: false,
       setTheme: (theme) => {
         set({ theme, themeUserSet: true })
-        document.documentElement.className = theme
+        // Swap only the theme token — keep next/font variable classes intact
+        // (assigning className outright would wipe --font-* vars).
+        if (typeof document !== 'undefined') {
+          const el = document.documentElement
+          el.classList.remove('light', 'dark', 'amoled', 'fable')
+          el.classList.add(theme)
+        }
       },
     }),
     { name: 'ui-store' }
