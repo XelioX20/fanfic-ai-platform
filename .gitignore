@@ -7,3 +7,4 @@ out/
 graphify-out/
 next-env.d.ts
 package-lock.json
+.stitch-ref/
