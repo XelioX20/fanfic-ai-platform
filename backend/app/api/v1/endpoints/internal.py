@@ -375,6 +375,7 @@ async def discover_crawl(
                 logger.info("crawl fetch failed %s p%d: %s", section, page, e)
                 break
 
+            n_cards = len(cards)
             for c in cards:
                 fid = getattr(c, "id", "") or ""
                 if not fid:
@@ -395,7 +396,10 @@ async def discover_crawl(
                 )
                 discovered += 1
             pages_done += 1
-            page = 1 if (page >= _CRAWL_MAX_PAGE or not has_next) else page + 1
+            # ficbook's "next" link is rendered client-side so has_next is
+            # unreliable — but ?p=N genuinely returns different cards. Advance
+            # by page number; wrap to 1 only at the cap or when a page is empty.
+            page = 1 if (page >= _CRAWL_MAX_PAGE or n_cards == 0) else page + 1
 
         async with AsyncSessionLocal() as db:
             await db.execute(text(
