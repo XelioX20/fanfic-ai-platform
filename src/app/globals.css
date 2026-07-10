@@ -280,6 +280,165 @@
   background-color: #e0e7ff !important;
 }
 
+/* ═════════════════════════════════════════════════════════════════════
+   FABLE THEME — literary book-club aesthetic (cream paper + ink + forest).
+   Mirrors the .light override set with a warm cream palette, then adds two
+   layers .light/.dark don't have: a FOREST-GREEN accent (replacing violet)
+   and STADIUM-PILL buttons ([data-pill]) + serif display headlines.
+   ═════════════════════════════════════════════════════════════════════ */
+.fable {
+  color-scheme: light;
+  --bg-base: #f7f4ee;      /* Paper Cream */
+  --bg-surface: #ffffff;
+  --bg-elevated: #fffdf8;
+  --bg-input: #f2ede3;
+  --bg-hover: #ece5d8;
+  --border-subtle: #e8e2d6;
+  --border-default: #d8cfbe;
+  --text-primary: #161015;  /* Ink */
+  --text-secondary: #3f383d; /* Graphite */
+  --text-muted: #6b6560;
+  --text-disabled: #a79f97;
+  --accent: #064c37;        /* Fable Forest */
+  --accent-hover: #053a2a;
+  --danger: #b42318;
+  --success: #067647;
+}
+
+.fable body {
+  background-color: #f7f4ee;
+  color: #161015;
+}
+
+/* Serif display headlines — the loudest voice in Fable. */
+.fable h1, .fable h2, .fable h3 {
+  font-family: var(--font-playfair), Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.01em;
+}
+
+/* Backgrounds — cream base, white paper cards */
+.fable .bg-zinc-950 { background-color: #f7f4ee !important; }
+.fable .bg-zinc-900 { background-color: #ffffff !important; }
+.fable .bg-zinc-900\/95 { background-color: rgba(255,255,255,0.95) !important; }
+.fable .bg-zinc-800 { background-color: #efe9dd !important; }
+.fable .bg-zinc-800\/50 { background-color: rgba(239,233,221,0.5) !important; }
+.fable .bg-zinc-800\/60 { background-color: rgba(239,233,221,0.6) !important; }
+.fable .bg-zinc-700\/60 { background-color: rgba(216,207,190,0.6) !important; }
+.fable .bg-zinc-700\/80 { background-color: rgba(216,207,190,0.8) !important; }
+
+/* Borders — warm beige */
+.fable .border-zinc-800 { border-color: #e8e2d6 !important; }
+.fable .border-zinc-700 { border-color: #d8cfbe !important; }
+.fable .border-zinc-600 { border-color: #b8ad98 !important; }
+
+/* Text — ink scale */
+.fable .text-zinc-100 { color: #161015 !important; }
+.fable .text-zinc-200 { color: #292229 !important; }
+.fable .text-zinc-300 { color: #3f383d !important; }
+.fable .text-zinc-400 { color: #6b6560 !important; }
+.fable .text-zinc-500 { color: #8a827a !important; }
+.fable .text-zinc-600 { color: #a79f97 !important; }
+
+/* Hover overrides */
+.fable .hover\:bg-zinc-800:hover { background-color: #ece5d8 !important; }
+.fable .hover\:bg-zinc-800\/60:hover { background-color: rgba(236,229,216,0.6) !important; }
+
+/* Cards */
+.fable article {
+  background-color: #ffffff !important;
+  border-color: #e8e2d6 !important;
+}
+.fable article:hover { border-color: #d8cfbe !important; }
+
+/* Header */
+.fable header {
+  background-color: rgba(247,244,238,0.95) !important;
+  border-color: #e8e2d6 !important;
+}
+
+/* Inputs and search */
+.fable input[type="text"],
+.fable input[type="email"],
+.fable input[type="password"],
+.fable input:not([type]) {
+  background-color: #f2ede3 !important;
+  color: #161015 !important;
+  border-color: #d8cfbe !important;
+}
+.fable input::placeholder { color: #a79f97 !important; }
+.fable input:focus { border-color: #064c37 !important; }
+
+/* Dropdowns and popups */
+.fable .bg-zinc-900.border-zinc-700,
+.fable .bg-zinc-900.border-zinc-800 {
+  background-color: #ffffff !important;
+  border-color: #e8e2d6 !important;
+}
+
+/* Chapter list and bordered divs */
+.fable .border.border-zinc-800 { border-color: #e8e2d6 !important; }
+
+/* ── Forest-green accent (replaces violet — Fable only) ──────────────
+   Purple utility classes are hardcoded across components and never
+   remapped by other themes. In Fable we recolor them to forest green so
+   CTAs, links, focus rings, and highlights match the botanical palette. */
+.fable .bg-purple-600 { background-color: #064c37 !important; }
+.fable .bg-purple-700 { background-color: #053a2a !important; }
+.fable .bg-purple-500 { background-color: #0a5c43 !important; }
+.fable .hover\:bg-purple-500:hover { background-color: #0a5c43 !important; }
+.fable .hover\:bg-purple-700:hover { background-color: #053a2a !important; }
+.fable .text-purple-300 { color: #0a5c43 !important; }
+.fable .text-purple-400 { color: #064c37 !important; }
+.fable .hover\:text-purple-400:hover { color: #064c37 !important; }
+.fable .hover\:text-purple-300:hover { color: #0a5c43 !important; }
+.fable .border-purple-400 { border-color: #064c37 !important; }
+.fable .hover\:border-purple-400:hover { border-color: #064c37 !important; }
+.fable .ring-purple-500 { --tw-ring-color: #064c37 !important; }
+.fable .focus-visible\:ring-purple-500:focus-visible { --tw-ring-color: #064c37 !important; }
+
+/* ── Stadium-pill buttons (Fable only) ───────────────────────────────
+   Fable's non-negotiable button shape. Applied via a data-pill marker on
+   the primary inline CTAs so we don't reshape cards that share rounded-lg.
+   Also the shared Button/Input primitives get the pill in Fable. */
+.fable [data-pill] { border-radius: 60px !important; }
+.fable button.rounded-md,
+.fable a.rounded-md { border-radius: 60px !important; }
+
+/* Gradient CTAs (purple/pink, indigo/fuchsia) carry hardcoded gradient
+   utility classes that the flat .bg-purple-* overrides can't reach. On
+   Fable pills, flatten the gradient to solid forest green. */
+.fable [data-pill].bg-gradient-to-r,
+.fable [data-pill].bg-gradient-to-br {
+  background-image: none !important;
+  background-color: #064c37 !important;
+}
+.fable [data-pill].bg-gradient-to-r:hover,
+.fable [data-pill].bg-gradient-to-br:hover {
+  background-color: #053a2a !important;
+}
+
+/* ── Continue-Reading hero — cream/forest variant ────────────────────── */
+.fable [data-hero="continue-reading"] {
+  background-color: #eef3ef !important;
+  border-color: #cfe0d5 !important;
+  box-shadow: 0 4px 14px -4px rgba(6,76,55,0.18) !important;
+}
+.fable [data-hero="continue-reading"]:hover {
+  background-color: #e3ede6 !important;
+  border-color: #b3d1bf !important;
+}
+.fable [data-hero="continue-reading"] .text-white,
+.fable [data-hero="continue-reading"] .text-zinc-100 { color: #0c2c20 !important; }
+.fable [data-hero="continue-reading"] .text-zinc-200 { color: #123527 !important; }
+.fable [data-hero="continue-reading"] .text-zinc-300 { color: #1e4535 !important; }
+.fable [data-hero="continue-reading"] .text-zinc-400 { color: #2c5544 !important; }
+.fable [data-hero="continue-reading"] .text-zinc-500 { color: #4a7561 !important; }
+.fable [data-hero="continue-reading"] .text-indigo-300,
+.fable [data-hero="continue-reading"] .text-purple-300 { color: #064c37 !important; }
+.fable [data-hero="continue-reading"] .bg-zinc-800,
+.fable [data-hero="continue-reading"] .bg-zinc-800\/70 { background-color: #d8e6dd !important; }
+.fable [data-hero="continue-reading"] .bg-zinc-800.shadow-xl { background-color: #d8e6dd !important; }
+
 /* ─────────────────────────────────────────────────────────
    READER THEMES — scoped to .reader-content wrapper
    Independent from site theme. Only affects reader chrome

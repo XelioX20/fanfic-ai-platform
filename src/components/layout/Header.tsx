@@ -12,6 +12,7 @@ const THEMES = [
   { value: 'light'  as const, label: 'Светлая', hint: 'светлый фон',        Icon: Sun },
   { value: 'dark'   as const, label: 'Тёмная',  hint: 'мягкий тёмно-серый', Icon: Moon },
   { value: 'amoled' as const, label: 'AMOLED',  hint: 'чистый чёрный',      Icon: Smartphone },
+  { value: 'fable'  as const, label: 'Fable',   hint: 'кремовая бумага',    Icon: BookOpen },
 ]
 
 function ThemeToggle() {
@@ -146,6 +147,7 @@ function OpenByLinkModal({ onClose }: { onClose: () => void }) {
           <button
             onClick={handleOpen}
             disabled={!value.trim()}
+            data-pill
             className="mt-4 w-full flex items-center justify-center gap-2 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
           >
             Открыть <ArrowRight size={14} />
@@ -206,6 +208,7 @@ export function Header() {
             {!accessToken ? (
               <Link
                 href="/login"
+                data-pill
                 className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 Войти

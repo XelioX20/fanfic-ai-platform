@@ -7,6 +7,7 @@ import {
   Roboto,
   PT_Sans,
   Literata,
+  Playfair_Display,
 } from 'next/font/google'
 
 // next/font requires each option to be a literal expression, not a variable.
@@ -28,9 +29,14 @@ export const literata     = Literata({     subsets: ['cyrillic', 'latin'], weigh
 export const inter        = Inter({        subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-inter',        display: 'swap', preload: false })
 export const roboto       = Roboto({       subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-roboto',       display: 'swap', preload: false })
 
+// Fable theme display font — high-contrast literary serif, free Heldane
+// stand-in. Cyrillic subset so Russian headlines render. Weights 400/500
+// (Fable uses 400 for headlines, 500 for subtitles).
+export const playfair     = Playfair_Display({ subsets: ['cyrillic', 'latin'], weight: ['400', '500', '600'], variable: '--font-playfair', display: 'swap', preload: false })
+
 export const allFontVariables = [
   ptSans.variable, merriweather.variable, lora.variable, ptSerif.variable, robotoSlab.variable, literata.variable,
-  inter.variable, roboto.variable,
+  inter.variable, roboto.variable, playfair.variable,
 ].join(' ')
 
 export type FontFamily =

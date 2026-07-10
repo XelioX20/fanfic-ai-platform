@@ -169,6 +169,7 @@ export function ContinueReadingHero({
           <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-2">
             <Link
               href={readHref}
+              data-pill
               className={cn(
                 'inline-flex items-center gap-1.5 px-4 py-2 md:px-5 md:py-2.5 rounded-lg text-sm font-medium transition-all',
                 // Same button gradient as the anchor-card "Продолжить с якоря" CTA.

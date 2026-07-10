@@ -27,14 +27,17 @@ export function WelcomeHero({
   className,
 }: WelcomeHeroProps) {
   const isGuest = variant === 'guest'
-  const uiTheme = useUIStore(s => s.theme) as 'light' | 'dark' | 'amoled'
-  const isLight = uiTheme === 'light'
+  const uiTheme = useUIStore(s => s.theme) as 'light' | 'dark' | 'amoled' | 'fable'
+  const isFable = uiTheme === 'fable'
+  const isLight = uiTheme === 'light' || isFable
 
   return (
     <section
       className={cn(
         'rounded-2xl border p-6 md:p-10',
-        isLight
+        isFable
+          ? 'bg-gradient-to-br from-[#e7efe9] via-[#f7f4ee] to-[#f2ede3] border-[#cfe0d5] shadow-sm'
+          : isLight
           ? 'bg-gradient-to-br from-purple-100 via-white to-pink-50 border-purple-200/70 shadow-sm'
           : 'bg-gradient-to-br from-purple-900/50 via-zinc-900 to-zinc-950 border-purple-800/40',
         className,
@@ -63,7 +66,13 @@ export function WelcomeHero({
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/discover"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-purple-900/30"
+            data-pill
+            className={cn(
+              'inline-flex items-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-medium transition-all shadow-lg',
+              isFable
+                ? 'bg-[#064c37] hover:bg-[#053a2a] shadow-[#064c37]/20'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-purple-900/30',
+            )}
           >
             <Dice5 size={16} />
             Помоги выбрать
@@ -74,6 +83,7 @@ export function WelcomeHero({
             <>
               <Link
                 href="/login"
+                data-pill
                 className={cn(
                   'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border',
                   isLight
@@ -98,6 +108,7 @@ export function WelcomeHero({
           ) : (
             <Link
               href="/search"
+              data-pill
               className={cn(
                 'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border',
                 isLight

@@ -54,8 +54,8 @@ export const useLoaderPrefs = create<LoaderPrefsState>()(
  */
 export function isLoaderEnabled(
   name: string,
-  siteTheme: 'light' | 'dark' | 'amoled',
-  builtInThemes: ('light' | 'dark' | 'amoled')[] | undefined,
+  siteTheme: 'light' | 'dark' | 'amoled' | 'fable',
+  builtInThemes: ('light' | 'dark' | 'amoled' | 'fable')[] | undefined,
   mode: LoaderMode | undefined,
 ): boolean {
   // Built-in restriction wins
@@ -63,7 +63,8 @@ export function isLoaderEnabled(
   const m = mode ?? 'all'
   if (m === 'off') return false
   if (m === 'all') return true
-  if (m === 'light') return siteTheme === 'light'
+  // Fable is a light-family (cream) theme for loader purposes.
+  if (m === 'light') return siteTheme === 'light' || siteTheme === 'fable'
   // 'dark' covers both dark + amoled
   return siteTheme === 'dark' || siteTheme === 'amoled'
 }

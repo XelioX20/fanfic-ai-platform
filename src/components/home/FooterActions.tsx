@@ -30,6 +30,7 @@ export function FooterActions({ isGuest, className }: FooterActionsProps) {
           </div>
           <Link
             href="/login?mode=register"
+            data-pill
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg text-sm font-medium transition-all"
           >
             <UserPlus size={16} />

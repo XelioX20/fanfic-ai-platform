@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User, Theme, ReaderSettings } from '@/types'
+import type { User, Theme, ReaderTheme, ReaderSettings } from '@/types'
 
 interface AuthState {
   user: User | null
@@ -227,7 +227,7 @@ export const useReaderStore = create<ReaderState>()(
         font_family: 'pt-serif',
         line_height: 1.8,
         max_width: 680,
-        theme: 'dark' as Theme,
+        theme: 'dark' as ReaderTheme,
         custom_text_color: null,
         text_align: 'original',
       },
