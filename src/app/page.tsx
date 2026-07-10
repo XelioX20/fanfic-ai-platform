@@ -44,14 +44,17 @@ async function fetchAuthedList(pathname: string, token: string): Promise<Fanfic[
   return (data.items ?? []) as Fanfic[]
 }
 
-async function fetchForMe(token: string): Promise<Fanfic[]> {
-  const res = await fetch(`${API_URL}/api/v1/recommendations/for-me?page=1`, {
+interface FeedRow { title: string; items: Fanfic[] }
+
+async function fetchFeed(token: string): Promise<FeedRow[]> {
+  const res = await fetch(`${API_URL}/api/v1/recommendations/feed?per_row=15`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
-  const items = data.items ?? data.recommendations ?? []
-  return items as Fanfic[]
+  const rows = (data.rows ?? []) as Array<{ title: string; items: Fanfic[] }>
+  // Drop empty rows defensively; keep server order (facet mass desc).
+  return rows.filter((r) => Array.isArray(r.items) && r.items.length > 0)
 }
 
 interface FullFic {
@@ -253,9 +256,9 @@ export default function HomePage() {
     retry: 0,
   })
 
-  const forMeQuery = useQuery({
-    queryKey: ['home-rail', 'for-me'],
-    queryFn: () => fetchForMe(accessToken!),
+  const feedQuery = useQuery({
+    queryKey: ['home-feed', 'facets'],
+    queryFn: () => fetchFeed(accessToken!),
     enabled: isAuthed,
     staleTime: 2 * 60 * 1000,
     retry: 1,
@@ -341,16 +344,28 @@ export default function HomePage() {
           priority
         />
 
-        {/* 6 — For you (auth) OR beginner rail (guests) */}
+        {/* 6 — For you (auth): multi-row facet feed OR beginner rail (guests) */}
         {isAuthed ? (
-          <FanficRail
-            title="✨ Для вас"
-            subtitle="Подобрано на основе ваших лайков и истории"
-            fanfics={forMeQuery.data ?? []}
-            loading={forMeQuery.isLoading}
-            error={forMeQuery.isError}
-            emptyLabel="Читайте и лайкайте — рекомендации появятся здесь."
-          />
+          (feedQuery.data && feedQuery.data.length > 0) ? (
+            feedQuery.data.map((row, i) => (
+              <FanficRail
+                key={`feed-${i}-${row.title}`}
+                title={i === 0 ? `✨ ${row.title}` : row.title}
+                subtitle={i === 0 ? 'Подобрано на основе ваших лайков и истории' : undefined}
+                fanfics={row.items}
+                loading={false}
+              />
+            ))
+          ) : (
+            <FanficRail
+              title="✨ Для вас"
+              subtitle="Подобрано на основе ваших лайков и истории"
+              fanfics={[]}
+              loading={feedQuery.isLoading}
+              error={feedQuery.isError}
+              emptyLabel="Читайте и лайкайте — рекомендации появятся здесь."
+            />
+          )
         ) : (
           <FanficRail
             title="👋 С чего начать"

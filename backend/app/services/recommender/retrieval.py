@@ -15,6 +15,44 @@ from app.db.session import AsyncSessionLocal
 logger = logging.getLogger(__name__)
 
 
+async def retrieve_by_centroid(
+    centroid: list[float],
+    *,
+    limit: int = 60,
+    exclude_ids: Optional[list[str]] = None,
+) -> list[dict]:
+    """ANN query against an explicit centroid vector (used per-facet).
+    Same shape as retrieve_candidates but the vector is passed in rather
+    than read from user_taste_vectors."""
+    exclude_ids = exclude_ids or []
+    if not centroid:
+        return []
+    taste_literal = "[" + ",".join(f"{x:.6f}" for x in centroid) + "]"
+    params: dict = {"taste": taste_literal, "lim": limit}
+    exclude_clause = ""
+    if exclude_ids:
+        exclude_clause = "AND f.id <> ALL(:excl)"
+        params["excl"] = exclude_ids
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(text(f"""
+            SELECT f.id, f.title, f.author_name, f.cover_url, f.direction,
+                   f.rating, f.completion_status, f.fandoms, f.tags,
+                   f.likes, f.trophies, f.comments_count, f.words_count,
+                   f.writing_quality,
+                   f.romance_score, f.angst_score, f.fluff_score, f.drama_score,
+                   f.humor_score, f.adventure_score, f.mystery_score,
+                   EXTRACT(EPOCH FROM (now() - COALESCE(f.updated_at, f.scraped_at))) / 86400.0 AS age_days,
+                   1 - (f.embedding_vec <=> CAST(:taste AS halfvec)) AS sim
+            FROM fanfics f
+            WHERE f.embedding_vec IS NOT NULL
+              AND f.enrichment_status = 'enriched'
+              {exclude_clause}
+            ORDER BY f.embedding_vec <=> CAST(:taste AS halfvec)
+            LIMIT :lim
+        """), params)).mappings().all()
+        return [dict(r) for r in rows]
+
+
 async def retrieve_candidates(
     user_id: str,
     *,

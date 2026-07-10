@@ -179,6 +179,28 @@ async def taste_debug(user_id: str, x_internal_secret: Optional[str] = Header(No
         }
 
 
+@router.get("/reco/facets-debug/{user_id}")
+async def facets_debug(user_id: str, x_internal_secret: Optional[str] = Header(None)):
+    """Force a facet rebuild and report the resulting cluster structure —
+    number of facets, mass split, and labels. Diagnoses 4.2 clustering."""
+    _check_secret(x_internal_secret)
+    from app.services.recommender import taste
+    try:
+        facets = await taste.build_facets(user_id)
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {str(e)[:300]}"}
+    if not facets:
+        return {"facets": 0, "note": "cold start — no signals with embeddings"}
+    return {
+        "facets": len(facets),
+        "detail": [
+            {"label": f.get("label"), "mass": f.get("mass"),
+             "top_tags": list((f.get("tag_scores") or {}).keys())[:5]}
+            for f in facets
+        ],
+    }
+
+
 @router.post("/enrich/run")
 async def enrich_run(
     request: Request,

@@ -99,6 +99,99 @@ async def _build_feed(user_id: str, limit: int) -> list[dict]:
     return [_card_from_candidate(c) for c in picked]
 
 
+async def _build_rows(user_id: str, per_row: int = 15) -> list[dict]:
+    """Multi-facet feed: build taste facets → one ANN row per facet →
+    cross-row dedupe → per-row MMR. Returns [{title, items}] ordered by
+    facet mass (biggest taste first). Empty list on cold start.
+
+    The first row is always the broad "Для тебя" (mean vector). Extra rows
+    only appear when clustering found genuinely distinct tastes (M>1)."""
+    facets = await taste.build_facets(user_id)
+    if not facets:
+        return []
+    read_ids = await _read_ids(user_id)
+    seen: set[str] = set(read_ids)
+    rows: list[dict] = []
+
+    # Order facets by mass; label the dominant one as the main feed.
+    facets = sorted(facets, key=lambda f: -float(f.get("mass") or 0.0))
+    for idx, facet in enumerate(facets):
+        centroid = facet.get("centroid") or []
+        if not centroid:
+            continue
+        cands = await retrieval.retrieve_by_centroid(
+            centroid, limit=per_row * 4, exclude_ids=list(seen),
+        )
+        if not cands:
+            continue
+        rerank.rerank(cands)
+        picked = rerank.mmr_diversify(cands, k=per_row)
+        items = [_card_from_candidate(c) for c in picked]
+        # Cross-row dedupe: reserve these ids so later rows don't repeat them.
+        for it in items:
+            seen.add(it["id"])
+        title = "Для тебя" if (idx == 0 and len(facets) == 1) else facet.get("label") or "Ещё в этом духе"
+        if idx == 0 and len(facets) > 1:
+            title = "Для тебя"
+        rows.append({"title": title, "items": items})
+
+    return [r for r in rows if r["items"]]
+
+
+@router.get("/feed")
+async def get_feed(
+    per_row: int = Query(15, ge=5, le=30),
+    refresh: bool = Query(False),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Multi-row personalized feed (Instagram-style rails). Cache-behind:
+    serves the cached row set if fresh, else rebuilds from taste facets.
+    Falls back to a single trending row on cold start — always 200."""
+    uid = current_user.id
+
+    if not refresh:
+        async with AsyncSessionLocal() as db:
+            cached = (await db.execute(text(
+                "SELECT payload, stale_after FROM user_recommendations WHERE user_id = :uid"
+            ), {"uid": uid})).first()
+        if cached and cached[0] and cached[1] and cached[1] > datetime.utcnow():
+            payload = cached[0] if isinstance(cached[0], dict) else {}
+            rows = payload.get("rows")
+            if rows:
+                return {"rows": rows, "source": "cache"}
+
+    try:
+        rows = await _build_rows(uid, per_row=per_row)
+    except Exception as e:
+        logger.warning("feed rows build failed for %s: %s", uid, e)
+        rows = []
+
+    if not rows:
+        trending = await _trending(per_row)
+        return {"rows": [{"title": "Популярное", "items": trending}], "source": "trending"}
+
+    # Cache both shapes: rows (this endpoint) + flat items (legacy /for-me).
+    try:
+        flat = [it for r in rows for it in r["items"]]
+        async with AsyncSessionLocal() as db:
+            await db.execute(text("""
+                INSERT INTO user_recommendations (user_id, payload, generated_at, stale_after)
+                VALUES (:uid, CAST(:payload AS json), now(), :stale)
+                ON CONFLICT (user_id) DO UPDATE
+                  SET payload = EXCLUDED.payload, generated_at = now(),
+                      stale_after = EXCLUDED.stale_after
+            """), {
+                "uid": uid,
+                "payload": json.dumps({"rows": rows, "items": flat}, ensure_ascii=False),
+                "stale": datetime.utcnow() + _CACHE_TTL,
+            })
+            await db.commit()
+    except Exception as e:
+        logger.warning("feed cache write failed for %s: %s", uid, e)
+
+    return {"rows": rows, "source": "personalized"}
+
+
 @router.get("/for-me")
 async def get_recommendations(
     page: int = Query(1, ge=1),

@@ -41,6 +41,8 @@ export const searchApi = {
 
 export const recommendationsApi = {
   forMe: (page = 1) => api.get('/recommendations/for-me', { params: { page } }),
+  // Multi-row personalized feed (facets → rails). Returns { rows:[{title,items}] }.
+  feed: (perRow = 15) => api.get('/recommendations/feed', { params: { per_row: perRow } }),
   similar: (fanficId: string, limit = 10) =>
     api.get(`/recommendations/similar/${fanficId}`, { params: { limit } }),
   trending: (period = 'week') => api.get('/recommendations/trending', { params: { period } }),
