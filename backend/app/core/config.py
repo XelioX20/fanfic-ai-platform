@@ -62,8 +62,17 @@ class Settings(BaseSettings):
     EMBED_WORKER_URL: str = ""
     EMBED_WORKER_SECRET: str = ""
     ENRICH_SECRET: str = ""
-    ENRICH_BATCH_SIZE: int = 15
+    ENRICH_BATCH_SIZE: int = 10
     EMBEDDING_DIM: int = 1024
+    # Chapter-text embedding blend (Phase 4.3). Prose is sampled (head +
+    # middle + tail), chunked, embedded, pooled, and convex-blended with the
+    # metadata vector into the single embedding_vec. Re-tuning ALPHA or the
+    # chunk sizes requires a catalog re-embed (/enrich/reset-failed + drain).
+    EMBED_META_ALPHA: float = 0.5       # weight of metadata vs prose (0..1)
+    EMBED_MAX_TEXT_CHARS: int = 16000   # total prose budget per fic (~6k tok)
+    EMBED_CHUNK_CHARS: int = 2200       # per-chunk size (~730-880 RU tokens)
+    EMBED_CHUNK_OVERLAP: int = 220      # sliding-window overlap
+    EMBED_MAX_CHAPTERS_FETCH: int = 3   # head/middle/tail for multi-chapter
 
     def get_cors_origins(self) -> list[str]:
         if isinstance(self.CORS_ORIGINS, str):

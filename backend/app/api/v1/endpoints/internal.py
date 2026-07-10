@@ -4,6 +4,7 @@ Secret-gated (X-Internal-Secret header must match ENRICH_SECRET) so these
 can't be hit by the public. Called by the Cloudflare Worker cron and used
 for pipeline diagnostics.
 """
+import asyncio
 import hashlib
 import logging
 import os
@@ -12,7 +13,7 @@ from typing import Optional
 from sqlalchemy import text
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
-from app.services.recommender import embed_client, tag_genre
+from app.services.recommender import embed_client, tag_genre, text_embed
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -109,6 +110,70 @@ def _build_embed_text(title: str, fandoms, pairings, tags, description: str) -> 
     if tags:     parts.append(f"Метки: {_join(tags)}")
     if description: parts.append(description)
     return ". ".join(p for p in parts if p)[:6000]
+
+
+async def _fetch_chapter_text(fid: str, cid: str, http) -> str:
+    """Fetch one chapter's prose via the CF proxy → plain text. '' on failure.
+    Rides the Worker's 10-min edge cache; ftfy-normalizes like the reader."""
+    try:
+        resp = await http.get(f"{WORKER_URL}/readfic/{fid}/{cid}")
+        resp.raise_for_status()
+        raw = resp.content.decode("utf-8", errors="replace")
+        try:
+            import ftfy
+            html = ftfy.fix_text(raw)
+        except ImportError:
+            html = raw
+        from ficbook_parser.parsers.chapter import ChapterParser
+        chapter = ChapterParser().parse(html, cid)
+        return text_embed.html_to_text(chapter.text or "")
+    except Exception as e:
+        logger.info("chapter fetch failed %s/%s: %s", fid, cid, e)
+        return ""
+
+
+async def _fic_plaintext(page, fid: str, http) -> str:
+    """Best-effort chapter prose for embedding. Returns '' on any failure so
+    the caller falls back to metadata-only.
+
+    Single-chapter: reuse the info-page HTML already parsed — ZERO extra
+    fetches. Multi-chapter: fetch head + middle + tail chapters (≤3) with
+    bounded concurrency and concatenate."""
+    try:
+        chapters = getattr(page, "chapters", None)
+        # Single-chapter fic — text is inline on the info page.
+        if chapters is not None and hasattr(chapters, "html_content"):
+            return text_embed.html_to_text(chapters.html_content or "")
+
+        # Multi-chapter fic — sample head/middle/tail chapter bodies.
+        if chapters is not None and hasattr(chapters, "chapters"):
+            ch_list = chapters.chapters or []
+            ids = [c.id for c in ch_list if getattr(c, "id", "")]
+            if not ids:
+                return ""
+            n = len(ids)
+            k = settings.EMBED_MAX_CHAPTERS_FETCH
+            if n <= k:
+                pick = ids
+            else:
+                # head, tail, and evenly-spaced middle indices.
+                idxs = {0, n - 1}
+                for j in range(1, k - 1):
+                    idxs.add(round(j * (n - 1) / (k - 1)))
+                pick = [ids[i] for i in sorted(idxs)]
+
+            sem = asyncio.Semaphore(3)
+
+            async def _one(cid: str) -> str:
+                async with sem:
+                    return await _fetch_chapter_text(fid, cid, http)
+
+            parts = await asyncio.gather(*[_one(c) for c in pick], return_exceptions=True)
+            texts = [p for p in parts if isinstance(p, str) and p]
+            return "\n\n".join(texts)
+    except Exception as e:
+        logger.info("plaintext gather failed for %s: %s", fid, e)
+    return ""
 
 
 @router.post("/enrich/reset-failed")
@@ -315,10 +380,45 @@ async def enrich_run(
             # Derived tags enrich the embed text → better semantic vector.
             embed_tags = tags + [t for t in derived_tags if t not in tags]
             embed_text = _build_embed_text(page.name, fandoms, pairings, embed_tags, description)
-            text_hash = hashlib.sha256(embed_text.encode("utf-8")).hexdigest()
 
-            vectors = await embed_client.embed_texts([embed_text], http=http)
-            vec = vectors[0] if vectors else None
+            # ── Chapter-text blend (4.3) — best-effort ──────────────────
+            # Sample the prose (single-chapter = 0 extra fetches; multi =
+            # head/middle/tail), chunk it, and embed [meta] + chunks in ONE
+            # worker call. Blend text_vec with meta_vec into embedding_vec.
+            # Any failure → plain='' → text_vec None → metadata-only (today).
+            plain = await _fic_plaintext(page, fid, http)
+            chunks = (
+                text_embed.select(
+                    text_embed.chunk(
+                        plain,
+                        chunk_chars=settings.EMBED_CHUNK_CHARS,
+                        overlap=settings.EMBED_CHUNK_OVERLAP,
+                    ),
+                    settings.EMBED_MAX_TEXT_CHARS,
+                )
+                if plain else []
+            )
+            # embed_text_hash folds in the sampled prose so chapter edits
+            # trigger a re-embed while unchanged fics stay idempotent.
+            text_hash = hashlib.sha256(
+                (embed_text + "\x00" + plain[: settings.EMBED_MAX_TEXT_CHARS]).encode("utf-8")
+            ).hexdigest()
+
+            payload = [embed_text] + chunks
+            vectors = await embed_client.embed_texts(payload, http=http)
+            if vectors:
+                meta_vec = vectors[0]
+                text_vec = (
+                    text_embed.pool(vectors[1:], [len(c) for c in chunks])
+                    if len(vectors) > 1 else None
+                )
+                vec = text_embed.blend(meta_vec, text_vec, settings.EMBED_META_ALPHA)
+                logger.info(
+                    "enriched %s: chunks=%d text_vec=%s", fid, len(chunks),
+                    "yes" if text_vec is not None else "fallback-meta-only",
+                )
+            else:
+                vec = None
 
             async with AsyncSessionLocal() as db:
                 if vec is not None:
