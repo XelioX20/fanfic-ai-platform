@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Heart, Trophy } from 'lucide-react'
+import { Heart, Trophy, Flame, Check, RefreshCw, Snowflake, type LucideIcon } from 'lucide-react'
 import type { Fanfic } from '@/types'
 import { cn, formatNumber } from '@/lib/utils'
 import { FanficStateBadges } from './FanficStateBadges'
@@ -23,10 +23,10 @@ const RATING_COLORS: Record<string, string> = {
   'NC-21': 'bg-red-900/90 text-red-200 border-red-700/80',
 }
 
-const STATUS_ICONS: Record<string, string> = {
-  'Завершён':   '✓',
-  'В процессе': '⟳',
-  'Заморожен':  '❄',
+const STATUS_ICONS: Record<string, LucideIcon> = {
+  'Завершён':   Check,
+  'В процессе': RefreshCw,
+  'Заморожен':  Snowflake,
 }
 
 function Chip({ children, className, onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
@@ -136,7 +136,11 @@ export function FanficCard({ fanfic, className }: FanficCardProps) {
                 }
                 onClick={() => router.push(`/search?q=${encodeURIComponent(fanfic.completion_status)}`)}
               >
-                {STATUS_ICONS[fanfic.completion_status] ?? ''} {fanfic.completion_status}
+                {(() => {
+                  const StatusIcon = STATUS_ICONS[fanfic.completion_status]
+                  return StatusIcon ? <StatusIcon size={10} className="mr-1" /> : null
+                })()}
+                {fanfic.completion_status}
               </Chip>
             )}
             {fanfic.likes > 0 && (
@@ -151,7 +155,7 @@ export function FanficCard({ fanfic, className }: FanficCardProps) {
             )}
             {fanfic.is_hot && (
               <Chip className="bg-orange-900/60 text-orange-300 border-orange-700/40">
-                🔥 Горячая работа
+                <Flame size={10} className="mr-1" />Горячая работа
               </Chip>
             )}
           </div>

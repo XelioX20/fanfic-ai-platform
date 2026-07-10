@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { Avatar } from '@/components/ui/Avatar'
 import Link from 'next/link'
 import {
-  User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X, Bookmark, LogOut,
+  User, Heart, Clock, Anchor, Settings, ExternalLink, Loader2, Trash2, X, Bookmark, LogOut, Undo2,
 } from 'lucide-react'
 import { useAuthStore, useReaderStore, type HistoryEntry, type ReadingAnchor, type BookmarkEntry } from '@/store'
 import { profileApi, authApi } from '@/lib/api'
@@ -135,7 +135,7 @@ function LocalBookmarksTab() {
           </span>
           {' '}или{' '}
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-pink-950/50 text-pink-300 border border-pink-800/50 text-[10px] font-medium">
-            <Heart size={10} /> ♥
+            <Heart size={10} />
           </span>
           {' '}— он появится здесь и синхронизируется между устройствами.
         </p>
@@ -561,9 +561,9 @@ function ReaderSettingsTab() {
           <button
             type="button"
             onClick={() => updateSettings({ custom_text_color: null })}
-            className="mt-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="mt-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1"
           >
-            ↩ Сбросить к цвету темы
+            <Undo2 size={12} /> Сбросить к цвету темы
           </button>
         )}
       </div>

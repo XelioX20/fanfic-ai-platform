@@ -2,17 +2,15 @@
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, Link2, X, ArrowRight, Sun, Moon, Smartphone } from 'lucide-react'
+import { BookOpen, Link2, X, ArrowRight, Sun, Moon, Check } from 'lucide-react'
 import { useAuthStore, useUIStore } from '@/store'
 import { SearchBar } from '@/components/search/SearchBar'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/lib/utils'
 
 const THEMES = [
-  { value: 'light'  as const, label: 'Светлая', hint: 'светлый фон',        Icon: Sun },
-  { value: 'dark'   as const, label: 'Тёмная',  hint: 'мягкий тёмно-серый', Icon: Moon },
-  { value: 'amoled' as const, label: 'AMOLED',  hint: 'чистый чёрный',      Icon: Smartphone },
-  { value: 'fable'  as const, label: 'Fable',   hint: 'кремовая бумага',    Icon: BookOpen },
+  { value: 'fable'  as const, label: 'Светлая', hint: 'кремовая бумага',        Icon: Sun },
+  { value: 'dark'   as const, label: 'Тёмная',  hint: 'тёмный лес, пергамент',  Icon: Moon },
 ]
 
 function ThemeToggle() {
@@ -51,7 +49,7 @@ function ThemeToggle() {
                   <span>{label}</span>
                   <span className="text-[10px] text-zinc-500">{hint}</span>
                 </span>
-                {theme === value && <span className="text-purple-400 text-xs">✓</span>}
+                {theme === value && <Check size={14} className="text-purple-400" />}
               </button>
             ))}
           </div>

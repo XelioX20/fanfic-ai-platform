@@ -1,5 +1,5 @@
 'use client'
-import { Settings, X } from 'lucide-react'
+import { Settings, X, AlignLeft, AlignJustify, AlignCenter, AlignRight } from 'lucide-react'
 import { useState } from 'react'
 import { useReaderStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -95,11 +95,11 @@ export function ReaderSettingsPanel() {
               <label className="text-xs text-zinc-500 block mb-2">Выравнивание текста</label>
               <div className="grid grid-cols-5 gap-1">
                 {([
-                  { value: 'original', label: 'Как в оригинале', icon: 'A' },
-                  { value: 'left',     label: 'По левому краю',  icon: '⇤' },
-                  { value: 'justify',  label: 'По ширине',       icon: '☰' },
-                  { value: 'center',   label: 'По центру',       icon: '⇎' },
-                  { value: 'right',    label: 'По правому краю', icon: '⇥' },
+                  { value: 'original', label: 'Как в оригинале', Icon: null },
+                  { value: 'left',     label: 'По левому краю',  Icon: AlignLeft },
+                  { value: 'justify',  label: 'По ширине',       Icon: AlignJustify },
+                  { value: 'center',   label: 'По центру',       Icon: AlignCenter },
+                  { value: 'right',    label: 'По правому краю', Icon: AlignRight },
                 ] as const).map(a => {
                   const active = (settings.text_align ?? 'original') === a.value
                   return (
@@ -110,13 +110,13 @@ export function ReaderSettingsPanel() {
                       aria-label={a.label}
                       onClick={() => updateSettings({ text_align: a.value })}
                       className={cn(
-                        'py-1.5 text-sm rounded border transition-all',
+                        'py-1.5 text-sm rounded border transition-all flex items-center justify-center',
                         active
                           ? 'border-purple-500 bg-purple-500/10 text-zinc-100'
                           : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
                       )}
                     >
-                      {a.icon}
+                      {a.Icon ? <a.Icon size={16} /> : 'A'}
                     </button>
                   )
                 })}

@@ -362,7 +362,7 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      theme: 'dark',
+      theme: 'fable',
       themeUserSet: false,
       setTheme: (theme) => {
         set({ theme, themeUserSet: true })

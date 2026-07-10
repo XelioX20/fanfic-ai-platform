@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Heart, Trophy, MessageSquare, BookOpen, ArrowLeft, BookMarked, Anchor,
   Bookmark, Check, Download, Loader2, Flame, ChevronDown, ChevronUp, ExternalLink,
+  RefreshCw, Snowflake,
 } from 'lucide-react'
 import { useAuthStore, useReaderStore } from '@/store'
 import { cn, formatNumber, formatWordCount } from '@/lib/utils'
@@ -398,7 +399,12 @@ export default function FanficPage() {
             )}
             {fanfic.completion_status && fanfic.completion_status !== 'Неизвестно' && (
               <Chip className={fanfic.completion_status === 'Завершён' ? 'bg-teal-900/60 text-teal-300 border-teal-700/40' : 'bg-zinc-700/60 text-zinc-400 border-zinc-600/40'}>
-                {fanfic.completion_status === 'Завершён' ? '✓' : fanfic.completion_status === 'В процессе' ? '⟳' : '❄'} {fanfic.completion_status}
+                {fanfic.completion_status === 'Завершён'
+                  ? <Check size={12} className="mr-1" />
+                  : fanfic.completion_status === 'В процессе'
+                  ? <RefreshCw size={12} className="mr-1" />
+                  : <Snowflake size={12} className="mr-1" />}
+                {fanfic.completion_status}
               </Chip>
             )}
           </div>

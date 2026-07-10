@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Flame, Sparkles, Compass } from 'lucide-react'
 import { useAuthStore, useReaderStore } from '@/store'
 import type { Fanfic } from '@/types'
 
@@ -334,7 +335,8 @@ export default function HomePage() {
 
         {/* 5 — Trending (always) — top rail, first 5 covers get priority */}
         <FanficRail
-          title="🔥 Горячее сегодня"
+          title="Горячее сегодня"
+          icon={<Flame size={20} />}
           subtitle="Что читают прямо сейчас"
           fanfics={trendingQuery.data ?? []}
           loading={trendingQuery.isLoading}
@@ -350,7 +352,8 @@ export default function HomePage() {
             feedQuery.data.map((row, i) => (
               <FanficRail
                 key={`feed-${i}-${row.title}`}
-                title={i === 0 ? `✨ ${row.title}` : row.title}
+                title={row.title}
+                icon={i === 0 ? <Sparkles size={20} /> : undefined}
                 subtitle={i === 0 ? 'Подобрано на основе ваших лайков и истории' : undefined}
                 fanfics={row.items}
                 loading={false}
@@ -358,7 +361,8 @@ export default function HomePage() {
             ))
           ) : (
             <FanficRail
-              title="✨ Для вас"
+              title="Для вас"
+              icon={<Sparkles size={20} />}
               subtitle="Подобрано на основе ваших лайков и истории"
               fanfics={[]}
               loading={feedQuery.isLoading}
@@ -368,7 +372,8 @@ export default function HomePage() {
           )
         ) : (
           <FanficRail
-            title="👋 С чего начать"
+            title="С чего начать"
+            icon={<Compass size={20} />}
             subtitle="Хорошие входные точки, если вы здесь впервые"
             fanfics={(beginnerQuery.data ?? []).slice(0, 8)}
             loading={beginnerQuery.isLoading}

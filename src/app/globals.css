@@ -23,66 +23,157 @@
   --success: #4ADE80;
 }
 
-/* ── Dark (softer graphite — distinct from AMOLED) ──────── */
+/* ── Dark — literary "Nightfall" (deep forest charcoal + parchment) ──────
+   The Fable book at night: warm dark-green surfaces, parchment text, sage
+   accent (bright enough to read on dark), Playfair headlines. Same
+   botanical language as the light Fable theme. */
 .dark {
   color-scheme: dark;
-  --bg-base: #0F0F11;
-  --bg-surface: #18181B;
-  --bg-elevated: #1F1F23;
-  --bg-input: #27272A;
-  --bg-hover: #27272A;
-  --border-subtle: #27272A;
-  --border-default: #3F3F46;
-  --text-primary: #FAFAFA;
-  --text-secondary: #D4D4D8;
-  --text-muted: #A1A1AA;
-  --text-disabled: #52525B;
-  --accent: #A78BFA;
-  --accent-hover: #8B5CF6;
-  --danger: #F87171;
-  --success: #4ADE80;
+  --bg-base: #12150f;       /* deep forest charcoal */
+  --bg-surface: #1b2016;    /* lifted card */
+  --bg-elevated: #222719;
+  --bg-input: #222719;
+  --bg-hover: #2a3020;
+  --border-subtle: #2f3626;
+  --border-default: #3d4531;
+  --text-primary: #f1eee4;  /* warm parchment */
+  --text-secondary: #cfcabb;
+  --text-muted: #918d7e;
+  --text-disabled: #5c5a4d;
+  --accent: #a5d0b9;        /* sage — links/icons on dark */
+  --accent-hover: #c1ecd4;
+  --danger: #f0a3a0;
+  --success: #94d4b1;
 }
 
 .dark body {
-  background-color: #0F0F11 !important;
-  color: #FAFAFA;
+  background-color: #12150f !important;
+  color: #f1eee4;
 }
 
-/* Dark theme: lift surfaces above the #0F0F11 page for visible fill-contrast */
-.dark .bg-zinc-950 { background-color: #0F0F11 !important; }
-.dark .bg-zinc-900 { background-color: #18181B !important; }
-.dark .bg-zinc-900\/95 { background-color: rgba(24,24,27,0.95) !important; }
-.dark .bg-zinc-800 { background-color: #1F1F23 !important; }
-.dark .bg-zinc-800\/50 { background-color: rgba(31,31,35,0.5) !important; }
-.dark .bg-zinc-800\/60 { background-color: rgba(31,31,35,0.6) !important; }
-.dark .bg-zinc-700\/60 { background-color: rgba(63,63,70,0.6) !important; }
-.dark .bg-zinc-700\/80 { background-color: rgba(63,63,70,0.8) !important; }
+/* Playfair headlines — literary voice in dark too */
+.dark h1, .dark h2, .dark h3 {
+  font-family: var(--font-playfair), Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.01em;
+}
 
-.dark .border-zinc-800 { border-color: #27272A !important; }
-.dark .border-zinc-700 { border-color: #3F3F46 !important; }
+/* Surfaces — forest charcoal steps */
+.dark .bg-zinc-950 { background-color: #12150f !important; }
+.dark .bg-zinc-900 { background-color: #1b2016 !important; }
+.dark .bg-zinc-900\/95 { background-color: rgba(27,32,22,0.95) !important; }
+.dark .bg-zinc-800 { background-color: #262c1d !important; }
+.dark .bg-zinc-800\/50 { background-color: rgba(38,44,29,0.5) !important; }
+.dark .bg-zinc-800\/60 { background-color: rgba(38,44,29,0.6) !important; }
+.dark .bg-zinc-700\/60 { background-color: rgba(61,69,49,0.6) !important; }
+.dark .bg-zinc-700\/80 { background-color: rgba(61,69,49,0.8) !important; }
+
+.dark .border-zinc-800 { border-color: #2f3626 !important; }
+.dark .border-zinc-700 { border-color: #3d4531 !important; }
+.dark .border-zinc-600 { border-color: #4c553d !important; }
+
+/* Text — parchment scale */
+.dark .text-zinc-100 { color: #f1eee4 !important; }
+.dark .text-zinc-200 { color: #e4e0d4 !important; }
+.dark .text-zinc-300 { color: #cfcabb !important; }
+.dark .text-zinc-400 { color: #a8a595 !important; }
+.dark .text-zinc-500 { color: #8b8878 !important; }
+.dark .text-zinc-600 { color: #6e6c5e !important; }
 
 .dark article {
-  background-color: #18181B !important;
-  border-color: #27272A !important;
+  background-color: #1b2016 !important;
+  border-color: #2f3626 !important;
 }
-.dark article:hover { border-color: #3F3F46 !important; }
+.dark article:hover { border-color: #3d4531 !important; }
 
 .dark header {
-  background-color: rgba(24,24,27,0.95) !important;
-  border-color: #27272A !important;
+  background-color: rgba(18,21,15,0.85) !important;
+  border-color: #2f3626 !important;
 }
 
 .dark input[type="text"],
 .dark input[type="email"],
 .dark input[type="password"],
 .dark input:not([type]) {
-  background-color: #27272A !important;
-  color: #FAFAFA !important;
-  border-color: #3F3F46 !important;
+  background-color: #222719 !important;
+  color: #f1eee4 !important;
+  border-color: #3d4531 !important;
+}
+.dark input::placeholder { color: #8b8878 !important; }
+.dark input:focus { border-color: #a5d0b9 !important; }
+
+.dark .hover\:bg-zinc-800:hover { background-color: #2a3020 !important; }
+.dark .hover\:bg-zinc-800\/60:hover { background-color: rgba(42,48,32,0.6) !important; }
+
+.dark .bg-zinc-900.border-zinc-700,
+.dark .bg-zinc-900.border-zinc-800 {
+  background-color: #1b2016 !important;
+  border-color: #2f3626 !important;
+}
+.dark .border.border-zinc-800 { border-color: #2f3626 !important; }
+
+/* ── Sage-green accent (replaces violet — dark literary) ──────────────
+   Deep-forest fills read poorly on a dark bg, so CTAs use mid-forest fill
+   with white text, and links/icons use bright sage. */
+.dark .bg-purple-600 { background-color: #2b694d !important; }
+.dark .bg-purple-700 { background-color: #23583f !important; }
+.dark .bg-purple-500 { background-color: #357a58 !important; }
+.dark .hover\:bg-purple-500:hover { background-color: #357a58 !important; }
+.dark .hover\:bg-purple-700:hover { background-color: #23583f !important; }
+.dark .text-purple-300 { color: #c1ecd4 !important; }
+.dark .text-purple-400 { color: #a5d0b9 !important; }
+.dark .hover\:text-purple-400:hover { color: #c1ecd4 !important; }
+.dark .hover\:text-purple-300:hover { color: #c1ecd4 !important; }
+.dark .border-purple-400 { border-color: #a5d0b9 !important; }
+.dark .hover\:border-purple-400:hover { border-color: #a5d0b9 !important; }
+.dark .ring-purple-500 { --tw-ring-color: #a5d0b9 !important; }
+.dark .focus-visible\:ring-purple-500:focus-visible { --tw-ring-color: #a5d0b9 !important; }
+
+/* Unified sage chips */
+.dark [data-chip] {
+  background-color: rgba(165,208,185,0.14) !important;
+  color: #a5d0b9 !important;
+  border-color: rgba(165,208,185,0.30) !important;
+}
+.dark [data-chip-active] {
+  background-color: #2b694d !important;
+  color: #ffffff !important;
 }
 
-.dark .hover\:bg-zinc-800:hover { background-color: #27272A !important; }
-.dark .hover\:bg-zinc-800\/60:hover { background-color: rgba(39,39,42,0.6) !important; }
+/* Pill buttons + gradient CTA flatten (dark) */
+.dark [data-pill] { border-radius: 60px !important; }
+.dark button.rounded-md,
+.dark a.rounded-md { border-radius: 60px !important; }
+.dark [data-pill].bg-gradient-to-r,
+.dark [data-pill].bg-gradient-to-br {
+  background-image: none !important;
+  background-color: #2b694d !important;
+}
+.dark [data-pill].bg-gradient-to-r:hover,
+.dark [data-pill].bg-gradient-to-br:hover {
+  background-color: #357a58 !important;
+}
+
+/* Continue-Reading hero — dark forest variant */
+.dark [data-hero="continue-reading"] {
+  background-color: #1b2418 !important;
+  border-color: #2f3f2a !important;
+  box-shadow: 0 4px 20px 0 rgba(0,0,0,0.35) !important;
+}
+.dark [data-hero="continue-reading"]:hover {
+  background-color: #21301c !important;
+  border-color: #3a4d33 !important;
+}
+.dark [data-hero="continue-reading"] .text-white,
+.dark [data-hero="continue-reading"] .text-zinc-100 { color: #f1eee4 !important; }
+.dark [data-hero="continue-reading"] .text-zinc-200 { color: #e0ddd0 !important; }
+.dark [data-hero="continue-reading"] .text-zinc-300 { color: #cfcabb !important; }
+.dark [data-hero="continue-reading"] .text-zinc-400 { color: #a8a595 !important; }
+.dark [data-hero="continue-reading"] .text-zinc-500 { color: #8b8878 !important; }
+.dark [data-hero="continue-reading"] .text-indigo-300,
+.dark [data-hero="continue-reading"] .text-purple-300 { color: #a5d0b9 !important; }
+.dark [data-hero="continue-reading"] .bg-zinc-800,
+.dark [data-hero="continue-reading"] .bg-zinc-800\/70 { background-color: #2a3820 !important; }
+.dark [data-hero="continue-reading"] .bg-zinc-800.shadow-xl { background-color: #2a3820 !important; }
 
 /* ── AMOLED (true black canvas, hairline borders) ───────── */
 .amoled {
@@ -288,26 +379,26 @@
    ═════════════════════════════════════════════════════════════════════ */
 .fable {
   color-scheme: light;
-  --bg-base: #f7f4ee;      /* Paper Cream */
-  --bg-surface: #ffffff;
-  --bg-elevated: #fffdf8;
-  --bg-input: #f2ede3;
-  --bg-hover: #ece5d8;
-  --border-subtle: #e8e2d6;
-  --border-default: #d8cfbe;
-  --text-primary: #161015;  /* Ink */
-  --text-secondary: #3f383d; /* Graphite */
-  --text-muted: #6b6560;
+  --bg-base: #fcf9f8;       /* Stitch surface — warm paper */
+  --bg-surface: #ffffff;    /* cards are literal white */
+  --bg-elevated: #f6f3f2;   /* surface-container-low */
+  --bg-input: #f0eded;      /* surface-container */
+  --bg-hover: #eae7e7;      /* surface-container-high */
+  --border-subtle: rgba(193,200,194,0.20);  /* outline-variant @20% hairline */
+  --border-default: rgba(193,200,194,0.30);
+  --text-primary: #1c1b1b;  /* on-surface */
+  --text-secondary: #414844; /* on-surface-variant */
+  --text-muted: #717973;    /* outline */
   --text-disabled: #a79f97;
-  --accent: #064c37;        /* Fable Forest */
-  --accent-hover: #053a2a;
-  --danger: #b42318;
-  --success: #067647;
+  --accent: #012d1d;        /* Stitch primary — deep forest */
+  --accent-hover: #2b694d;  /* Stitch secondary — mid forest */
+  --danger: #ba1a1a;
+  --success: #2b694d;
 }
 
 .fable body {
-  background-color: #f7f4ee;
-  color: #161015;
+  background-color: #fcf9f8;
+  color: #1c1b1b;
 }
 
 /* Serif display headlines — the loudest voice in Fable. */
@@ -316,44 +407,44 @@
   letter-spacing: -0.01em;
 }
 
-/* Backgrounds — cream base, white paper cards */
-.fable .bg-zinc-950 { background-color: #f7f4ee !important; }
+/* Backgrounds — cream base, white paper cards, tonal cream steps */
+.fable .bg-zinc-950 { background-color: #fcf9f8 !important; }
 .fable .bg-zinc-900 { background-color: #ffffff !important; }
 .fable .bg-zinc-900\/95 { background-color: rgba(255,255,255,0.95) !important; }
-.fable .bg-zinc-800 { background-color: #efe9dd !important; }
-.fable .bg-zinc-800\/50 { background-color: rgba(239,233,221,0.5) !important; }
-.fable .bg-zinc-800\/60 { background-color: rgba(239,233,221,0.6) !important; }
-.fable .bg-zinc-700\/60 { background-color: rgba(216,207,190,0.6) !important; }
-.fable .bg-zinc-700\/80 { background-color: rgba(216,207,190,0.8) !important; }
+.fable .bg-zinc-800 { background-color: #f0eded !important; }
+.fable .bg-zinc-800\/50 { background-color: rgba(240,237,237,0.5) !important; }
+.fable .bg-zinc-800\/60 { background-color: rgba(240,237,237,0.6) !important; }
+.fable .bg-zinc-700\/60 { background-color: rgba(234,231,231,0.6) !important; }
+.fable .bg-zinc-700\/80 { background-color: rgba(234,231,231,0.8) !important; }
 
-/* Borders — warm beige */
-.fable .border-zinc-800 { border-color: #e8e2d6 !important; }
-.fable .border-zinc-700 { border-color: #d8cfbe !important; }
+/* Borders — muted outline-variant hairlines */
+.fable .border-zinc-800 { border-color: rgba(193,200,194,0.30) !important; }
+.fable .border-zinc-700 { border-color: rgba(193,200,194,0.45) !important; }
 .fable .border-zinc-600 { border-color: #b8ad98 !important; }
 
-/* Text — ink scale */
-.fable .text-zinc-100 { color: #161015 !important; }
-.fable .text-zinc-200 { color: #292229 !important; }
-.fable .text-zinc-300 { color: #3f383d !important; }
-.fable .text-zinc-400 { color: #6b6560 !important; }
-.fable .text-zinc-500 { color: #8a827a !important; }
-.fable .text-zinc-600 { color: #a79f97 !important; }
+/* Text — on-surface ink scale */
+.fable .text-zinc-100 { color: #1c1b1b !important; }
+.fable .text-zinc-200 { color: #29302b !important; }
+.fable .text-zinc-300 { color: #414844 !important; }
+.fable .text-zinc-400 { color: #5c635e !important; }
+.fable .text-zinc-500 { color: #717973 !important; }
+.fable .text-zinc-600 { color: #949b95 !important; }
 
 /* Hover overrides */
-.fable .hover\:bg-zinc-800:hover { background-color: #ece5d8 !important; }
-.fable .hover\:bg-zinc-800\/60:hover { background-color: rgba(236,229,216,0.6) !important; }
+.fable .hover\:bg-zinc-800:hover { background-color: #eae7e7 !important; }
+.fable .hover\:bg-zinc-800\/60:hover { background-color: rgba(234,231,231,0.6) !important; }
 
 /* Cards */
 .fable article {
   background-color: #ffffff !important;
-  border-color: #e8e2d6 !important;
+  border-color: rgba(193,200,194,0.30) !important;
 }
-.fable article:hover { border-color: #d8cfbe !important; }
+.fable article:hover { border-color: rgba(193,200,194,0.55) !important; }
 
 /* Header */
 .fable header {
-  background-color: rgba(247,244,238,0.95) !important;
-  border-color: #e8e2d6 !important;
+  background-color: rgba(252,249,248,0.85) !important;
+  border-color: rgba(193,200,194,0.30) !important;
 }
 
 /* Inputs and search */
@@ -361,40 +452,53 @@
 .fable input[type="email"],
 .fable input[type="password"],
 .fable input:not([type]) {
-  background-color: #f2ede3 !important;
-  color: #161015 !important;
-  border-color: #d8cfbe !important;
+  background-color: #f0eded !important;
+  color: #1c1b1b !important;
+  border-color: rgba(193,200,194,0.45) !important;
 }
-.fable input::placeholder { color: #a79f97 !important; }
-.fable input:focus { border-color: #064c37 !important; }
+.fable input::placeholder { color: #717973 !important; }
+.fable input:focus { border-color: #012d1d !important; }
 
 /* Dropdowns and popups */
 .fable .bg-zinc-900.border-zinc-700,
 .fable .bg-zinc-900.border-zinc-800 {
   background-color: #ffffff !important;
-  border-color: #e8e2d6 !important;
+  border-color: rgba(193,200,194,0.30) !important;
 }
 
 /* Chapter list and bordered divs */
-.fable .border.border-zinc-800 { border-color: #e8e2d6 !important; }
+.fable .border.border-zinc-800 { border-color: rgba(193,200,194,0.30) !important; }
 
-/* ── Forest-green accent (replaces violet — Fable only) ──────────────
+/* ── Two-green forest accent (replaces violet — Fable only) ──────────
    Purple utility classes are hardcoded across components and never
-   remapped by other themes. In Fable we recolor them to forest green so
-   CTAs, links, focus rings, and highlights match the botanical palette. */
-.fable .bg-purple-600 { background-color: #064c37 !important; }
-.fable .bg-purple-700 { background-color: #053a2a !important; }
-.fable .bg-purple-500 { background-color: #0a5c43 !important; }
-.fable .hover\:bg-purple-500:hover { background-color: #0a5c43 !important; }
-.fable .hover\:bg-purple-700:hover { background-color: #053a2a !important; }
-.fable .text-purple-300 { color: #0a5c43 !important; }
-.fable .text-purple-400 { color: #064c37 !important; }
-.fable .hover\:text-purple-400:hover { color: #064c37 !important; }
-.fable .hover\:text-purple-300:hover { color: #0a5c43 !important; }
-.fable .border-purple-400 { border-color: #064c37 !important; }
-.fable .hover\:border-purple-400:hover { border-color: #064c37 !important; }
-.fable .ring-purple-500 { --tw-ring-color: #064c37 !important; }
-.fable .focus-visible\:ring-purple-500:focus-visible { --tw-ring-color: #064c37 !important; }
+   remapped by other themes. In Fable: primary = deep forest #012d1d
+   (CTA fills, icons), secondary = mid forest #2b694d (links, hovers). */
+.fable .bg-purple-600 { background-color: #012d1d !important; }
+.fable .bg-purple-700 { background-color: #012d1d !important; }
+.fable .bg-purple-500 { background-color: #2b694d !important; }
+.fable .hover\:bg-purple-500:hover { background-color: #2b694d !important; }
+.fable .hover\:bg-purple-700:hover { background-color: #2b694d !important; }
+.fable .text-purple-300 { color: #2b694d !important; }
+.fable .text-purple-400 { color: #012d1d !important; }
+.fable .hover\:text-purple-400:hover { color: #012d1d !important; }
+.fable .hover\:text-purple-300:hover { color: #2b694d !important; }
+.fable .border-purple-400 { border-color: #012d1d !important; }
+.fable .hover\:border-purple-400:hover { border-color: #012d1d !important; }
+.fable .ring-purple-500 { --tw-ring-color: #012d1d !important; }
+.fable .focus-visible\:ring-purple-500:focus-visible { --tw-ring-color: #012d1d !important; }
+
+/* ── Unified mint chips (Fable only) — collapses the rainbow MoodGrid +
+   discover tiles + tag chips into one botanical style. data-chip = idle
+   mint tint, data-chip-active = forest fill (used by bottom-nav active). */
+.fable [data-chip] {
+  background-color: rgba(176,241,204,0.25) !important;
+  color: #2b694d !important;
+  border-color: rgba(176,241,204,0.55) !important;
+}
+.fable [data-chip-active] {
+  background-color: #012d1d !important;
+  color: #ffffff !important;
+}
 
 /* ── Stadium-pill buttons (Fable only) ───────────────────────────────
    Fable's non-negotiable button shape. Applied via a data-pill marker on
@@ -410,31 +514,31 @@
 .fable [data-pill].bg-gradient-to-r,
 .fable [data-pill].bg-gradient-to-br {
   background-image: none !important;
-  background-color: #064c37 !important;
+  background-color: #012d1d !important;
 }
 .fable [data-pill].bg-gradient-to-r:hover,
 .fable [data-pill].bg-gradient-to-br:hover {
-  background-color: #053a2a !important;
+  background-color: #2b694d !important;
 }
 
 /* ── Continue-Reading hero — cream/forest variant ────────────────────── */
 .fable [data-hero="continue-reading"] {
   background-color: #eef3ef !important;
   border-color: #cfe0d5 !important;
-  box-shadow: 0 4px 14px -4px rgba(6,76,55,0.18) !important;
+  box-shadow: 0 4px 20px 0 rgba(1,45,29,0.06) !important;
 }
 .fable [data-hero="continue-reading"]:hover {
   background-color: #e3ede6 !important;
   border-color: #b3d1bf !important;
 }
 .fable [data-hero="continue-reading"] .text-white,
-.fable [data-hero="continue-reading"] .text-zinc-100 { color: #0c2c20 !important; }
+.fable [data-hero="continue-reading"] .text-zinc-100 { color: #012d1d !important; }
 .fable [data-hero="continue-reading"] .text-zinc-200 { color: #123527 !important; }
 .fable [data-hero="continue-reading"] .text-zinc-300 { color: #1e4535 !important; }
 .fable [data-hero="continue-reading"] .text-zinc-400 { color: #2c5544 !important; }
 .fable [data-hero="continue-reading"] .text-zinc-500 { color: #4a7561 !important; }
 .fable [data-hero="continue-reading"] .text-indigo-300,
-.fable [data-hero="continue-reading"] .text-purple-300 { color: #064c37 !important; }
+.fable [data-hero="continue-reading"] .text-purple-300 { color: #012d1d !important; }
 .fable [data-hero="continue-reading"] .bg-zinc-800,
 .fable [data-hero="continue-reading"] .bg-zinc-800\/70 { background-color: #d8e6dd !important; }
 .fable [data-hero="continue-reading"] .bg-zinc-800.shadow-xl { background-color: #d8e6dd !important; }

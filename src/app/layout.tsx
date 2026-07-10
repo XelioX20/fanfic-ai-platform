@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Providers } from './providers'
 import { Header } from '@/components/layout/Header'
+import { BottomNav } from '@/components/layout/BottomNav'
 import { allFontVariables } from '@/lib/fonts'
 
 export const metadata: Metadata = {
@@ -49,11 +50,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`dark ${allFontVariables}`}>
-      <body>
+    <html lang="ru" className={`fable ${allFontVariables}`}>
+      <body className="pb-16 md:pb-0">
         <Providers>
           <Header />
           {children}
+          <BottomNav />
         </Providers>
       </body>
     </html>

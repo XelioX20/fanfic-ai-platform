@@ -25,7 +25,7 @@ export const merriweather = Merriweather({ subsets: ['cyrillic', 'latin'], weigh
 export const lora         = Lora({         subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-lora',         display: 'swap', preload: false })
 export const ptSerif      = PT_Serif({     subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-pt-serif',     display: 'swap', preload: false })
 export const robotoSlab   = Roboto_Slab({  subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-roboto-slab',  display: 'swap', preload: false })
-export const literata     = Literata({     subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-literata',     display: 'swap', preload: false })
+export const literata     = Literata({     subsets: ['cyrillic', 'latin'], weight: ['400', '500', '700'], variable: '--font-literata',     display: 'swap', preload: false })
 export const inter        = Inter({        subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-inter',        display: 'swap', preload: false })
 export const roboto       = Roboto({       subsets: ['cyrillic', 'latin'], weight: ['400', '700'], variable: '--font-roboto',       display: 'swap', preload: false })
 

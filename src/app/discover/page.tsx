@@ -1,7 +1,12 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, RotateCcw, Loader2, Sparkles } from 'lucide-react'
+import {
+  ArrowLeft, ArrowRight, RotateCcw, Loader2, Sparkles,
+  Users, UserPlus, Leaf, HeartCrack, Flower2, Heart, Drama, Swords, Laugh, Dices,
+  BookOpen, Library, BookMarked, Shuffle, CheckCircle2, RefreshCw,
+  Gamepad2, Film, Tv, Mic, Globe, type LucideIcon,
+} from 'lucide-react'
 import { FanficGrid } from '@/components/fanfic/FanficGrid'
 import { Loader } from '@/components/ui/Loader'
 import { cn } from '@/lib/utils'
@@ -20,7 +25,7 @@ interface Answers {
 interface StepOption {
   value: string
   label: string
-  emoji: string
+  Icon: LucideIcon
   description?: string
 }
 
@@ -30,11 +35,11 @@ const STEPS = [
     question: 'Какое направление тебе нравится?',
     subtitle: 'Определяет тип отношений между персонажами',
     options: [
-      { value: 'slash', label: 'Слэш', emoji: '💙', description: 'М/М' },
-      { value: 'het', label: 'Гет', emoji: '🩷', description: 'М/Ж' },
-      { value: 'gen', label: 'Джен', emoji: '🌿', description: 'Без романтики' },
-      { value: 'femslash', label: 'Фемслэш', emoji: '💜', description: 'Ж/Ж' },
-      { value: '', label: 'Любое', emoji: '✨', description: 'Не важно' },
+      { value: 'slash', label: 'Слэш', Icon: Users, description: 'М/М' },
+      { value: 'het', label: 'Гет', Icon: UserPlus, description: 'М/Ж' },
+      { value: 'gen', label: 'Джен', Icon: Leaf, description: 'Без романтики' },
+      { value: 'femslash', label: 'Фемслэш', Icon: Users, description: 'Ж/Ж' },
+      { value: '', label: 'Любое', Icon: Sparkles, description: 'Не важно' },
     ] as StepOption[],
   },
   {
@@ -42,13 +47,13 @@ const STEPS = [
     question: 'Какое настроение хочется?',
     subtitle: 'Выбери эмоциональный тон истории',
     options: [
-      { value: 'angst', label: 'Ангст', emoji: '💔', description: 'Боль и страдания' },
-      { value: 'fluff', label: 'Флафф', emoji: '🌸', description: 'Мило и тепло' },
-      { value: 'romance', label: 'Романтика', emoji: '❤️', description: 'Любовная история' },
-      { value: 'drama', label: 'Драма', emoji: '🎭', description: 'Напряжение и конфликты' },
-      { value: 'adventure', label: 'Приключения', emoji: '⚔️', description: 'Экшн и события' },
-      { value: 'humor', label: 'Юмор', emoji: '😄', description: 'Смешно и легко' },
-      { value: '', label: 'Сюрприз', emoji: '🎲', description: 'Что угодно' },
+      { value: 'angst', label: 'Ангст', Icon: HeartCrack, description: 'Боль и страдания' },
+      { value: 'fluff', label: 'Флафф', Icon: Flower2, description: 'Мило и тепло' },
+      { value: 'romance', label: 'Романтика', Icon: Heart, description: 'Любовная история' },
+      { value: 'drama', label: 'Драма', Icon: Drama, description: 'Напряжение и конфликты' },
+      { value: 'adventure', label: 'Приключения', Icon: Swords, description: 'Экшн и события' },
+      { value: 'humor', label: 'Юмор', Icon: Laugh, description: 'Смешно и легко' },
+      { value: '', label: 'Сюрприз', Icon: Dices, description: 'Что угодно' },
     ] as StepOption[],
   },
   {
@@ -56,10 +61,10 @@ const STEPS = [
     question: 'Сколько времени готов читать?',
     subtitle: 'Объём фанфика',
     options: [
-      { value: 'short', label: 'Быстро', emoji: '📖', description: 'До 50 тыс. слов' },
-      { value: 'medium', label: 'В самый раз', emoji: '📚', description: '50–200 тыс. слов' },
-      { value: 'long', label: 'Надолго', emoji: '📕', description: 'Более 200 тыс. слов' },
-      { value: '', label: 'Неважно', emoji: '🔀', description: 'Любой объём' },
+      { value: 'short', label: 'Быстро', Icon: BookOpen, description: 'До 50 тыс. слов' },
+      { value: 'medium', label: 'В самый раз', Icon: Library, description: '50–200 тыс. слов' },
+      { value: 'long', label: 'Надолго', Icon: BookMarked, description: 'Более 200 тыс. слов' },
+      { value: '', label: 'Неважно', Icon: Shuffle, description: 'Любой объём' },
     ] as StepOption[],
   },
   {
@@ -67,9 +72,9 @@ const STEPS = [
     question: 'Предпочитаешь законченные истории?',
     subtitle: 'Статус публикации',
     options: [
-      { value: 'complete', label: 'Завершён', emoji: '✅', description: 'Хочу дочитать до конца' },
-      { value: 'in_progress', label: 'В процессе', emoji: '⟳', description: 'Ждать продолжение' },
-      { value: '', label: 'Неважно', emoji: '🔀', description: 'Любой статус' },
+      { value: 'complete', label: 'Завершён', Icon: CheckCircle2, description: 'Хочу дочитать до конца' },
+      { value: 'in_progress', label: 'В процессе', Icon: RefreshCw, description: 'Ждать продолжение' },
+      { value: '', label: 'Неважно', Icon: Shuffle, description: 'Любой статус' },
     ] as StepOption[],
   },
   {
@@ -77,13 +82,13 @@ const STEPS = [
     question: 'Из какой вселенной?',
     subtitle: 'Категория или фэндом',
     options: [
-      { value: 'anime', label: 'Аниме', emoji: '🎌', description: 'Аниме и манга' },
-      { value: 'books', label: 'Книги', emoji: '📖', description: 'Литература' },
-      { value: 'games', label: 'Игры', emoji: '🎮', description: 'Видеоигры' },
-      { value: 'movies', label: 'Кино', emoji: '🎬', description: 'Фильмы' },
-      { value: 'series', label: 'Сериалы', emoji: '📺', description: 'ТВ-шоу' },
-      { value: 'kpop', label: 'K-pop', emoji: '🎤', description: 'K-pop / RPF' },
-      { value: '', label: 'Любой', emoji: '🌍', description: 'Любой фэндом' },
+      { value: 'anime', label: 'Аниме', Icon: Sparkles, description: 'Аниме и манга' },
+      { value: 'books', label: 'Книги', Icon: BookOpen, description: 'Литература' },
+      { value: 'games', label: 'Игры', Icon: Gamepad2, description: 'Видеоигры' },
+      { value: 'movies', label: 'Кино', Icon: Film, description: 'Фильмы' },
+      { value: 'series', label: 'Сериалы', Icon: Tv, description: 'ТВ-шоу' },
+      { value: 'kpop', label: 'K-pop', Icon: Mic, description: 'K-pop / RPF' },
+      { value: '', label: 'Любой', Icon: Globe, description: 'Любой фэндом' },
     ] as StepOption[],
   },
 ]
@@ -247,7 +252,7 @@ export default function DiscoverPage() {
               onClick={() => handleAnswer(option.value)}
               className="group flex flex-col items-center gap-2 p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-purple-600/60 hover:bg-zinc-800/80 active:scale-95 transition-all text-center"
             >
-              <span className="text-3xl">{option.emoji}</span>
+              <option.Icon size={24} className="text-purple-400" aria-hidden />
               <span className="font-medium text-zinc-200 text-sm group-hover:text-white transition-colors">
                 {option.label}
               </span>

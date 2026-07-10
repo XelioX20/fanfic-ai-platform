@@ -16,6 +16,8 @@ interface FanficRailProps {
   emptyLabel?: string
   className?: string
   skeletonCount?: number
+  /** Optional lucide icon rendered before the title (replaces emoji-in-string). */
+  icon?: React.ReactNode
   /** If true, the first few cards in this rail get priority=true so the
    *  browser fetches their cover images eagerly. Set on the top-of-page
    *  rail for a strong LCP; keep off on below-the-fold rails. */
@@ -39,6 +41,7 @@ export function FanficRail({
   emptyLabel,
   className,
   skeletonCount = 6,
+  icon,
   priority = false,
 }: FanficRailProps) {
   // Hide rail entirely when finished loading and no items and no error
@@ -49,7 +52,8 @@ export function FanficRail({
     <section className={cn('space-y-3', className)}>
       <div className="flex items-end justify-between gap-3 px-1">
         <div className="min-w-0">
-          <h2 className="text-lg md:text-xl font-semibold text-zinc-100 leading-tight">
+          <h2 className="text-lg md:text-xl font-semibold text-zinc-100 leading-tight flex items-center gap-2">
+            {icon && <span className="text-purple-400 inline-flex shrink-0">{icon}</span>}
             {title}
           </h2>
           {subtitle && (

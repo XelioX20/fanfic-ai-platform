@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, BookOpen } from 'lucide-react'
+import { Heart, BookOpen, Flame } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Fanfic } from '@/types'
 import { cn, formatNumber } from '@/lib/utils'
@@ -108,8 +108,8 @@ export function CompactFanficCard({ fanfic, className, priority = false }: Compa
         </div>
 
         {fanfic.is_hot && (
-          <span className="absolute top-1.5 left-1.5 bg-orange-600/90 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
-            🔥
+          <span className="absolute top-1.5 left-1.5 bg-orange-600/90 text-white px-1.5 py-0.5 rounded font-medium inline-flex items-center">
+            <Flame size={11} className="fill-current" />
           </span>
         )}
       </div>

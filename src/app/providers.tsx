@@ -20,14 +20,16 @@ function ThemeInitializer() {
     const el = document.documentElement
     const THEME_CLASSES = ['light', 'dark', 'amoled', 'fable']
 
-    let next = theme
-    // On first mount, if user never touched the theme picker and the device
-    // is mobile-width, default to light (looks better in daylight). Don't
-    // persist — flips back on desktop.
-    if (!themeUserSet && typeof window !== 'undefined' && window.matchMedia) {
-      const isMobile = window.matchMedia('(max-width: 640px)').matches
-      if (isMobile && theme !== 'light') next = 'light'
+    // Theme consolidation: only two themes remain — 'fable' (the single
+    // light/cream literary theme) and 'dark' (literary night). Migrate any
+    // legacy persisted value: old purple 'light' + 'amoled' → their literary
+    // equivalents.
+    let next: string = theme
+    if (theme === 'light' || theme === 'amoled') {
+      next = theme === 'light' ? 'fable' : 'dark'
     }
+    // First mount, user never picked: default the whole app to Fable (light).
+    if (!themeUserSet) next = 'fable'
 
     el.classList.remove(...THEME_CLASSES)
     el.classList.add(next)
