@@ -159,6 +159,7 @@ export function ContinueReadingHero({
           {typeof percent === 'number' && (
             <div className="mt-1 h-1.5 w-full bg-zinc-800/70 rounded-full overflow-hidden">
               <div
+                data-progress
                 className="h-full bg-gradient-to-r from-indigo-400 to-fuchsia-400 transition-all duration-500"
                 style={{ width: `${Math.max(2, Math.min(100, percent))}%` }}
               />

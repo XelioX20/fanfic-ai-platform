@@ -175,6 +175,12 @@
 .dark [data-hero="continue-reading"] .bg-zinc-800\/70 { background-color: #2a3820 !important; }
 .dark [data-hero="continue-reading"] .bg-zinc-800.shadow-xl { background-color: #2a3820 !important; }
 
+/* Progress fill — sage green (was indigo/fuchsia gradient) */
+.dark [data-progress] {
+  background-image: none !important;
+  background-color: #a5d0b9 !important;
+}
+
 /* ── AMOLED (true black canvas, hairline borders) ───────── */
 .amoled {
   color-scheme: dark;
@@ -542,6 +548,12 @@
 .fable [data-hero="continue-reading"] .bg-zinc-800,
 .fable [data-hero="continue-reading"] .bg-zinc-800\/70 { background-color: #d8e6dd !important; }
 .fable [data-hero="continue-reading"] .bg-zinc-800.shadow-xl { background-color: #d8e6dd !important; }
+
+/* Progress fill — forest green (was indigo/fuchsia gradient) */
+.fable [data-progress] {
+  background-image: none !important;
+  background-color: #2b694d !important;
+}
 
 /* ─────────────────────────────────────────────────────────
    READER THEMES — scoped to .reader-content wrapper
